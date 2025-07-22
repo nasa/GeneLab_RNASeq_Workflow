@@ -442,7 +442,7 @@ process VV_CONCAT_FILTER {
 
   script:
     """
-    concat_logs.py
+    concat_logs.py --assay_suffix ${params.assay_suffix}
     filter_to_only_issues.py --assay_suffix ${params.assay_suffix}
     """
 }

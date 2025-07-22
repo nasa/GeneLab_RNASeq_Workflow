@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fixed issues with gene annotation file download by adding user-agent header
-- Fixed file suffix handling in gene quantification scripts
+- Fixed file suffix handling in gene quantification scripts, vv scripts
 - Fixed rRNArm glob in VV RSEM
 
 ## [2.0.1](https://github.com/nasa/GeneLab_Data_Processing/tree/NF_RCP_2.0.1/RNAseq/Workflow_Documentation/NF_RCP) - 2025-07-02
