@@ -4,7 +4,7 @@
 
 ### Implementation Tools <!-- omit in toc -->
 
-The current GeneLab RNAseq consensus processing pipeline (RCP) for eukaryotic organisms ([GL-DPPD-7101-G](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Pipeline_GL-DPPD-7101_Versions/GL-DPPD-7101-G.md)) and prokaryotic organisms ([GL-DPPD-7115](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Pipeline_GL-DPPD-7115_Versions/GL-DPPD-7115.md)) are implemented as a single [Nextflow](https://nextflow.io/) DSL2 workflow that utilizes [Singularity](https://docs.sylabs.io/guides/3.10/user-guide/introduction.html) to run all tools in containers. This workflow (NF_RCP) is run using the command line interface (CLI) of any unix-based system. While knowledge of creating workflows in Nextflow is not required to run the workflow as is, [the Nextflow documentation](https://nextflow.io/docs/latest/index.html) is a useful resource for users who want to modify and/or extend this workflow.   
+The current GeneLab RNAseq consensus processing pipeline (RCP) for eukaryotic organisms ([GL-DPPD-7101-G](../../Pipeline_GL-DPPD-7101_Versions/GL-DPPD-7101-G.md)) and prokaryotic organisms ([GL-DPPD-7115](../../Pipeline_GL-DPPD-7115_Versions/GL-DPPD-7115.md)) are implemented as a single [Nextflow](https://nextflow.io/) DSL2 workflow that utilizes [Singularity](https://docs.sylabs.io/guides/3.10/user-guide/introduction.html) to run all tools in containers. This workflow (NF_RCP) is run using the command line interface (CLI) of any unix-based system. While knowledge of creating workflows in Nextflow is not required to run the workflow as is, [the Nextflow documentation](https://nextflow.io/docs/latest/index.html) is a useful resource for users who want to modify and/or extend this workflow.   
 
 ### Resource Requirements <!-- omit in toc -->
 
@@ -26,20 +26,20 @@ The table below details the default maximum resource allocations for individual 
 <details open>
 <summary>NF_RCP workflow for GL-DPPD-7101-G (Eukaryotes)</summary>
 <p align="center">
-<a href="images/NF_RCP_euk_wf_diagram.png"><img src="images/NF_RCP_euk_wf_diagram.png"></a>
+<a href="../../images/NF_RCP_euk_wf_diagram.png"><img src="../../images/NF_RCP_euk_wf_diagram.png"></a>
 </p>
 </details>
 
 <details>
 <summary>NF_RCP workflow for GL-DPPD-7115 (Prokaryotes)</summary>
 <p align="center">
-<a href="images/NF_RCP_prok_wf_diagram.png"><img src="images/NF_RCP_prok_wf_diagram.png"></a>
+<a href="../../images/NF_RCP_prok_wf_diagram.png"><img src="../../images/NF_RCP_prok_wf_diagram.png"></a>
 </p>
 </details>
 
 ---
 The NF_RCP workflow is composed of three subworkflows as shown in the image above.
-Below is a description of each subworkflow and the additional output files generated that are not already indicated in the [GL-DPPD-7101-G](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Pipeline_GL-DPPD-7101_Versions/GL-DPPD-7101-G.md) and [GL-DPPD-7115](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Pipeline_GL-DPPD-7115_Versions/GL-DPPD-7115.md) pipeline documents:
+Below is a description of each subworkflow and the additional output files generated that are not already indicated in the [GL-DPPD-7101-G](../../Pipeline_GL-DPPD-7101_Versions/GL-DPPD-7101-G.md) and [GL-DPPD-7115](../../Pipeline_GL-DPPD-7115_Versions/GL-DPPD-7115.md) pipeline documents:
 
 1. **Analysis Staging Subworkflow**
 
@@ -51,8 +51,8 @@ Below is a description of each subworkflow and the additional output files gener
 
    - Description:
      - This subworkflow uses the staged raw data and metadata parameters from the Analysis Staging Subworkflow to generate processed data using either:
-       - [Version G of the GeneLab RCP](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Pipeline_GL-DPPD-7101_Versions/GL-DPPD-7101-G.md) when the `--mode` parameter is omitted (default)
-       - [The GeneLab Prokaryotic RCP](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Pipeline_GL-DPPD-7115_Versions/GL-DPPD-7115.md) when using `--mode microbes`
+       - [Version G of the GeneLab RCP](../../Pipeline_GL-DPPD-7101_Versions/GL-DPPD-7101-G.md) when the `--mode` parameter is omitted (default)
+       - [The GeneLab Prokaryotic RCP](../../Pipeline_GL-DPPD-7115_Versions/GL-DPPD-7115.md) when using `--mode microbes`
        
        The selection impacts the choice of aligner and read counter tools used in the pipeline.
 
@@ -128,9 +128,9 @@ All files required for utilizing the NF_RCP GeneLab workflow for processing RNAs
 copy of latest NF_RCP version on to your system, the code can be downloaded as a zip file from the release page then unzipped after downloading by running the following commands: 
 
 ```bash
-wget https://github.com/nasa/GeneLab_Data_Processing/releases/download/NF_RCP_2.0.1/NF_RCP_2.0.1.zip
+wget https://github.com/nasa/GeneLab_Data_Processing/releases/download/NF_RCP_2.0.2/NF_RCP_2.0.2.zip
 
-unzip NF_RCP_2.0.1.zip
+unzip NF_RCP_2.0.2.zip
 ```
 
 <br>
@@ -142,10 +142,10 @@ unzip NF_RCP_2.0.1.zip
 Although Nextflow can fetch Singularity images from a url, doing so may cause issues as detailed [here](https://github.com/nextflow-io/nextflow/issues/1210).
 
 To avoid this issue, run the following command to fetch the Singularity images prior to running the NF_RCP workflow:
-> Note: This command should be run in the location containing the `NF_RCP_2.0.1` directory that was downloaded in [step 2](#2-download-the-workflow-files) above. Depending on your network speed, fetching the images will take ~20 minutes. Approximately 8GB of RAM is needed to download and build the Singularity images.
+> Note: This command should be run in the location containing the `NF_RCP_2.0.2` directory that was downloaded in [step 2](#2-download-the-workflow-files) above. Depending on your network speed, fetching the images will take ~20 minutes. Approximately 8GB of RAM is needed to download and build the Singularity images.
 
 ```bash
-bash NF_RCP_2.0.1/bin/prepull_singularity.sh NF_RCP_2.0.1/config/software/by_docker_image.config
+bash NF_RCP_2.0.2/bin/prepull_singularity.sh NF_RCP_2.0.2/config/software/by_docker_image.config
 ```
 
 
@@ -161,7 +161,7 @@ export NXF_SINGULARITY_CACHEDIR=$(pwd)/singularity
 
 ### 4. Run the Workflow
 
-While in the location containing the `NF_RCP_2.0.1` directory that was downloaded in [step 2](#2-download-the-workflow-files), you are now able to run the workflow.
+While in the location containing the `NF_RCP_2.0.2` directory that was downloaded in [step 2](#2-download-the-workflow-files), you are now able to run the workflow.
 
 Both workflows automatically load reference files and organism-specific gene annotation files from the [GeneLab annotations table](https://github.com/nasa/GeneLab_Data_Processing/blob/master/GeneLab_Reference_Annotations/Pipeline_GL-DPPD-7110_Versions/GL-DPPD-7110-A/GL-DPPD-7110-A_annotations.csv). For organisms not listed in the table or to use alternative reference files, additional workflow parameters can be specified.
 
@@ -175,19 +175,19 @@ Both workflows automatically load reference files and organism-specific gene ann
 #### 4a. Approach 1: Run the workflow on a GeneLab RNAseq dataset with automatic retrieval of reference fasta and gtf files
 
 ```bash
-nextflow run NF_RCP_2.0.1/main.nf \ 
+nextflow run NF_RCP_2.0.2/main.nf \ 
    -profile singularity,local \
    --accession OSD-194 
 ```
 
-> Note: For prokaryotic RNAseq datasets, add the parameter `--mode microbes` to run the workflow using the prokaryotic pipeline ([GL-DPPD-7115](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Pipeline_GL-DPPD-7115_Versions/GL-DPPD-7115.md)). The default value of this parameter is `default`, which will use the eukaryotic pipeline ([GL-DPPD-7101-G](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Pipeline_GL-DPPD-7101_Versions/GL-DPPD-7101-G.md)).
+> Note: For prokaryotic RNAseq datasets, add the parameter `--mode microbes` to run the workflow using the prokaryotic pipeline ([GL-DPPD-7115](../../Pipeline_GL-DPPD-7115_Versions/GL-DPPD-7115.md)). The default value of this parameter is `default`, which will use the eukaryotic pipeline ([GL-DPPD-7101-G](../../Pipeline_GL-DPPD-7101_Versions/GL-DPPD-7101-G.md)).
 
 <br>
 
 #### 4b. Approach 2: Run the workflow on a GeneLab RNAseq dataset with custom reference fasta and gtf files
 
 ```bash
-nextflow run NF_RCP_2.0.1/main.nf \ 
+nextflow run NF_RCP_2.0.2/main.nf \ 
    -profile singularity,local \
    --accession OSD-194 \
    --reference_version 112 \
@@ -205,7 +205,7 @@ nextflow run NF_RCP_2.0.1/main.nf \
 #### 4c. Approach 3: Run the workflow on a non-GeneLab dataset using a user-created runsheet with automatic retrieval of reference fasta and gtf files
 
 ```bash
-nextflow run NF_RCP_2.0.1/main.nf \ 
+nextflow run NF_RCP_2.0.2/main.nf \ 
    -profile singularity,local \
    --runsheet_path </path/to/runsheet> 
 ```
@@ -217,7 +217,7 @@ nextflow run NF_RCP_2.0.1/main.nf \
 #### 4d. Approach 4: Run the workflow on a non-GeneLab dataset using a user-created runsheet with custom reference fasta and gtf files
 
 ```bash
-nextflow run NF_RCP_2.0.1/main.nf \ 
+nextflow run NF_RCP_2.0.2/main.nf \ 
    -profile singularity \
    --accession OSD-194 \
    --reference_version 112 \
@@ -235,7 +235,7 @@ nextflow run NF_RCP_2.0.1/main.nf \
 
 #### Required Parameters For All Approaches:
 
-* `NF_RCP_2.0.1/main.nf` - Instructs Nextflow to run the NF_RCP workflow 
+* `NF_RCP_2.0.2/main.nf` - Instructs Nextflow to run the NF_RCP workflow 
 
 * `-profile` - Specifies the configuration profile(s) to load, `singularity` instructs Nextflow to setup and use singularity for all software called in the workflow; use `local` for local execution ([local.config](workflow_code/conf/local.config)) or `slurm` for SLURM cluster execution ([slurm.config](workflow_code/conf/slurm.config))
   > Note: The output directory will be named `GLDS-#` when using a OSD or GLDS accession as input, or `results` when running the workflow with only a runsheet as input.
@@ -313,7 +313,7 @@ nextflow run NF_RCP_2.0.1/main.nf \
 All parameters listed above and additional optional arguments for the RCP workflow, including debug related options that may not be immediately useful for most users, can be viewed by running the following command:
 
 ```bash
-nextflow run NF_RCP_2.0.1/main.nf --help
+nextflow run NF_RCP_2.0.2/main.nf --help
 ```
 
 See `nextflow run -h` and [Nextflow's CLI run command documentation](https://nextflow.io/docs/latest/cli.html#run) for more options and details common to all nextflow workflows.
@@ -325,7 +325,7 @@ See `nextflow run -h` and [Nextflow's CLI run command documentation](https://nex
 ### 5. Additional Output Files
 
 The outputs from the Analysis Staging and V&V Pipeline Subworkflows are described below:
-> Note: The outputs from the RNAseq Consensus Pipeline Subworkflow are documented in the [GL-DPPD-7101-G](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Pipeline_GL-DPPD-7101_Versions/GL-DPPD-7101-G.md) processing protocol.
+> Note: The outputs from the RNAseq Consensus Pipeline Subworkflow are documented in the [GL-DPPD-7101-G](../../Pipeline_GL-DPPD-7101_Versions/GL-DPPD-7101-G.md) processing protocol.
 
 **Analysis Staging Subworkflow**
 
