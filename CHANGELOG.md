@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Consolidated gene annotation step from standalone module into DGE module
+- Changed GET_ACCESSIONS to use search API, use Biological Data API as a fallback instead 
 
 ### Fixed
 
