@@ -658,7 +658,7 @@ def add_bowtie2_group_stats(outdir, multiqc_data, log_path):
     
     return True
 
-def check_bowtie2_existence(outdir, samples, paired_end, log_path):
+def check_bowtie2_existence(outdir, samples, paired_end, log_path, assay_suffix):
     """Check if all expected bowtie2 alignment files exist for each sample."""
     align_dir = os.path.join(outdir, "02-Bowtie2_Alignment")
     missing_files = []
@@ -666,7 +666,7 @@ def check_bowtie2_existence(outdir, samples, paired_end, log_path):
 
     # First check for MultiQC data
     multiqc_dir = os.path.join(align_dir, "MultiQC_Reports")
-    multiqc_file = os.path.join(multiqc_dir, "align_multiqc_GLbulkRNAseq_data.zip")
+    multiqc_file = os.path.join(multiqc_dir, f"align_multiqc{assay_suffix}_data.zip")
     if not os.path.exists(multiqc_file):
         missing_files.append(multiqc_file)
 
@@ -777,7 +777,7 @@ def main():
     # Initiate validation checks in logical order
     
     # 1. Check for bowtie2 alignment files existence
-    check_bowtie2_existence(args.outdir, sample_names, paired_end_values, vv_log_path)
+    check_bowtie2_existence(args.outdir, sample_names, paired_end_values, vv_log_path, args.assay_suffix)
 
     # 2. Check that samples are present in MultiQC data
     check_samples_multiqc(args.outdir, sample_names, paired_end_values, vv_log_path, args.assay_suffix)

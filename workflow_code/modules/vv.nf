@@ -39,7 +39,7 @@ process VV_RAW_READS {
 
     # Run V&V unless user requests to skip V&V
     if ${ !params.skip_vv } ; then
-      vv_raw_reads.py --runsheet ${runsheet} --outdir .
+      vv_raw_reads.py --runsheet ${runsheet} --outdir . --assay-suffix ${params.assay_suffix}
     fi
 
     echo '"${task.process}":' > versions.yml
@@ -86,7 +86,7 @@ process VV_TRIMMED_READS {
 
     # Run V&V unless user requests to skip V&V
     if ${ !params.skip_vv } ; then
-      vv_trimmed_reads.py --runsheet ${runsheet} --outdir .
+      vv_trimmed_reads.py --runsheet ${runsheet} --outdir . --assay-suffix ${params.assay_suffix}
     fi
     """
 }
@@ -128,7 +128,7 @@ process VV_BOWTIE2_ALIGNMENT {
 
     # Run V&V unless user requests to skip V&V
     if ${ !params.skip_vv } ; then
-      vv_bowtie2_alignment.py --runsheet ${runsheet} --outdir .
+      vv_bowtie2_alignment.py --runsheet ${runsheet} --outdir . --assay-suffix ${params.assay_suffix}
     fi
     """
 } 
@@ -238,7 +238,7 @@ process VV_FEATURECOUNTS {
 
   # Run V&V unless user requests to skip V&V
   if ${ !params.skip_vv } ; then
-    vv_featurecounts.py --runsheet ${runsheet} --outdir .
+    vv_featurecounts.py --runsheet ${runsheet} --outdir . --assay-suffix ${params.assay_suffix}
   fi
   """
 }
@@ -321,7 +321,7 @@ process VV_STAR_ALIGNMENT {
 
     # Run V&V unless user requests to skip V&V
     if ${ !params.skip_vv } ; then
-      vv_star_alignment.py --runsheet ${runsheet} --outdir .
+      vv_star_alignment.py --runsheet ${runsheet} --outdir . --assay-suffix ${params.assay_suffix}
     fi
     """
 }
@@ -368,7 +368,7 @@ process VV_RSEM_COUNTS {
 
     # Run V&V unless user requests to skip V&V
     if ${ !params.skip_vv } ; then
-      vv_rsem_counts.py --runsheet ${runsheet} --outdir .
+      vv_rsem_counts.py --runsheet ${runsheet} --outdir . --assay-suffix ${params.assay_suffix}
     fi
     """
 }
