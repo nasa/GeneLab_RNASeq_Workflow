@@ -194,7 +194,7 @@ process VV_RSEQC {
 
     # Run V&V unless user requests to skip V&V
     if ${ !params.skip_vv } ; then
-      vv_rseqc.py --runsheet ${runsheet} --outdir .
+      vv_rseqc.py --runsheet ${runsheet} --outdir . --assay_suffix ${params.assay_suffix}
     fi
 
     # Remove all placeholder files and empty directories to prevent publishing
@@ -281,7 +281,7 @@ process VV_DGE_DESEQ2 {
   mv INPUT/* . || true
 
   if ${ !params.skip_vv } ; then
-    vv_dge_deseq2.py --runsheet ${runsheet} --outdir . ${mode_params}
+    vv_dge_deseq2.py --runsheet ${runsheet} --outdir . --assay_suffix ${params.assay_suffix} ${mode_params}
   fi
   """
 }
@@ -370,60 +370,6 @@ process VV_RSEM_COUNTS {
     if ${ !params.skip_vv } ; then
       vv_rsem_counts.py --runsheet ${runsheet} --outdir . --assay-suffix ${params.assay_suffix}
     fi
-    """
-}
-
-process VV_DESEQ2_ANALYSIS {
-  // Log publishing
-  publishDir "${ publishdir }",
-    pattern:  "VV_log.csv" ,
-    mode: params.publish_dir_mode,
-    saveAs: { "VV_Logs/VV_log_${ task.process.tokenize(':').last() }${ params.assay_suffix }.csv" }
-  // V&V'ed data publishing
-  publishDir "${ publishdir }",
-    pattern: '{04-DESeq2_NormCounts,05-DESeq2_DGE}',
-    mode: params.publish_dir_mode
-
-  label 'VV'
-
-  input:
-    val(publishdir)
-    val(meta)
-    path("VV_INPUT/Metadata/*")
-    path("VV_INPUT/03-RSEM_Counts/*") // RSEM dataset output
-    path("VV_INPUT/03-RSEM_Counts/*") // zipped multiqc data directory
-    path("VV_INPUT/03-RSEM_Counts/*") // multiqc HTML report
-    path("VV_INPUT/04-DESeq2_NormCounts/*") // norm counts files
-    path("VV_INPUT/05-DESeq2_DGE/*") // dge files
-    path("VV_INPUT/04-DESeq2_NormCounts/*") // ERCC norm counts files
-    path("VV_INPUT/05-DESeq2_DGE/ERCC_NormDGE/*") // ERCC dge files
-    path(dp_tools__NF_RCP)
-
-  output:
-    path("04-DESeq2_NormCounts")
-    path("05-DESeq2_DGE")
-    path("VV_log.csv"), optional: params.skip_vv, emit: log
-  
-  script:
-    """
-    # move from VV_INPUT to task directory
-    # This allows detection as output files for publishing
-    mv VV_INPUT/* . || true
-
-    # Run V&V unless user requests to skip V&V
-    if ${ !params.skip_vv } ; then
-      dpt validation run ${dp_tools__NF_RCP} . Metadata/*_runsheet.csv \\
-                          --data-asset-key-sets  \\
-                            'RSEM Output,DGE Output${ meta.has_ercc ? ",ERCC DGE Output" : ''}' \\
-                          --run-components \\
-                            'DGE Metadata${ meta.has_ercc ? ",DGE Metadata ERCC" : '' },DGE Output${ meta.has_ercc ? ",DGE Output ERCC" : '' }' \\
-                          --max-flag-code ${ params.max_flag_code } \\
-                          --output VV_log.csv
-    fi
-
-    # Remove all placeholder files and empty directories to prevent publishing
-    find . -type f,l -name *.placeholder -delete
-    find . -empty -type d -delete
     """
 }
 
