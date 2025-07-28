@@ -535,6 +535,7 @@ if (!is.null(annotation_file_path) && annotation_file_path != "" && annotation_f
 } else {
     print(sprintf("DEBUG: %s: No annotation file provided, proceeding without annotations", Sys.time()))
 }
+```
 
 ```{r output-dge-related-files}
 # note: the paste0 here is ensure no string file name prefixes still create their directories

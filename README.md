@@ -4,7 +4,7 @@
 
 ### Implementation Tools <!-- omit in toc -->
 
-The current GeneLab RNAseq consensus processing pipeline (RCP) for eukaryotic organisms ([GL-DPPD-7101-G](../../Pipeline_GL-DPPD-7101_Versions/GL-DPPD-7101-G.md)) and prokaryotic organisms ([GL-DPPD-7115](../../Pipeline_GL-DPPD-7115_Versions/GL-DPPD-7115.md)) are implemented as a single [Nextflow](https://nextflow.io/) DSL2 workflow that utilizes [Singularity](https://docs.sylabs.io/guides/3.10/user-guide/introduction.html) to run all tools in containers. This workflow (NF_RCP) is run using the command line interface (CLI) of any unix-based system. While knowledge of creating workflows in Nextflow is not required to run the workflow as is, [the Nextflow documentation](https://nextflow.io/docs/latest/index.html) is a useful resource for users who want to modify and/or extend this workflow.   
+The current GeneLab RNAseq consensus processing pipeline (RCP) for eukaryotic organisms ([GL-DPPD-7101-G](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Pipeline_GL-DPPD-7101_Versions/GL-DPPD-7101-G.md)) and prokaryotic organisms ([GL-DPPD-7115](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Pipeline_GL-DPPD-7115_Versions/GL-DPPD-7115.md)) are implemented as a single [Nextflow](https://nextflow.io/) DSL2 workflow that utilizes [Singularity](https://docs.sylabs.io/guides/3.10/user-guide/introduction.html) to run all tools in containers. This workflow (NF_RCP) is run using the command line interface (CLI) of any unix-based system. While knowledge of creating workflows in Nextflow is not required to run the workflow as is, [the Nextflow documentation](https://nextflow.io/docs/latest/index.html) is a useful resource for users who want to modify and/or extend this workflow.   
 
 ### Resource Requirements <!-- omit in toc -->
 
@@ -26,20 +26,20 @@ The table below details the default maximum resource allocations for individual 
 <details open>
 <summary>NF_RCP workflow for GL-DPPD-7101-G (Eukaryotes)</summary>
 <p align="center">
-<a href="../../images/NF_RCP_euk_wf_diagram.png"><img src="../../images/NF_RCP_euk_wf_diagram.png"></a>
+<a href="images/NF_RCP_euk_wf_diagram.png"><img src="images/NF_RCP_euk_wf_diagram.png"></a>
 </p>
 </details>
 
 <details>
 <summary>NF_RCP workflow for GL-DPPD-7115 (Prokaryotes)</summary>
 <p align="center">
-<a href="../../images/NF_RCP_prok_wf_diagram.png"><img src="../../images/NF_RCP_prok_wf_diagram.png"></a>
+<a href="images/NF_RCP_prok_wf_diagram.png"><img src="images/NF_RCP_prok_wf_diagram.png"></a>
 </p>
 </details>
 
 ---
 The NF_RCP workflow is composed of three subworkflows as shown in the image above.
-Below is a description of each subworkflow and the additional output files generated that are not already indicated in the [GL-DPPD-7101-G](../../Pipeline_GL-DPPD-7101_Versions/GL-DPPD-7101-G.md) and [GL-DPPD-7115](../../Pipeline_GL-DPPD-7115_Versions/GL-DPPD-7115.md) pipeline documents:
+Below is a description of each subworkflow and the additional output files generated that are not already indicated in the [GL-DPPD-7101-G](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Pipeline_GL-DPPD-7101_Versions/GL-DPPD-7101-G.md) and [GL-DPPD-7115](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Pipeline_GL-DPPD-7115_Versions/GL-DPPD-7115.md) pipeline documents:
 
 1. **Analysis Staging Subworkflow**
 
@@ -51,8 +51,8 @@ Below is a description of each subworkflow and the additional output files gener
 
    - Description:
      - This subworkflow uses the staged raw data and metadata parameters from the Analysis Staging Subworkflow to generate processed data using either:
-       - [Version G of the GeneLab RCP](../../Pipeline_GL-DPPD-7101_Versions/GL-DPPD-7101-G.md) when the `--mode` parameter is omitted (default)
-       - [The GeneLab Prokaryotic RCP](../../Pipeline_GL-DPPD-7115_Versions/GL-DPPD-7115.md) when using `--mode microbes`
+       - [Version G of the GeneLab RCP](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Pipeline_GL-DPPD-7101_Versions/GL-DPPD-7101-G.md) when the `--mode` parameter is omitted (default)
+       - [The GeneLab Prokaryotic RCP](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Pipeline_GL-DPPD-7115_Versions/GL-DPPD-7115.md) when using `--mode microbes`
        
        The selection impacts the choice of aligner and read counter tools used in the pipeline.
 
@@ -128,7 +128,7 @@ All files required for utilizing the NF_RCP GeneLab workflow for processing RNAs
 copy of latest NF_RCP version on to your system, the code can be downloaded as a zip file from the release page then unzipped after downloading by running the following commands: 
 
 ```bash
-wget https://github.com/nasa/GeneLab_Data_Processing/releases/download/NF_RCP_2.0.2/NF_RCP_2.0.2.zip
+wget https://github.com/nasa/GeneLab_RNASeq_Workflow/releases/download/NF_RCP_2.0.2/NF_RCP_2.0.2.zip
 
 unzip NF_RCP_2.0.2.zip
 ```
@@ -180,7 +180,7 @@ nextflow run NF_RCP_2.0.2/main.nf \
    --accession OSD-194 
 ```
 
-> Note: For prokaryotic RNAseq datasets, add the parameter `--mode microbes` to run the workflow using the prokaryotic pipeline ([GL-DPPD-7115](../../Pipeline_GL-DPPD-7115_Versions/GL-DPPD-7115.md)). The default value of this parameter is `default`, which will use the eukaryotic pipeline ([GL-DPPD-7101-G](../../Pipeline_GL-DPPD-7101_Versions/GL-DPPD-7101-G.md)).
+> Note: For prokaryotic RNAseq datasets, add the parameter `--mode microbes` to run the workflow using the prokaryotic pipeline ([GL-DPPD-7115](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Pipeline_GL-DPPD-7115_Versions/GL-DPPD-7115.md)). The default value of this parameter is `default`, which will use the eukaryotic pipeline ([GL-DPPD-7101-G](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Pipeline_GL-DPPD-7101_Versions/GL-DPPD-7101-G.md)).
 
 <br>
 
@@ -325,7 +325,7 @@ See `nextflow run -h` and [Nextflow's CLI run command documentation](https://nex
 ### 5. Additional Output Files
 
 The outputs from the Analysis Staging and V&V Pipeline Subworkflows are described below:
-> Note: The outputs from the RNAseq Consensus Pipeline Subworkflow are documented in the [GL-DPPD-7101-G](../../Pipeline_GL-DPPD-7101_Versions/GL-DPPD-7101-G.md) processing protocol.
+> Note: The outputs from the RNAseq Consensus Pipeline Subworkflow are documented in the [GL-DPPD-7101-G](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Pipeline_GL-DPPD-7101_Versions/GL-DPPD-7101-G.md) processing protocol.
 
 **Analysis Staging Subworkflow**
 

@@ -5,10 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.2](https://github.com/nasa/GeneLab_Data_Processing/tree/NF_RCP_2.0.2/RNAseq/Workflow_Documentation/NF_RCP) - 2025-07-22
+## [2.0.2](https://github.com/nasa/GeneLab_RNASeq_Workflow/tree/NF_RCP_2.0.2) - 2025-07-22
 
 ### Changed
 
+- Migrated RNASeq workflow code to the GeneLab_RNASeq_Workflow github repository. Link from [main repository](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Workflow_Documentation/NF_RCP) points back to this repository for backward compatibility. All previous releases of this workflow will continue to reside in the main repository.
 - Consolidated gene annotation step from standalone module into DGE module
 - Changed GET_ACCESSIONS to use search API, use Biological Data API as a fallback instead 
 
