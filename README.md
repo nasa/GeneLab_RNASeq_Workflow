@@ -1,12 +1,14 @@
-# NF_RCP Workflow Information and Usage Instructions <!-- omit in toc -->
+# GeneLab RNAseq Consensus Processing Workflow
 
-## General Workflow Info <!-- omit in toc -->
+> GeneLab, part of [NASA's Open Science Data Repository (OSDR)](https://www.nasa.gov/osdr), has wrapped each step of the RNASeq consensus processing pipeline ([RCP](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNASeq)), starting with version F, into a Nextflow workflow with validation and verification of output files built in after each step. This repository contains the Nextflow workflow code (NF_RCP) along with instructions for installation and usage starting with NF_RCP version 2.0.2. For previous versions, refer to the table in the GeneLab_Data_Processing repository [workflow documentation](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNASeq/Workflow_Documentation) which lists (and links to) each RCP version and the corresponding workflow code. Exact workflow run info and RCP version used to process specific datasets that have been released are available in the \*nextflow_processing_info.txt file on the [Open Science Data Repository (OSDR)](https://osdr.nasa.gov/bio/repo/), which can be found under 'Files' -> 'GeneLab Processed RNA-Seq Files' -> 'Supplemental Materials'.
 
-### Implementation Tools <!-- omit in toc -->
+## General Workflow Info
+
+### Implementation Tools
 
 The current GeneLab RNAseq consensus processing pipeline (RCP) for eukaryotic organisms ([GL-DPPD-7101-G](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Pipeline_GL-DPPD-7101_Versions/GL-DPPD-7101-G.md)) and prokaryotic organisms ([GL-DPPD-7115](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Pipeline_GL-DPPD-7115_Versions/GL-DPPD-7115.md)) are implemented as a single [Nextflow](https://nextflow.io/) DSL2 workflow that utilizes [Singularity](https://docs.sylabs.io/guides/3.10/user-guide/introduction.html) to run all tools in containers. This workflow (NF_RCP) is run using the command line interface (CLI) of any unix-based system. While knowledge of creating workflows in Nextflow is not required to run the workflow as is, [the Nextflow documentation](https://nextflow.io/docs/latest/index.html) is a useful resource for users who want to modify and/or extend this workflow.   
 
-### Resource Requirements <!-- omit in toc -->
+### Resource Requirements
 
 The table below details the default maximum resource allocations for individual Nextflow processes.
 
@@ -17,7 +19,7 @@ The table below details the default maximum resource allocations for individual 
 
 > **Note:** These per-process resource allocations are defaults. They can be adjusted by modifying `cpus` and `memory`  directives in the configuration files: [`local.config`](workflow_code/conf/local.config) (local execution) and [`slurm.config`](workflow_code/conf/slurm.config) (SLURM clusters).
 
-### Workflow & Subworkflows <!-- omit in toc -->
+### Workflow & Subworkflows
 
 ---
 
@@ -372,3 +374,43 @@ Standard Nextflow resource usage logs are also produced as follows:
      - nextflow_info/pipeline_dag_{timestamp}.html (a visualization of the workflow process DAG)
 
 <br>
+
+---
+
+## Licenses
+
+The software for the RNAseq pipeline and workflow is released under the [NASA Open Source Agreement (NOSA) Version 1.3](License/RNA_Sequencing_NOSA_License.pdf).
+
+
+### 3rd Party Software Licenses
+
+Licenses for the 3rd party open source software utilized in the RNAseq pipeline and workflow can be found in the [3rd_Party_Licenses sub-directory](License/3rd_Party_Licenses). 
+
+<br>
+
+---
+
+## Notices
+
+Copyright © 2025 United States Government as represented by the Administrator of the National Aeronautics and Space Administration.  All Rights Reserved. 
+
+### Disclaimers
+
+No Warranty: THE SUBJECT SOFTWARE IS PROVIDED "AS IS" WITHOUT ANY WARRANTY OF ANY KIND, EITHER EXPRESSED, IMPLIED, OR STATUTORY, INCLUDING, BUT NOT LIMITED TO, ANY WARRANTY THAT THE SUBJECT SOFTWARE WILL CONFORM TO SPECIFICATIONS, ANY IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR FREEDOM FROM INFRINGEMENT, ANY WARRANTY THAT THE SUBJECT SOFTWARE WILL BE ERROR FREE, OR ANY WARRANTY THAT DOCUMENTATION, IF PROVIDED, WILL CONFORM TO THE SUBJECT SOFTWARE. THIS AGREEMENT DOES NOT, IN ANY MANNER, CONSTITUTE AN ENDORSEMENT BY GOVERNMENT AGENCY OR ANY PRIOR RECIPIENT OF ANY RESULTS, RESULTING DESIGNS, HARDWARE, SOFTWARE PRODUCTS OR ANY OTHER APPLICATIONS RESULTING FROM USE OF THE SUBJECT SOFTWARE.  FURTHER, GOVERNMENT AGENCY DISCLAIMS ALL WARRANTIES AND LIABILITIES REGARDING THIRD-PARTY SOFTWARE, IF PRESENT IN THE ORIGINAL SOFTWARE, AND DISTRIBUTES IT "AS IS."
+
+Waiver and Indemnity:  RECIPIENT AGREES TO WAIVE ANY AND ALL CLAIMS AGAINST THE UNITED STATES GOVERNMENT, ITS CONTRACTORS AND SUBCONTRACTORS, AS WELL AS ANY PRIOR RECIPIENT.  IF RECIPIENT'S USE OF THE SUBJECT SOFTWARE RESULTS IN ANY LIABILITIES, DEMANDS, DAMAGES, EXPENSES OR LOSSES ARISING FROM SUCH USE, INCLUDING ANY DAMAGES FROM PRODUCTS BASED ON, OR RESULTING FROM, RECIPIENT'S USE OF THE SUBJECT SOFTWARE, RECIPIENT SHALL INDEMNIFY AND HOLD HARMLESS THE UNITED STATES GOVERNMENT, ITS CONTRACTORS AND SUBCONTRACTORS, AS WELL AS ANY PRIOR RECIPIENT, TO THE EXTENT PERMITTED BY LAW.  RECIPIENT'S SOLE REMEDY FOR ANY SUCH MATTER SHALL BE THE IMMEDIATE, UNILATERAL TERMINATION OF THIS AGREEMENT. 
+
+The "GeneLab RNA Sequencing Processing Pipeline and Workflow" software also makes use of 3rd party Open Source software, released under the licenses indicated above.  A complete listing of 3rd Party software notices and licenses made use of in "GeneLab RNA Sequencing Processing Pipeline and Workflow" can be found in the [3rd Party Licenses README.md](License/3rd_Party_Licenses/README.md) file. 
+
+<br>
+
+---
+**Developed by:**  
+Amanda Saravia-Butler    
+Jonathan Oribello  
+
+**Maintained by:**  
+Alexis Torres  
+
+**Contributors:**
+Crystal Han   
