@@ -2,13 +2,19 @@
 
 > GeneLab, part of [NASA's Open Science Data Repository (OSDR)](https://www.nasa.gov/osdr), has wrapped each step of the RNASeq consensus processing pipeline ([RCP](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNASeq)), starting with version F, into a Nextflow workflow with validation and verification of output files built in after each step. This repository contains the Nextflow workflow code (NF_RCP) along with instructions for installation and usage starting with NF_RCP version 2.0.2. For previous versions, refer to the table in the GeneLab_Data_Processing repository [workflow documentation](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNASeq/Workflow_Documentation) which lists (and links to) each RCP version and the corresponding workflow code. Exact workflow run info and RCP version used to process specific datasets that have been released are available in the \*nextflow_processing_info.txt file on the [Open Science Data Repository (OSDR)](https://osdr.nasa.gov/bio/repo/), which can be found under 'Files' -> 'GeneLab Processed RNA-Seq Files' -> 'Supplemental Materials'.
 
-## General Workflow Info
+## General Workflow Information
 
 ### Implementation Tools
 
-The current GeneLab RNAseq consensus processing pipeline (RCP) for eukaryotic organisms ([GL-DPPD-7101-G](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Pipeline_GL-DPPD-7101_Versions/GL-DPPD-7101-G.md)) and prokaryotic organisms ([GL-DPPD-7115](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Pipeline_GL-DPPD-7115_Versions/GL-DPPD-7115.md)) are implemented as a single [Nextflow](https://nextflow.io/) DSL2 workflow that utilizes [Singularity](https://docs.sylabs.io/guides/3.10/user-guide/introduction.html) to run all tools in containers. This workflow (NF_RCP) is run using the command line interface (CLI) of any unix-based system. While knowledge of creating workflows in Nextflow is not required to run the workflow as is, [the Nextflow documentation](https://nextflow.io/docs/latest/index.html) is a useful resource for users who want to modify and/or extend this workflow.   
+The current GeneLab RNAseq consensus processing pipelines (RCP) for eukaryotic organisms ([GL-DPPD-7101-G](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Pipeline_GL-DPPD-7101_Versions/GL-DPPD-7101-G.md)) and prokaryotic organisms ([GL-DPPD-7115](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Pipeline_GL-DPPD-7115_Versions/GL-DPPD-7115.md)) are implemented as a single [Nextflow](https://nextflow.io/) DSL2 workflow that utilizes [Singularity](https://docs.sylabs.io/guides/3.10/user-guide/introduction.html) to run all tools in containers. This workflow (NF_RCP) is run using the command line interface (CLI) of any unix-based system. While knowledge of creating workflows in Nextflow is not required to run the workflow as is, [the Nextflow documentation](https://nextflow.io/docs/latest/index.html) is a useful resource for users who want to modify and/or extend this workflow. See the [NF_RCP Workflow & Subworkflows](#nf_rcp-workflow--subworkflows) section below for more details on the NF_RCP workflow, including installation and execution information.
 
-### Resource Requirements
+For datasets that include ERCC spike-ins, ERCC analysis is implemented as a separate, manual step using a [jupyter](https://jupyter.org) notebook running in a [conda](https://conda-forge.org/docs/) environment. See the [ERCC Analysis Workflow](#ercc-analysis-workflow) section below for more information on how to utilize the ERCC Analysis jupyter notebook.
+
+<br>
+
+# NF_RCP Workflow & Subworkflows
+
+### NF_RCP Resource Requirements
 
 The table below details the default maximum resource allocations for individual Nextflow processes.
 
@@ -19,11 +25,7 @@ The table below details the default maximum resource allocations for individual 
 
 > **Note:** These per-process resource allocations are defaults. They can be adjusted by modifying `cpus` and `memory`  directives in the configuration files: [`local.config`](workflow_code/conf/local.config) (local execution) and [`slurm.config`](workflow_code/conf/slurm.config) (SLURM clusters).
 
-### Workflow & Subworkflows
-
----
-
-- **Click image to expand**
+> **Click links below to show/hide workflow diagrams**
 
 <details open>
 <summary>NF_RCP workflow for GL-DPPD-7101-G (Eukaryotes)</summary>
@@ -40,7 +42,7 @@ The table below details the default maximum resource allocations for individual 
 </details>
 
 ---
-The NF_RCP workflow is composed of three subworkflows as shown in the image above.
+The NF_RCP workflow is composed of three subworkflows as shown in the workflow diagrams above.
 Below is a description of each subworkflow and the additional output files generated that are not already indicated in the [GL-DPPD-7101-G](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Pipeline_GL-DPPD-7101_Versions/GL-DPPD-7101-G.md) and [GL-DPPD-7115](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Pipeline_GL-DPPD-7115_Versions/GL-DPPD-7115.md) pipeline documents:
 
 1. **Analysis Staging Subworkflow**
@@ -56,12 +58,12 @@ Below is a description of each subworkflow and the additional output files gener
        - [Version G of the GeneLab RCP](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Pipeline_GL-DPPD-7101_Versions/GL-DPPD-7101-G.md) when the `--mode` parameter is omitted (default)
        - [The GeneLab Prokaryotic RCP](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Pipeline_GL-DPPD-7115_Versions/GL-DPPD-7115.md) when using `--mode microbes`
        
-       The selection impacts the choice of aligner and read counter tools used in the pipeline.
+       The selection impacts the choice of aligner and read counter tools used in the workflow.
 
 3. **V&V Pipeline Subworkflow**
 
    - Description:
-     - This subworkflow performs validation and verification (V&V) on the raw and processed data files in real-time.  It performs a series of checks on the output files generated and flags the results, using the flag codes indicated in the table below, which are outputted as a series of log files. 
+     - This subworkflow performs validation and verification (V&V) on the raw and processed data files in real-time.  It performs a series of checks on the output files generated and flags the results, using the flag codes indicated in the table below, which are outputted as a set of log files. 
      
        **V&V Flags**:
 
@@ -99,7 +101,7 @@ Below is a description of each subworkflow and the additional output files gener
 
 Nextflow can be installed either through [Anaconda](https://anaconda.org/bioconda/nextflow) or as documented on the [Nextflow documentation page](https://www.nextflow.io/docs/latest/getstarted.html).
 
-> Note: If you want to install Anaconda, we recommend installing a Miniconda, Python3 version appropriate for your system, as instructed by [Happy Belly Bioinformatics](https://astrobiomike.github.io/unix/conda-intro#getting-and-installing-conda).  
+> Note: If you want to install Anaconda, we recommend installing a Miniforge version appropriate for your system, as documented on the [conda-forge website](https://conda-forge.org/download/), where you can find basic binaries for most systems. More detailed miniforge documentation is available in the [miniforge github repository](https://github.com/conda-forge/miniforge).
 > 
 > Once conda is installed on your system, you can install the latest version of Nextflow by running the following commands:
 > 
@@ -377,7 +379,58 @@ Standard Nextflow resource usage logs are also produced as follows:
 
 ---
 
-## Licenses
+<br>
+
+# ERCC Analysis Workflow
+
+## Running ERCC Analysis
+
+1. [Install conda and the ERCC analysis environment](#1-install-conda-and-the-ercc-analysis-environment)
+2. [Launch Jupyter environment](#2-launch-jupyter-environment)  
+3. [Execute the ERCC Analysis](#3-execute-the-ercc-analysis)
+<br>
+
+---
+
+### 1. Install conda and the ERCC analysis environment
+
+We recommend installing a Miniforge version appropriate for your system, as documented on the [conda-forge website](https://conda-forge.org/download/), where you can find basic binaries for most systems. More detailed miniforge documentation is available in the [miniforge github repository](https://github.com/conda-forge/miniforge).
+
+Once conda is installed on your system, create the ercc_analysis conda environment:
+```bash
+conda env create -f NF_RCP_2.0.2/envs/ercc_analysis.yml
+```
+
+### 2. Launch Jupyter environment
+
+Create an  working folder for the ERCC Analysis in the main analysis directory created in [Step 4](#4-run-the-workflow) above and copy the jupyter notebook file into it (downloaded in [Step 2](#2-download-the-workflow-files)) and start a local jupyter notebook server.
+
+```bash
+# create working directory
+mkdir ERCC_Analysis
+
+# copy jupyter notebook from workflow_code folder to new working directory
+cp NF_RCP_2.0.2/bin/combined_ercc_analysis.ipynb ERCC_Analysis
+
+# activate the ercc_analysis environment
+conda activate ercc_analysis
+
+# start jupyter notebook:
+jupyter notebook
+```
+The `jupyter notebook` command will open a page in the default web browser showing a file listing of the folder it was launched from. If the web page does not open automatically, navigate to [http://localhost:8888/tree](http://localhost:8888/tree).
+
+### 3. Execute the ERCC Analysis
+
+Open the combined_ercc_analysis.ipynb notebook found in the ERCC_Analysis folder created above and follow the instructions for running in the analysis in the notebook.
+
+Once the last cell has been executed, export the notebook contents to HTML using the "Save and Export Notebook As" option in the "File" menu.
+
+<br>
+
+---
+
+# Licenses
 
 The software for the RNAseq pipeline and workflow is released under the [NASA Open Source Agreement (NOSA) Version 1.3](License/RNA_Sequencing_NOSA_License.pdf).
 
