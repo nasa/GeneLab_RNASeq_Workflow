@@ -54,14 +54,6 @@ include { SOFTWARE_VERSIONS } from '../modules/software_versions.nf'
 include { GENERATE_PROTOCOL } from '../modules/generate_protocol.nf'
 
 include { validateParameters; paramsSummaryLog; samplesheetToList } from 'plugin/nf-schema'
-def colorCodes = [
-    c_line: "┅" * 70,
-    c_back_bright_red: "\u001b[41;1m",
-    c_bright_green: "\u001b[32;1m",
-    c_blue: "\033[0;34m",
-    c_yellow: "\u001b[33;1m",
-    c_reset: "\033[0m"
-]
 
 workflow RNASEQ {
     take:
