@@ -310,23 +310,23 @@ nextflow run NF_RCP_2.0.2/main.nf \
 * `--mode` - specifies which pipeline to use: set to `default` to run GL-DPPD-7101-G pipeline or set to `microbes` for the GL-DPPD-7115 prokaryotic pipeline (type: string, default: "default")
   > Note: This allows the workflow to process either eukaryotic (default) or prokaryotic RNAseq data using the appropriate pipeline.
 
-* **DGE Filtering Parameters** - Control how raw count genes are filtered prior to differential expression analysis:
+* **DGE Filtering Parameters** - Options for filtering genes prior to DGE analysis:
 
   * `--dge_filter_method` - Method for filtering genes based on raw counts prior to differential expression analysis (type: string, default: "sum_threshold"):
-    - `sum_threshold`: Remove genes with total counts up to threshold 
-    - `sample_percent`: Remove genes if >X% of total counts are only in Y samples
+    - `sum_threshold`: Remove genes with total counts ≤ threshold 
+    - `sample_percent`: Remove genes if >X% of total counts are concentrated in top Y highest-count samples
     - `min_samples`: Remove genes not expressed in at least X samples
-    - `count_per_sample`: Remove genes with total counts below X*sample_count
+    - `count_per_sample`: Remove genes with total counts less than X * sample_count
   
-  * `--dge_filter_sum_threshold` - Minimum total count sum across all samples (type: number, default: 10)
+  * `--dge_filter_sum_threshold` - Threshold value for total raw counts (type: number, default: 10)
   
-  * `--dge_filter_sample_percent_threshold` - Remove genes if this percentage or more of their total counts come from the highest-count samples (type: integer, default: 90)
+  * `--dge_filter_sample_percent_threshold` - Percentage threshold for concentration in top samples (type: integer, default: 90)
   
-  * `--dge_filter_sample_percent_max_samples` - Number of highest-count samples to check gene counts from (type: integer, default: 1)
+  * `--dge_filter_sample_percent_max_samples` - Number of top samples to check for concentration (type: integer, default: 1)
   
-  * `--dge_filter_min_samples_threshold` - Minimum samples where gene must be expressed (type: integer, default: 1)
+  * `--dge_filter_min_samples_threshold` - Minimum number of samples where gene must be expressed (type: integer, default: 1)
   
-  * `--dge_filter_count_per_sample_threshold` - Multiplier for sample-scaled threshold (type: number, default: 1)
+  * `--dge_filter_count_per_sample_threshold` - Multiplier for sample-scaled count threshold (type: number, default: 1)
 
 <br>
 
