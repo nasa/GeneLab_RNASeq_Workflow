@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- DGE filtering parameters for flexible gene filtering prior to differential expression analysis
+- Added additional gene filtering options for DGE
 
 ### Changed
 
