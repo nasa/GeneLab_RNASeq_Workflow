@@ -187,6 +187,56 @@
       },
       "required": ["reference_table"]
     },
+    "dge_filtering": {
+      "title": "DGE Filtering Parameters",
+      "type": "object",
+      "description": "Control how raw count genes are filtered prior to differential expression analysis",
+      "default": "",
+      "properties": {
+        "dge_filter_method": {
+          "type": "string",
+          "default": "sum_threshold",
+          "description": "Method for filtering genes based on raw counts prior to differential expression analysis",
+          "enum": [
+            "sum_threshold",
+            "sample_percent",
+            "min_samples",
+            "count_per_sample"
+          ]
+        },
+        "dge_filter_sum_threshold": {
+          "type": "number",
+          "default": 10,
+          "description": "Minimum total count sum across all samples",
+          "minimum": 0
+        },
+        "dge_filter_sample_percent_threshold": {
+          "type": "integer",
+          "default": 90,
+          "description": "Remove genes if this percentage or more of their total counts come from the highest-count samples",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "dge_filter_sample_percent_max_samples": {
+          "type": "integer",
+          "default": 1,
+          "description": "Number of highest-count samples to check gene counts from",
+          "minimum": 0
+        },
+        "dge_filter_min_samples_threshold": {
+          "type": "integer",
+          "default": 1,
+          "description": "Minimum samples where gene must be expressed",
+          "minimum": 0
+        },
+        "dge_filter_count_per_sample_threshold": {
+          "type": "number",
+          "default": 1,
+          "description": "Multiplier for sample-scaled threshold",
+          "minimum": 0
+        }
+      }
+    },
     "debugging_options": {
       "title": "Debugging options",
       "type": "object",
@@ -238,6 +288,9 @@
     },
     {
       "$ref": "#/$defs/references"
+    },
+    {
+      "$ref": "#/$defs/dge_filtering"
     },
     {
       "$ref": "#/$defs/debugging_options"

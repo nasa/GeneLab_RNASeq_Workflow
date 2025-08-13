@@ -52,7 +52,13 @@ process DGE_DESEQ2 {
                 gene_id_type = '${meta.gene_id_type}',
                 input_counts = '${input_counts_path}',
                 DEBUG_MODE_LIMIT_GENES = FALSE,
-                DEBUG_MODE_ADD_DUMMY_COUNTS = ${debug_dummy_counts}
+                DEBUG_MODE_ADD_DUMMY_COUNTS = ${debug_dummy_counts},
+                dge_filter_method = '${params.dge_filter_method}',
+                dge_filter_sum_threshold = ${params.dge_filter_sum_threshold},
+                dge_filter_sample_percent_threshold = ${params.dge_filter_sample_percent_threshold},
+                dge_filter_sample_percent_max_samples = ${params.dge_filter_sample_percent_max_samples},
+                dge_filter_min_samples_threshold = ${params.dge_filter_min_samples_threshold},
+                dge_filter_count_per_sample_threshold = ${params.dge_filter_count_per_sample_threshold}
             ))"
 
         Rscript -e "versions <- c(); 

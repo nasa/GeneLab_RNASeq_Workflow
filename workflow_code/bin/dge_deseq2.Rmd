@@ -18,6 +18,12 @@ params:
   DEBUG_MODE_LIMIT_GENES: FALSE # debugging option to limit the number of genes
   DEBUG_MODE_ADD_DUMMY_COUNTS: FALSE # debugging option to add dummy counts
   parallel_config: NULL # parallel configuration string (e.g. "MulticoreParam(workers = params$cpus)")
+  dge_filter_method: "sum_threshold" # Method for filtering genes: 'sum_threshold', 'sample_percent', 'min_samples', 'count_per_sample'
+  dge_filter_sum_threshold: 10 # Minimum total count sum across all samples
+  dge_filter_sample_percent_threshold: 90 # Maximum % of gene's total counts allowed in limited samples
+  dge_filter_sample_percent_max_samples: 1 # Number of top samples to check for concentration
+  dge_filter_min_samples_threshold: 1 # Minimum samples where gene must be expressed
+  dge_filter_count_per_sample_threshold: 1 # Multiplier for sample-scaled threshold
 ---
 
 ## Substeps {.tabset}
@@ -366,10 +372,67 @@ if ("Source.Name" %in% colnames(compare_csv) && "Has.Tech.Reps" %in% colnames(co
 summary(dds)
 ```
 
-```{r filter-genes-by-normalized-counts}
-##### Filter out genes with counts of less than 10 in all samples #####
-keep <- rowSums(counts(dds)) > 10
-print(sprintf("DEBUG: %s: Removed %d genes for having dataset wide count sum less than 10. (%f%% of all genes)", Sys.time(), sum(!keep), sum(!keep)/length(keep)*100))
+```{r filter-genes-by-raw-counts}
+##### Filter genes based on selected method and parameters #####
+counts_matrix <- counts(dds)
+gene_count <- nrow(counts_matrix)
+sample_count <- ncol(counts_matrix)
+
+print(sprintf("DEBUG: %s: Starting gene filtering with method '%s'", Sys.time(), params$dge_filter_method))
+print(sprintf("DEBUG: %s: Initial gene count: %d", Sys.time(), gene_count))
+
+# Parameter validation and warnings
+# Create local variables to handle edge cases
+sum_threshold <- params$dge_filter_sum_threshold
+percent_threshold <- params$dge_filter_sample_percent_threshold
+max_samples <- params$dge_filter_sample_percent_max_samples
+min_samples <- params$dge_filter_min_samples_threshold
+count_per_sample <- params$dge_filter_count_per_sample_threshold
+
+if (params$dge_filter_method == "sum_threshold") {
+    # Remove genes with total counts up to threshold
+    keep <- rowSums(counts_matrix) > sum_threshold
+    print(sprintf("DEBUG: %s: Using sum_threshold method with threshold %g", Sys.time(), sum_threshold))
+    
+} else if (params$dge_filter_method == "sample_percent") {
+    # Remove genes if >X% of total counts are concentrated in ≤Y samples
+    if (max_samples == 0) {
+        keep <- rowSums(counts_matrix) > 0
+        print(sprintf("DEBUG: %s: sample_percent with max_samples=0, keeping all genes with non-zero counts", Sys.time()))
+    } else {
+        sorted_matrix <- t(apply(counts_matrix, 1, function(x) sort(x, decreasing = TRUE)))
+        max_samples_to_check <- min(max_samples, sample_count)
+        top_samples_sums <- rowSums(sorted_matrix[, 1:max_samples_to_check, drop = FALSE])
+        total_counts <- rowSums(counts_matrix)
+        percent_in_top <- ifelse(total_counts > 0, (top_samples_sums / total_counts) * 100, 0)
+        keep <- total_counts > 0 & percent_in_top <= percent_threshold
+        print(sprintf("DEBUG: %s: Using sample_percent method - removing genes with >%d%% counts in top %d samples", 
+                      Sys.time(), percent_threshold, max_samples))
+    }
+    
+} else if (params$dge_filter_method == "min_samples") {
+    # Remove genes not expressed in at least X samples
+    keep <- rowSums(counts_matrix > 0) >= min_samples
+    print(sprintf("DEBUG: %s: Using min_samples method with minimum %d samples", Sys.time(), min_samples))
+    
+} else if (params$dge_filter_method == "count_per_sample") {
+    # Remove genes with total counts below X*sample_count
+    threshold <- count_per_sample * sample_count
+    keep <- rowSums(counts_matrix) >= threshold
+    print(sprintf("DEBUG: %s: Using count_per_sample method with threshold %f (multiplier %f * %d samples)", 
+                  Sys.time(), threshold, count_per_sample, sample_count))
+    
+} else {
+    # Exit if unknown method
+    stop(sprintf("Unknown filter method '%s'. Must be one of: sum_threshold, sample_percent, min_samples, count_per_sample", 
+                params$dge_filter_method))
+}
+
+genes_removed <- sum(!keep)
+percent_removed <- (genes_removed / gene_count) * 100
+print(sprintf("DEBUG: %s: Removed %d genes using %s method. (%f%% of all genes)", 
+              Sys.time(), genes_removed, params$dge_filter_method, percent_removed))
+
 dds <- dds[keep,]
 summary(dds)
 dim(dds)

@@ -268,13 +268,13 @@ nextflow run NF_RCP_2.0.2/main.nf \
 
 **Additional Required Parameters For [Approach 3](#4c-approach-3-run-the-workflow-on-a-non-genelab-dataset-using-a-user-created-runsheet-with-automatic-retrieval-of-reference-fasta-and-gtf-files):**
 
-* `--runsheet_path` - specifies the path to a local runsheet (Default: a runsheet is automatically generated using the metadata on the OSDR for the dataset being processed)
+* `--runsheet_path` - specifies the path to a local runsheet; if not provided, a runsheet is automatically generated using OSDR metadata (type: string, default: null)
 
 <br>
 
 **Additional Required Parameters For [Approach 4](#4d-approach-4-run-the-workflow-on-a-non-genelab-dataset-using-a-user-created-runsheet-with-custom-reference-fasta-and-gtf-files):**
 
-* `--runsheet_path` - specifies the path to a local runsheet (Default: a runsheet is automatically generated using the metadata on the OSDR for the dataset being processed)
+* `--runsheet_path` - specifies the path to a local runsheet; if not provided, a runsheet is automatically generated using OSDR metadata (type: string, default: null)
 
 * `--reference_version` - specifies the reference source version to use for the reference genome (Ensembl release `112` is used in this example); only needed when using Ensembl as the reference source
 
@@ -297,18 +297,36 @@ nextflow run NF_RCP_2.0.2/main.nf \
   
   Only genes included in the specified annotations file will receive additional annotations in the output.
 
-* `--skip_vv` - skip the automated V&V processes (Default: the automated V&V processes are active) 
+* `--skip_vv` - skip the automated V&V processes (type: boolean, default: false) 
 
-* `--outdir` - specifies the base directory where the output directory will be created (Default: output directory is created in the launch directory)  
+* `--outdir` - specifies the base directory where the output directory will be created (type: string, default: ".")  
 
-* `--force_single_end` - forces the analysis to use single end processing; for paired end datasets, this means only R1 is used; for single end datasets, this should have no effect  
+* `--force_single_end` - forces the analysis to use single end processing; for paired end datasets, this means only R1 is used; for single end datasets, this should have no effect (type: boolean, default: false)  
 
-* `--reference_store_path` - specifies the directory to store the reference fasta and gtf files (Default: within the directory structure created by default in the launch directory)  
+* `--reference_store_path` - specifies the directory to store the reference fasta and gtf files (type: string, default: "./References")  
 
-* `--derived_store_path` - specifies the directory to store the tool-specific indices created during processing (Default: within the directory structure created by default in the launch directory) `
+* `--derived_store_path` - specifies the directory to store the tool-specific indices created during processing (type: string, default: "./DerivedReferences")
 
-* `--mode` - specifies which pipeline to use: set to `default` to run GL-DPPD-7101-G pipeline or set to `microbes` for the GL-DPPD-7115 prokaryotic pipeline (Default value: `default`)
+* `--mode` - specifies which pipeline to use: set to `default` to run GL-DPPD-7101-G pipeline or set to `microbes` for the GL-DPPD-7115 prokaryotic pipeline (type: string, default: "default")
   > Note: This allows the workflow to process either eukaryotic (default) or prokaryotic RNAseq data using the appropriate pipeline.
+
+* **DGE Filtering Parameters** - Control how raw count genes are filtered prior to differential expression analysis:
+
+  * `--dge_filter_method` - Method for filtering genes based on raw counts prior to differential expression analysis (type: string, default: "sum_threshold"):
+    - `sum_threshold`: Remove genes with total counts up to threshold 
+    - `sample_percent`: Remove genes if >X% of total counts are only in Y samples
+    - `min_samples`: Remove genes not expressed in at least X samples
+    - `count_per_sample`: Remove genes with total counts below X*sample_count
+  
+  * `--dge_filter_sum_threshold` - Minimum total count sum across all samples (type: number, default: 10)
+  
+  * `--dge_filter_sample_percent_threshold` - Remove genes if this percentage or more of their total counts come from the highest-count samples (type: integer, default: 90)
+  
+  * `--dge_filter_sample_percent_max_samples` - Number of highest-count samples to check gene counts from (type: integer, default: 1)
+  
+  * `--dge_filter_min_samples_threshold` - Minimum samples where gene must be expressed (type: integer, default: 1)
+  
+  * `--dge_filter_count_per_sample_threshold` - Multiplier for sample-scaled threshold (type: number, default: 1)
 
 <br>
 
