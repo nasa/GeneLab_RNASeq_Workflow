@@ -174,6 +174,8 @@ Both workflows automatically load reference files and organism-specific gene ann
 
 > Note: To use Docker instead of Singularity, use `-profile docker` in the Nextflow run command. Nextflow will automatically pull images as needed.
 
+> Note: The `-resume` parameter can be used to resume a previously interrupted workflow from where it left off (see [Nextflow documentation](https://www.nextflow.io/docs/latest/getstarted.html#modify-and-resume)) or to restart the workflow from a specific point by changing relevant parameters, which will re-execute that process and all downstream affected processes.
+
 <br>
 
 #### 4a. Approach 1: Run the workflow on a GeneLab RNAseq dataset with automatic retrieval of reference fasta and gtf files
@@ -296,8 +298,6 @@ nextflow run NF_RCP_2.0.2/main.nf \
     - For organisms not listed in the table: gene IDs must be in a column named `gene_id`
   
   Only genes included in the specified annotations file will receive additional annotations in the output.
-
-* `--skip_vv` - skip the automated V&V processes (type: boolean, default: false) 
 
 * `--outdir` - specifies the base directory where the output directory will be created (type: string, default: ".")  
 
