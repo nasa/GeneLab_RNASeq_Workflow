@@ -149,7 +149,7 @@ To avoid this issue, run the following command to fetch the Singularity images p
 > Note: This command should be run in the location containing the `NF_RCP_2.0.2` directory that was downloaded in [step 2](#2-download-the-workflow-files) above. Depending on your network speed, fetching the images will take ~20 minutes. Approximately 8GB of RAM is needed to download and build the Singularity images.
 
 ```bash
-bash NF_RCP_2.0.2/bin/prepull_singularity.sh NF_RCP_2.0.2/config/software/by_docker_image.config
+bash NF_RCP_2.0.2/bin/prepull_singularity.sh NF_RCP_2.0.2/config/by_docker_image.config
 ```
 
 
@@ -292,7 +292,7 @@ nextflow run NF_RCP_2.0.2/main.nf \
 
 * `--gene_annotations_file` - Specifies the URL or path to a gene annotation file that adds additional gene annotation columns to the differential expression output table. This can be:
 
-  - The file listed in the `genelab_annots_link` column of the [GeneLab annotations table](https://github.com/nasa/GeneLab_Data_Processing/blob/master/GeneLab_Reference_Annotations/Pipeline_GL-DPPD-7110_Versions/GL-DPPD-7110/GL-DPPD-7110_annotations.csv)
+  - The file listed in the `genelab_annots_link` column of the [GeneLab annotations table](https://github.com/nasa/GeneLab_Data_Processing/blob/master/GeneLab_Reference_Annotations/Pipeline_GL-DPPD-7110_Versions/GL-DPPD-7110-A/GL-DPPD-7110-A_annotations.csv)
   - A custom gene annotation file where:
     - For organisms listed in the GeneLab annotations table: gene IDs must be in a column with the same name as column 1 of the GeneLab organism-specific gene annotation file
     - For organisms not listed in the table: gene IDs must be in a column named `gene_id`
