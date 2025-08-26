@@ -131,9 +131,9 @@ def check_directory_structure(outdir):
     
     return True
 
-def initialize_vv_log(outdir):
+def initialize_vv_log():
     """Initialize or append to the VV_log.csv file."""
-    vv_log_path = os.path.join(outdir, "VV_log.csv")
+    vv_log_path = "VV_log.csv"
     
     if not os.path.exists(vv_log_path):
         with open(vv_log_path, 'w') as f:
@@ -2607,7 +2607,7 @@ def main():
     args = parser.parse_args()
     
     # Initialize the VV log
-    vv_log_path = initialize_vv_log(args.outdir)
+    vv_log_path = initialize_vv_log()
     
     # Get stratified paths if needed
     stratified_paths = get_factor_stratified_paths(args.outdir, args.runsheet, args.stratify_by)

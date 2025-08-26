@@ -5,7 +5,16 @@
 
 process DGE_DESEQ2 {
 
+    publishDir "${ publishdir }/04-DESeq2_NormCounts",
+        pattern: "*Counts${output_label}${params.assay_suffix}.csv",
+        mode: params.publish_dir_mode
+
+    publishDir "${ publishdir }/05-DESeq2_DGE",
+        pattern: "{contrasts,SampleTable,differential_expression}*", 
+        mode: params.publish_dir_mode
+
     input:
+        val(publishdir)
         val(meta)
         val(gene_annotations_url)
         path(runsheet_path)
@@ -17,8 +26,8 @@ process DGE_DESEQ2 {
         tuple path("Normalized_Counts${output_label}${params.assay_suffix}.csv"),
               path(params.mode == "microbes" ? "FeatureCounts_Unnormalized_Counts${output_label}${params.assay_suffix}.csv" : 
                    "RSEM_Unnormalized_Counts${output_label}${params.assay_suffix}.csv"),                emit: norm_counts
-        path("contrasts${output_label}${params.assay_suffix}.csv"),                                     emit: contrasts
-        path("SampleTable${output_label}${params.assay_suffix}.csv"),                                   emit: sample_table      
+        path("contrasts${params.assay_suffix}.csv"),                                     emit: contrasts
+        path("SampleTable${params.assay_suffix}.csv"),                                   emit: sample_table      
         path("differential_expression${output_label}${params.assay_suffix}.csv"),                       emit: dge_table
         path("VST_Counts${output_label}${params.assay_suffix}.csv"),                                    emit: vst_norm_counts
         path("summary.txt"),                                                                            emit: summary

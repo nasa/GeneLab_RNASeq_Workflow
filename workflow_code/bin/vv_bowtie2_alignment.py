@@ -79,9 +79,9 @@ def check_directory_structure(outdir):
     
     return True
 
-def initialize_vv_log(outdir):
+def initialize_vv_log():
     """Initialize or append to the VV_log.csv file."""
-    vv_log_path = os.path.join(outdir, "VV_log.csv")
+    vv_log_path = "VV_log.csv"
     
     if not os.path.exists(vv_log_path):
         with open(vv_log_path, 'w') as f:
@@ -682,19 +682,19 @@ def check_bowtie2_existence(outdir, samples, paired_end, log_path, assay_suffix)
 
         # Required files for both SE and PE
         required_files = [
-            f"{sample}.bowtie2.log",
-            f"{sample}_sorted.bam",
-            f"{sample}_sorted.bam.bai"
+            f"{sample}{assay_suffix}.bowtie2.log",
+            f"{sample}{assay_suffix}_sorted.bam",
+            f"{sample}{assay_suffix}_sorted.bam.bai"
         ]
 
         # Add unmapped files based on paired/single end
         if is_paired:
             required_files.extend([
-                f"{sample}_R1_unmapped.fastq.gz",
-                f"{sample}_R2_unmapped.fastq.gz"
+                f"{sample}{assay_suffix}_R1_unmapped.fastq.gz",
+                f"{sample}{assay_suffix}_R2_unmapped.fastq.gz"
             ])
         else:
-            required_files.append(f"{sample}_unmapped.fastq.gz")
+            required_files.append(f"{sample}{assay_suffix}_unmapped.fastq.gz")
 
         # Check each required file
         for file_name in required_files:
@@ -744,7 +744,7 @@ def main():
     args = parser.parse_args()
 
     # Initialize VV log
-    vv_log_path = initialize_vv_log(args.outdir)
+    vv_log_path = initialize_vv_log()
     
     # Check directory structure
     check_directory_structure(args.outdir)

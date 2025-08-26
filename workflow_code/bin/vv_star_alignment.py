@@ -80,9 +80,9 @@ def check_directory_structure(outdir):
     return True
 
 
-def initialize_vv_log(outdir):
+def initialize_vv_log():
     """Initialize or append to the VV_log.csv file."""
-    vv_log_path = os.path.join(outdir, "VV_log.csv")
+    vv_log_path = "VV_log.csv"  # Create in current working directory for Nextf_lw`)
     
     # Check if file exists
     if not os.path.exists(vv_log_path):
@@ -145,23 +145,25 @@ def check_star_output_existence(outdir, samples, paired_end, log_path, assay_suf
     
     # Expected file patterns for each sample in sample-specific subdirectories
     expected_patterns = [
-        "{sample}/{sample}_Aligned.sortedByCoord.out.bam",
-        "{sample}/{sample}_Aligned.toTranscriptome.out.bam",
-        "{sample}/{sample}_Log.final.out",
-        "{sample}/{sample}_Log.progress.out",
-        "{sample}/{sample}_Log.out",
-        "{sample}/{sample}_ReadsPerGene.out.tab",
-        "{sample}/{sample}_SJ.out.tab"
+        "{sample}/{sample}{assay_suffix}_Aligned.sortedByCoord.out.bam",
+        "{sample}/{sample}{assay_suffix}_Aligned.sortedByCoord_sorted.out.bam",
+        "{sample}/{sample}{assay_suffix}_Aligned.sortedByCoord_sorted.out.bam.bai",
+        "{sample}/{sample}{assay_suffix}_Aligned.toTranscriptome.out.bam",
+        "{sample}/{sample}{assay_suffix}_Log.final.out",
+        "{sample}/{sample}{assay_suffix}_Log.progress.out",
+        "{sample}/{sample}{assay_suffix}_Log.out",
+        "{sample}/{sample}{assay_suffix}_ReadsPerGene.out.tab",
+        "{sample}/{sample}{assay_suffix}_SJ.out.tab"
     ]
     
     # Add mate-specific files if paired-end
     if paired_end:
         expected_patterns.extend([
-            "{sample}/{sample}_R1_unmapped.fastq.gz", 
-            "{sample}/{sample}_R2_unmapped.fastq.gz"
+            "{sample}/{sample}{assay_suffix}_R1_unmapped.fastq.gz", 
+            "{sample}/{sample}{assay_suffix}_R2_unmapped.fastq.gz"
         ])
     else:
-        expected_patterns.append("{sample}/{sample}_unmapped.fastq.gz")
+        expected_patterns.append("{sample}/{sample}{assay_suffix}_unmapped.fastq.gz")
     
     # Dataset-level files (directly in the alignment directory)
     dataset_files = [
@@ -180,7 +182,7 @@ def check_star_output_existence(outdir, samples, paired_end, log_path, assay_suf
     for sample in samples:
         missing_files = []
         for pattern in expected_patterns:
-            file_path = os.path.join(alignment_dir, pattern.format(sample=sample))
+            file_path = os.path.join(alignment_dir, pattern.format(sample=sample, assay_suffix=assay_suffix))
             if not os.path.exists(file_path):
                 missing_files.append(os.path.basename(file_path))
         
@@ -241,7 +243,7 @@ def check_star_output_existence(outdir, samples, paired_end, log_path, assay_suf
         return True
 
 
-def check_bam_file_integrity(outdir, samples, log_path):
+def check_bam_file_integrity(outdir, samples, log_path, assay_suffix="_GLbulkRNAseq"):
     """Verify BAM file integrity using samtools quickcheck."""
     alignment_dir = os.path.join(outdir, '02-STAR_Alignment')
     
@@ -250,8 +252,9 @@ def check_bam_file_integrity(outdir, samples, log_path):
     
     # BAM file patterns to check for each sample
     bam_patterns = [
-        "{sample}/{sample}_Aligned.toTranscriptome.out.bam",
-        "{sample}/{sample}_Aligned.sortedByCoord.out.bam"
+        "{sample}/{sample}{assay_suffix}_Aligned.toTranscriptome.out.bam",
+        "{sample}/{sample}{assay_suffix}_Aligned.sortedByCoord.out.bam",
+        "{sample}/{sample}{assay_suffix}_Aligned.sortedByCoord_sorted.out.bam"
     ]
     
     failed_samples = {}
@@ -259,7 +262,7 @@ def check_bam_file_integrity(outdir, samples, log_path):
     for sample in samples:
         failed_bams = []
         for pattern in bam_patterns:
-            bam_path = os.path.join(alignment_dir, pattern.format(sample=sample))
+            bam_path = os.path.join(alignment_dir, pattern.format(sample=sample, assay_suffix=assay_suffix))
             
             if not os.path.exists(bam_path):
                 # Skip if file doesn't exist (already logged in check_star_output_existence)
@@ -706,7 +709,7 @@ def main():
     args = parser.parse_args()
 
     # Initialize VV log
-    vv_log_path = initialize_vv_log(args.outdir)
+    vv_log_path = initialize_vv_log()
     
     # Check directory structure
     check_directory_structure(args.outdir)
@@ -746,7 +749,7 @@ def main():
     check_star_output_existence(args.outdir, sample_names, paired_end, vv_log_path, args.assay_suffix)
     
     # Check BAM file integrity
-    check_bam_file_integrity(args.outdir, sample_names, vv_log_path)
+    check_bam_file_integrity(args.outdir, sample_names, vv_log_path, args.assay_suffix)
     
     # Get STAR MultiQC stats
     star_data = get_star_multiqc_stats(args.outdir, sample_names, vv_log_path, args.assay_suffix)
