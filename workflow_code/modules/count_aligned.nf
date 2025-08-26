@@ -2,15 +2,20 @@ process COUNT_ALIGNED {
   // Generates gene and isoform counts from alignments
   tag "Sample: ${ meta.id }, Strandedness: ${ strandedness } "
 
+  publishDir "${ publishdir }/${ meta.id }",
+    pattern: "${ meta.id }*",
+    mode: params.publish_dir_mode
+
   input:
-    tuple val(meta), path("${meta.id}_Aligned.toTranscriptome.out.bam")
+    val(publishdir)
+    tuple val(meta), path("${meta.id}${ params.assay_suffix }_Aligned.toTranscriptome.out.bam")
     path(RSEM_REF)
     val(strandedness)
 
   output:
     tuple val(meta), path("${ meta.id }*"), emit: counts
     path("${ meta.id }*"), emit: only_counts
-    path("${ meta.id }.genes.results"), emit: genes_results
+    tuple val(meta), path("${ meta.id }${ params.assay_suffix }.genes.results"), emit: genes_results
     path("versions.yml"), emit: versions
 
   script:
@@ -27,9 +32,9 @@ process COUNT_ALIGNED {
 	  --seed-length 20 \
       --seed 12345 \
       --strandedness ${ strandedness_opt_map.get(strandedness) } \
-      ${meta.id}_Aligned.toTranscriptome.out.bam \
+      ${meta.id}${ params.assay_suffix }_Aligned.toTranscriptome.out.bam \
       ${ RSEM_REF }/${ organism_str } \
-      ${ meta.id }
+      ${ meta.id }${ params.assay_suffix }
 
     echo '"${task.process}":' > versions.yml
     # RSEM version reporting is broken in RSEM 1.3.3...

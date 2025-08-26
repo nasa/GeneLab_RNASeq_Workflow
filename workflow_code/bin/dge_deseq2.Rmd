@@ -167,7 +167,7 @@ if (params$microbes) {
 
     # Reorder files based on sample names
     reordering <- sapply(samples, function(x) {
-        grep(paste0("^", x, "\\.genes.results$"), clean_filenames, value = FALSE)
+        grep(paste0("^", x, params$output_filename_suffix, "\\.genes.results$"), clean_filenames, value = FALSE)
     })
 
     files <- files[reordering]
@@ -604,6 +604,11 @@ if (!is.null(annotation_file_path) && annotation_file_path != "" && annotation_f
 # note: the paste0 here is ensure no string file name prefixes still create their directories
 # e.g. dge_output/
 write.csv(
+    sampleTable,
+    file = file.path(params$output_directory, 
+                     paste0("SampleTable", params$output_filename_label, params$output_filename_suffix, ".csv"))
+)
+write.csv(
     contrasts,
     file = file.path(params$output_directory, 
                      paste0("contrasts", params$output_filename_label, params$output_filename_suffix, ".csv"))
@@ -614,11 +619,7 @@ write.csv(
     file = file.path(params$output_directory, 
                      paste0("differential_expression", params$output_filename_label, params$output_filename_suffix, ".csv"))
 )
-write.csv(
-    sampleTable,
-    file = file.path(params$output_directory, 
-                     paste0("SampleTable", params$output_filename_label, params$output_filename_suffix, ".csv"))
-)
+
 # Create summary file based on output_table
 output <- capture.output(summary(output_table))
 # Write summary file

@@ -152,7 +152,7 @@ workflow RNASEQ {
         genome_bed = PRED_TO_BED.out.genome_bed
 
         // Run FastQC on raw reads  
-        RAW_FASTQC( raw_reads )
+        RAW_FASTQC( ch_outdir.map { it + "/00-RawData/FastQC_Reports" }, raw_reads )
         RAW_FASTQC.out.fastqc | map { it -> [ it[1], it[2] ] } // Collect the raw read fastqc zip files
         | flatten
         | collect // Collect all zip files into a single list
@@ -161,14 +161,14 @@ workflow RNASEQ {
         // Get the max read length by parsing the raw read fastqc zip files
         GET_MAX_READ_LENGTH( raw_fastqc_zip )
         max_read_length = GET_MAX_READ_LENGTH.out.length | map { it.toString().toInteger() }
-
+        
         // Trim raw reads
-        TRIMGALORE( raw_reads )
+        TRIMGALORE( ch_outdir.map { it + "/01-TG_Preproc" }, raw_reads )
         trimmed_reads = TRIMGALORE.out.reads
         trimgalore_reports = TRIMGALORE.out.reports | collect
 
         // Run FastQC on trimmed reads
-        TRIMMED_FASTQC( trimmed_reads )
+        TRIMMED_FASTQC( ch_outdir.map { it + "/01-TG_Preproc/FastQC_Reports" }, trimmed_reads )
         TRIMMED_FASTQC.out.fastqc | map { it -> [ it[1], it[2] ] }
         | flatten 
         | collect
@@ -179,22 +179,22 @@ workflow RNASEQ {
         star_index_dir = BUILD_STAR_INDEX.out.index_dir
 
         // STAR two-pass alignment
-        ALIGN_STAR( trimmed_reads, star_index_dir )
+        ALIGN_STAR( ch_outdir.map { it + "/02-STAR_Alignment" }, trimmed_reads, star_index_dir )
         star_alignment_logs = ALIGN_STAR.out.alignment_logs | collect
         
         // Sort and index bam files
-        SORT_AND_INDEX_BAM( ALIGN_STAR.out.bam_by_coord )
+        SORT_AND_INDEX_BAM( ch_outdir.map { it + "/02-STAR_Alignment" }, ALIGN_STAR.out.bam_by_coord )
         sorted_bam = SORT_AND_INDEX_BAM.out.sorted_bam
 
         // RSeQC modules
-        INFER_EXPERIMENT( sorted_bam, genome_bed )
-        GENEBODY_COVERAGE( sorted_bam, genome_bed )
-        INNER_DISTANCE( sorted_bam, genome_bed, max_read_length )
-        READ_DISTRIBUTION( sorted_bam, genome_bed )
+        GENEBODY_COVERAGE( ch_outdir.map { it + "/RSeQC_Analyses/02_geneBody_coverage" }, sorted_bam, genome_bed )
+        INFER_EXPERIMENT( ch_outdir.map { it + "/RSeQC_Analyses/03_infer_experiment" }, sorted_bam, genome_bed )
+        INNER_DISTANCE( ch_outdir.map { it + "/RSeQC_Analyses/04_inner_distance" }, sorted_bam, genome_bed, max_read_length )
+        READ_DISTRIBUTION( ch_outdir.map { it + "/RSeQC_Analyses/05_read_distribution" }, sorted_bam, genome_bed )
         infer_expt_out = INFER_EXPERIMENT.out.log | map { it[1] }
         | collect
 
-        // Combine RSeQC module logs
+        // // Combine RSeQC module logs
         ch_rseqc_logs = Channel.empty()
         ch_rseqc_logs 
         | mix( INFER_EXPERIMENT.out.log_only,
@@ -209,36 +209,37 @@ workflow RNASEQ {
         strandedness = ASSESS_STRANDEDNESS.out | map { it.text.split(":")[0] }
 
         // Create STAR counts table, nonzero gene counts
-        QUANTIFY_STAR_GENES( samples_txt, ALIGN_STAR.out.reads_per_gene | toSortedList, strandedness )
+        QUANTIFY_STAR_GENES( ch_outdir.map { it + "/02-STAR_Alignment" }, samples_txt, ALIGN_STAR.out.reads_per_gene | toSortedList, strandedness )
 
         // Build RSEM transcriptome index
         BUILD_RSEM_INDEX(derived_store_path, organism_sci, reference_source, reference_version, genome_references, ch_meta )
         rsem_index_dir = BUILD_RSEM_INDEX.out.index_dir
 
         // Run RSEM on the transcriptome-aligned BAMs from STAR to calculate isoform-level transcript expression estimates and create a gene counts table
-        COUNT_ALIGNED( ALIGN_STAR.out.bam_to_transcriptome, rsem_index_dir, strandedness )
-        EXTRACT_RRNA ( organism_sci, genome_references | map { it[1] })
-        REMOVE_RRNA ( EXTRACT_RRNA.out.rrna_ids, COUNT_ALIGNED.out.genes_results )
+        COUNT_ALIGNED( ch_outdir.map { it + "/03-RSEM_Counts" }, ALIGN_STAR.out.bam_to_transcriptome, rsem_index_dir, strandedness )
         rsem_counts = COUNT_ALIGNED.out.counts | map { it[1] } | collect
-        QUANTIFY_RSEM_GENES( samples_txt, rsem_counts )
+        QUANTIFY_RSEM_GENES( ch_outdir.map { it + "/03-RSEM_Counts" }, samples_txt, rsem_counts )
+
+        EXTRACT_RRNA ( organism_sci, genome_references | map { it[1] })
+        REMOVE_RRNA ( ch_outdir.map { it + "/03-RSEM_Counts" }, EXTRACT_RRNA.out.rrna_ids, COUNT_ALIGNED.out.genes_results )
 
         dge_script = "${projectDir}/bin/dge_deseq2.Rmd"
         
         // Normalize counts, DGE, Add annotations to DGE table
-        DGE_DESEQ2( ch_meta, PARSE_ANNOTATIONS_TABLE.out.gene_annotations_url, runsheet_path, COUNT_ALIGNED.out.genes_results | toSortedList, dge_script, "" )
+        DGE_DESEQ2( ch_outdir, ch_meta, PARSE_ANNOTATIONS_TABLE.out.gene_annotations_url, runsheet_path, COUNT_ALIGNED.out.genes_results.map{ it[1] } | collect, dge_script, "" )
         // For rRNArm counts: Normalize counts, DGE, Add annotations to DGE table
-        DGE_DESEQ2_RRNA_RM( ch_meta, PARSE_ANNOTATIONS_TABLE.out.gene_annotations_url, runsheet_path, REMOVE_RRNA.out.genes_results_rrnarm | toSortedList, dge_script, "_rRNArm" )
+        DGE_DESEQ2_RRNA_RM( ch_outdir, ch_meta, PARSE_ANNOTATIONS_TABLE.out.gene_annotations_url, runsheet_path, REMOVE_RRNA.out.genes_results_rrnarm | toSortedList, dge_script, "_rRNArm" )
 
         // MultiQC
         ch_multiqc_config = params.multiqc_config ? Channel.fromPath( params.multiqc_config ) : Channel.fromPath("NO_FILE")
-        RAW_READS_MULTIQC(samples_txt, raw_fastqc_zip, ch_multiqc_config, "raw_")
-        TRIMMED_READS_MULTIQC(samples_txt, trimmed_fastqc_zip | concat( TRIMGALORE.out.reports ) | collect, ch_multiqc_config, "trimmed_")
-        ALIGN_MULTIQC(samples_txt, star_alignment_logs, ch_multiqc_config, "align_")
-        INFER_EXPERIMENT_MULTIQC(samples_txt, INFER_EXPERIMENT.out.log | map { it[1] } | collect, ch_multiqc_config, "infer_exp_")
-        GENEBODY_COVERAGE_MULTIQC(samples_txt, GENEBODY_COVERAGE.out.log | map { it[1] } | collect, ch_multiqc_config, "geneBody_cov_")
-        INNER_DISTANCE_MULTIQC(samples_txt, INNER_DISTANCE.out.log | map { it[1] } | collect, ch_multiqc_config, "inner_dist_")
-        READ_DISTRIBUTION_MULTIQC(samples_txt, READ_DISTRIBUTION.out.log | map { it[1] } | collect, ch_multiqc_config, "read_dist_")
-        COUNT_MULTIQC(samples_txt, rsem_counts, ch_multiqc_config, "RSEM_count_")
+        RAW_READS_MULTIQC( ch_outdir.map { it + "/00-RawData/MultiQC_Reports" }, samples_txt, raw_fastqc_zip, ch_multiqc_config, "raw_")
+        TRIMMED_READS_MULTIQC( ch_outdir.map { it + "/01-TG_Preproc/MultiQC_Reports" }, samples_txt, trimmed_fastqc_zip | concat( TRIMGALORE.out.reports ) | collect, ch_multiqc_config, "trimmed_")
+        ALIGN_MULTIQC( ch_outdir.map { it + "/02-STAR_Alignment/MultiQC_Reports" }, samples_txt, star_alignment_logs, ch_multiqc_config, "align_")
+        INFER_EXPERIMENT_MULTIQC( ch_outdir.map { it + "/RSeQC_Analyses/MultiQC_Reports" }, samples_txt, INFER_EXPERIMENT.out.log | map { it[1] } | collect, ch_multiqc_config, "infer_exp_")
+        GENEBODY_COVERAGE_MULTIQC( ch_outdir.map { it + "/RSeQC_Analyses/MultiQC_Reports" }, samples_txt, GENEBODY_COVERAGE.out.log | map { it[1] } | collect, ch_multiqc_config, "geneBody_cov_")
+        INNER_DISTANCE_MULTIQC( ch_outdir.map { it + "/RSeQC_Analyses/MultiQC_Reports" }, samples_txt, INNER_DISTANCE.out.log | map { it[1] } | collect, ch_multiqc_config, "inner_dist_")
+        READ_DISTRIBUTION_MULTIQC( ch_outdir.map { it + "/RSeQC_Analyses/MultiQC_Reports" }, samples_txt, READ_DISTRIBUTION.out.log | map { it[1] } | collect, ch_multiqc_config, "read_dist_")
+        COUNT_MULTIQC( ch_outdir.map { it + "/03-RSEM_Counts/MultiQC_Reports" }, samples_txt, rsem_counts, ch_multiqc_config, "RSEM_count_")
         
         all_multiqc_input = raw_fastqc_zip
                     | concat( trimgalore_reports )
@@ -250,7 +251,7 @@ workflow RNASEQ {
                     | concat( READ_DISTRIBUTION.out.log | map { it[1] } | collect )
                     | concat( rsem_counts )
                     | collect
-        ALL_MULTIQC(samples_txt, all_multiqc_input, ch_multiqc_config, "all_")
+        ALL_MULTIQC( ch_outdir.map { it + "/GeneLab" }, samples_txt, all_multiqc_input, ch_multiqc_config, "all_")
 
         // Parse QC metrics
         all_multiqc_output = RAW_READS_MULTIQC.out.data
@@ -277,79 +278,61 @@ workflow RNASEQ {
             ch_outdir,
             ch_meta,
             runsheet_path,
-            raw_reads | map{ it -> it[1] } | collect,
-            raw_fastqc_zip,
-            RAW_READS_MULTIQC.out.zipped_data,
-            RAW_READS_MULTIQC.out.html
+            RAW_READS_MULTIQC.out.zipped_data
         )
         VV_TRIMMED_READS(
             dp_tools_plugin,
             ch_outdir,
             ch_meta,
             runsheet_path,
-            trimmed_reads | map{ it -> it[1] } | collect,
-            trimmed_fastqc_zip,
-            TRIMMED_READS_MULTIQC.out.zipped_data,
-            TRIMMED_READS_MULTIQC.out.html,
-            TRIMGALORE.out.reports | collect
+            TRIMMED_READS_MULTIQC.out.zipped_data
         )
         VV_STAR_ALIGNMENT(
             dp_tools_plugin,
             ch_outdir,
             ch_meta,
             runsheet_path,
-            ALIGN_STAR.out.publishables | collect,
-            QUANTIFY_STAR_GENES.out.publishables | collect,
-            SORT_AND_INDEX_BAM.out.bam_only_files | collect,
-            ALIGN_MULTIQC.out.zipped_data,
-            ALIGN_MULTIQC.out.html
+            ALIGN_MULTIQC.out.zipped_data
         )
         VV_RSEQC(
             dp_tools_plugin,
             ch_outdir,
             ch_meta,
             runsheet_path,
-            ch_rseqc_logs,
             GENEBODY_COVERAGE_MULTIQC.out.zipped_data,
-            GENEBODY_COVERAGE_MULTIQC.out.html,
             INFER_EXPERIMENT_MULTIQC.out.zipped_data,
-            INFER_EXPERIMENT_MULTIQC.out.html,
-            Channel.empty() | mix(INNER_DISTANCE_MULTIQC.out.zipped_data) | collect | ifEmpty({ file("PLACEHOLDER1") }),
-            Channel.empty() | mix(INNER_DISTANCE_MULTIQC.out.html) | collect | ifEmpty({ file("PLACEHOLDER2") }),
-            READ_DISTRIBUTION_MULTIQC.out.zipped_data,
-            READ_DISTRIBUTION_MULTIQC.out.html
+            Channel.empty() | mix(INNER_DISTANCE_MULTIQC.out.zipped_data) | collect | ifEmpty({ file("PLACEHOLDER") }),
+            READ_DISTRIBUTION_MULTIQC.out.zipped_data
         )
         VV_RSEM_COUNTS(
             dp_tools_plugin,
             ch_outdir,
             ch_meta,
             runsheet_path,
-            COUNT_ALIGNED.out.only_counts | collect,
-            QUANTIFY_RSEM_GENES.out.publishables,
-            REMOVE_RRNA.out.genes_results_rrnarm | collect,
             COUNT_MULTIQC.out.zipped_data,
-            COUNT_MULTIQC.out.html
+            REMOVE_RRNA.out.genes_results_rrnarm | collect
         )
         VV_DGE_DESEQ2(
             dp_tools_plugin,
             ch_outdir,
             ch_meta,
             runsheet_path,
-            DGE_DESEQ2.out.norm_counts,
-            DGE_DESEQ2.out.vst_norm_counts,
-            DGE_DESEQ2.out.sample_table,
-            DGE_DESEQ2.out.contrasts,
             DGE_DESEQ2.out.dge_table,
-            DGE_DESEQ2_RRNA_RM.out.norm_counts,
-            DGE_DESEQ2_RRNA_RM.out.vst_norm_counts,
             DGE_DESEQ2_RRNA_RM.out.dge_table
         )
-        VV_CONCAT_FILTER( ch_outdir, VV_RAW_READS.out.log | mix( VV_TRIMMED_READS.out.log, // Concatenate and filter V&V logs
-                                                    VV_STAR_ALIGNMENT.out.log,
-                                                    VV_RSEQC.out.log,
-                                                    VV_RSEM_COUNTS.out.log,
-                                                    VV_DGE_DESEQ2.out.log,
-                                                    ) | collect )
+        // Concatenate and filter V&V logs
+        VV_CONCAT_FILTER(
+            ch_outdir,
+            VV_RAW_READS.out.log
+                | mix( 
+                    VV_TRIMMED_READS.out.log,
+                    VV_STAR_ALIGNMENT.out.log,
+                    VV_RSEQC.out.log,
+                    VV_RSEM_COUNTS.out.log,
+                    VV_DGE_DESEQ2.out.log
+                )
+                | collect
+        )
 
         // Software Version Capturing
         nf_version = '"NEXTFLOW":\n    nextflow: '.concat("${nextflow.version}\n")
@@ -376,8 +359,7 @@ workflow RNASEQ {
         ch_software_versions 
             | unique  
             | collectFile(
-                newLine: true, 
-                cache: false
+                newLine: true
             )
             | set { ch_final_software_versions }
         // Convert software versions combined yaml to markdown table

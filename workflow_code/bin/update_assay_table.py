@@ -631,7 +631,7 @@ def add_parameter_column(df, column_name, value, prefix=None):
     
     return df
 
-def add_unmapped_reads_column(df, glds_prefix, runsheet_df=None, mode=""):
+def add_unmapped_reads_column(df, glds_prefix, assay_suffix, runsheet_df=None, mode=""):
     """Add the Unmapped Reads column to the dataframe."""
     # Update column name to be under Aligned Sequence Data folder
     column_name = "Parameter Value[Aligned Sequence Data/Unmapped Reads]"
@@ -650,15 +650,15 @@ def add_unmapped_reads_column(df, glds_prefix, runsheet_df=None, mode=""):
         if mode == "microbes":
             # Microbes mode (Bowtie2)
             if is_paired:
-                values = [f"{glds_prefix}sample{i+1}_R1_unmapped.fastq.gz,{glds_prefix}sample{i+1}_R2_unmapped.fastq.gz" for i in range(len(df))]
+                values = [f"{glds_prefix}sample{i+1}{assay_suffix}_R1_unmapped.fastq.gz,{glds_prefix}sample{i+1}{assay_suffix}_R2_unmapped.fastq.gz" for i in range(len(df))]
             else:
-                values = [f"{glds_prefix}sample{i+1}_unmapped.fastq.gz" for i in range(len(df))]
+                values = [f"{glds_prefix}sample{i+1}{assay_suffix}_unmapped.fastq.gz" for i in range(len(df))]
         else:
             # Default mode (STAR)
             if is_paired:
-                values = [f"{glds_prefix}sample{i+1}_R1_unmapped.fastq.gz,{glds_prefix}sample{i+1}_R2_unmapped.fastq.gz" for i in range(len(df))]
+                values = [f"{glds_prefix}sample{i+1}{assay_suffix}_R1_unmapped.fastq.gz,{glds_prefix}sample{i+1}{assay_suffix}_R2_unmapped.fastq.gz" for i in range(len(df))]
             else:
-                values = [f"{glds_prefix}sample{i+1}_unmapped.fastq.gz" for i in range(len(df))]
+                values = [f"{glds_prefix}sample{i+1}{assay_suffix}_unmapped.fastq.gz" for i in range(len(df))]
     else:
         # Get sample names from assay table
         assay_sample_names = df[sample_col].tolist()
@@ -684,30 +684,31 @@ def add_unmapped_reads_column(df, glds_prefix, runsheet_df=None, mode=""):
                 # Microbes mode (Bowtie2)
                 if is_paired:
                     # For paired-end data, create entries with both .1 and .2 files
-                    values.append(f"{glds_prefix}{sample}_R1_unmapped.fastq.gz,{glds_prefix}{sample}_R2_unmapped.fastq.gz")
+                    values.append(f"{glds_prefix}{sample}{assay_suffix}_R1_unmapped.fastq.gz,{glds_prefix}{sample}{assay_suffix}_R2_unmapped.fastq.gz")
                 else:
                     # For single-end data
-                    values.append(f"{glds_prefix}{sample}_unmapped.fastq.gz")
+                    values.append(f"{glds_prefix}{sample}{assay_suffix}_unmapped.fastq.gz")
             else:
                 # Default mode (STAR)
                 if is_paired:
                     # For paired-end data with STAR
-                    values.append(f"{glds_prefix}{sample}_R1_unmapped.fastq.gz,{glds_prefix}{sample}_R2_unmapped.fastq.gz")
+                    values.append(f"{glds_prefix}{sample}{assay_suffix}_R1_unmapped.fastq.gz,{glds_prefix}{sample}{assay_suffix}_R2_unmapped.fastq.gz")
                 else:
                     # For single-end data with STAR
-                    values.append(f"{glds_prefix}{sample}_unmapped.fastq.gz")
+                    values.append(f"{glds_prefix}{sample}{assay_suffix}_unmapped.fastq.gz")
     
     # Add the column to the dataframe
     df = update_column(df, column_name, values, alternative_names)
     
     return df
 
-def add_trimmed_data_column(df, glds_prefix, runsheet_df=None):
+def add_trimmed_data_column(df, glds_prefix, assay_suffix, runsheet_df=None):
     """Add the Trimmed Sequence Data column to the dataframe.
     
     Args:
         df: The assay table dataframe
         glds_prefix: The GLDS prefix to add to filenames
+        assay_suffix: The assay suffix to add to filenames
         runsheet_df: Optional runsheet dataframe with sample information
         
     Returns:
@@ -729,9 +730,9 @@ def add_trimmed_data_column(df, glds_prefix, runsheet_df=None):
         print("Warning: Could not find Sample Name column in assay table")
         # If no sample column, just use placeholder values
         if is_paired_end:
-            values = [f"{glds_prefix}sample{i+1}_R1_trimmed.fastq.gz,{glds_prefix}sample{i+1}_R2_trimmed.fastq.gz" for i in range(len(df))]
+            values = [f"{glds_prefix}sample{i+1}{assay_suffix}_R1_trimmed.fastq.gz,{glds_prefix}sample{i+1}{assay_suffix}_R2_trimmed.fastq.gz" for i in range(len(df))]
         else:
-            values = [f"{glds_prefix}sample{i+1}_trimmed.fastq.gz" for i in range(len(df))]
+            values = [f"{glds_prefix}sample{i+1}{assay_suffix}_trimmed.fastq.gz" for i in range(len(df))]
     else:
         # Get sample names from assay table
         assay_sample_names = df[sample_col].tolist()
@@ -755,22 +756,23 @@ def add_trimmed_data_column(df, glds_prefix, runsheet_df=None):
             
             if is_paired_end:
                 # For paired-end data, create entries with both R1 and R2 files, comma-separated without spaces
-                values.append(f"{glds_prefix}{sample}_R1_trimmed.fastq.gz,{glds_prefix}{sample}_R2_trimmed.fastq.gz")
+                values.append(f"{glds_prefix}{sample}{assay_suffix}_R1_trimmed.fastq.gz,{glds_prefix}{sample}{assay_suffix}_R2_trimmed.fastq.gz")
             else:
                 # For single-end data
-                values.append(f"{glds_prefix}{sample}_trimmed.fastq.gz")
+                values.append(f"{glds_prefix}{sample}{assay_suffix}_trimmed.fastq.gz")
     
     # Add the column to the dataframe with alternative names
     df = update_column(df, column_name, values, alternative_names)
     
     return df
 
-def add_trimming_reports_column(df, glds_prefix, runsheet_df=None):
+def add_trimming_reports_column(df, glds_prefix, assay_suffix, runsheet_df=None):
     """Add the Trimming Reports column to the dataframe.
     
     Args:
         df: The assay table dataframe
         glds_prefix: The GLDS prefix to add to filenames
+        assay_suffix: The assay suffix to add to filenames
         runsheet_df: Optional runsheet dataframe with sample information
         
     Returns:
@@ -790,9 +792,9 @@ def add_trimming_reports_column(df, glds_prefix, runsheet_df=None):
         print("Warning: Could not find Sample Name column in assay table")
         # If no sample column, just use placeholder values
         if is_paired_end:
-            values = [f"{glds_prefix}sample{i+1}_R1_raw.fastq.gz_trimming_report.txt,{glds_prefix}sample{i+1}_R2_raw.fastq.gz_trimming_report.txt" for i in range(len(df))]
+            values = [f"{glds_prefix}sample{i+1}_R1{assay_suffix}_trimming_report.txt,{glds_prefix}sample{i+1}_R2{assay_suffix}_trimming_report.txt" for i in range(len(df))]
         else:
-            values = [f"{glds_prefix}sample{i+1}_raw.fastq.gz_trimming_report.txt" for i in range(len(df))]
+            values = [f"{glds_prefix}sample{i+1}{assay_suffix}_trimming_report.txt" for i in range(len(df))]
     else:
         # Get sample names from assay table
         assay_sample_names = df[sample_col].tolist()
@@ -816,10 +818,10 @@ def add_trimming_reports_column(df, glds_prefix, runsheet_df=None):
             
             if is_paired_end:
                 # For paired-end data, create report entries for both R1 and R2 files
-                values.append(f"{glds_prefix}{sample}_R1_raw.fastq.gz_trimming_report.txt,{glds_prefix}{sample}_R2_raw.fastq.gz_trimming_report.txt")
+                values.append(f"{glds_prefix}{sample}_R1{assay_suffix}_trimming_report.txt,{glds_prefix}{sample}_R2{assay_suffix}_trimming_report.txt")
             else:
                 # For single-end data
-                values.append(f"{glds_prefix}{sample}_raw.fastq.gz_trimming_report.txt")
+                values.append(f"{glds_prefix}{sample}{assay_suffix}_trimming_report.txt")
     
     # Add the column to the dataframe
     df = update_column(df, column_name, values, alternative_names)
@@ -911,7 +913,7 @@ def add_raw_counts_data_column(df, glds_prefix, assay_suffix, mode=""):
             values = [combined_files] * len(df)
         else:
             # Default mode (RSEM) - placeholder values
-            values = [f"{glds_prefix}sample{i+1}.genes.results,{glds_prefix}sample{i+1}.isoforms.results" for i in range(len(df))]
+            values = [f"{glds_prefix}sample{i+1}{assay_suffix}.genes.results,{glds_prefix}sample{i+1}{assay_suffix}.isoforms.results,{glds_prefix}sample{i+1}{assay_suffix}_rRNArm.genes.results" for i in range(len(df))]
     else:
         # Get sample names from assay table
         assay_sample_names = df[sample_col].tolist()
@@ -947,9 +949,9 @@ def add_raw_counts_data_column(df, glds_prefix, assay_suffix, mode=""):
                 
                 # For RSEM, each sample has genes and isoforms result files
                 rsem_files = [
-                    f"{glds_prefix}{sample}.genes.results",
-                    f"{glds_prefix}{sample}.isoforms.results",
-                    f"{glds_prefix}{sample}_rRNArm.genes.results"
+                    f"{glds_prefix}{sample}{assay_suffix}.genes.results",
+                    f"{glds_prefix}{sample}{assay_suffix}.isoforms.results",
+                    f"{glds_prefix}{sample}{assay_suffix}_rRNArm.genes.results"
                 ]
                 values.append(",".join(rsem_files))
     
@@ -1111,7 +1113,7 @@ def add_differential_expression_column(df, glds_prefix, assay_suffix):
     
     return df
 
-def add_aligned_sequence_data_column(df, glds_prefix, runsheet_df=None, mode=""):
+def add_aligned_sequence_data_column(df, glds_prefix, assay_suffix, runsheet_df=None, mode=""):
     """Add the aligned sequence data column to the dataframe."""
     # Title Case column name
     column_name = "Parameter Value[Aligned Sequence Data]"
@@ -1125,14 +1127,14 @@ def add_aligned_sequence_data_column(df, glds_prefix, runsheet_df=None, mode="")
         # If no sample column, just use placeholder values
         if mode == "microbes":
             # Microbes mode (Bowtie2)
-            values = [f"{glds_prefix}sample{i+1}_sorted.bam,{glds_prefix}sample{i+1}_sorted.bam.bai" for i in range(len(df))]
+            values = [f"{glds_prefix}sample{i+1}{assay_suffix}_sorted.bam,{glds_prefix}sample{i+1}{assay_suffix}_sorted.bam.bai" for i in range(len(df))]
         else:
             # Default mode (STAR)
             values = [
-                f"{glds_prefix}sample{i+1}_Aligned.sortedByCoord_sorted.out.bam,"
-                f"{glds_prefix}sample{i+1}_Aligned.sortedByCoord_sorted.out.bam.bai,"
-                f"{glds_prefix}sample{i+1}_Aligned.toTranscriptome.out.bam,"
-                f"{glds_prefix}sample{i+1}_SJ.out.tab" 
+                f"{glds_prefix}sample{i+1}{assay_suffix}_Aligned.sortedByCoord_sorted.out.bam,"
+                f"{glds_prefix}sample{i+1}{assay_suffix}_Aligned.sortedByCoord_sorted.out.bam.bai,"
+                f"{glds_prefix}sample{i+1}{assay_suffix}_Aligned.toTranscriptome.out.bam,"
+                f"{glds_prefix}sample{i+1}{assay_suffix}_SJ.out.tab" 
                 for i in range(len(df))
             ]
     else:
@@ -1159,16 +1161,16 @@ def add_aligned_sequence_data_column(df, glds_prefix, runsheet_df=None, mode="")
             if mode == "microbes":
                 # Microbes mode (Bowtie2)
                 files = [
-                    f"{glds_prefix}{sample}_sorted.bam",
-                    f"{glds_prefix}{sample}_sorted.bam.bai"
+                    f"{glds_prefix}{sample}{assay_suffix}_sorted.bam",
+                    f"{glds_prefix}{sample}{assay_suffix}_sorted.bam.bai"
                 ]
             else:
                 # Default mode (STAR)
                 files = [
-                    f"{glds_prefix}{sample}_Aligned.sortedByCoord_sorted.out.bam",
-                    f"{glds_prefix}{sample}_Aligned.sortedByCoord_sorted.out.bam.bai",
-                    f"{glds_prefix}{sample}_Aligned.toTranscriptome.out.bam",
-                    f"{glds_prefix}{sample}_SJ.out.tab"
+                    f"{glds_prefix}{sample}{assay_suffix}_Aligned.sortedByCoord_sorted.out.bam",
+                    f"{glds_prefix}{sample}{assay_suffix}_Aligned.sortedByCoord_sorted.out.bam.bai",
+                    f"{glds_prefix}{sample}{assay_suffix}_Aligned.toTranscriptome.out.bam",
+                    f"{glds_prefix}{sample}{assay_suffix}_SJ.out.tab"
                 ]
             values.append(",".join(files))
     
@@ -1177,7 +1179,7 @@ def add_aligned_sequence_data_column(df, glds_prefix, runsheet_df=None, mode="")
     
     return df
 
-def add_alignment_logs_column(df, glds_prefix, runsheet_df=None, mode=""):
+def add_alignment_logs_column(df, glds_prefix, assay_suffix, runsheet_df=None, mode=""):
     """Add the Alignment Logs column to the dataframe."""
     column_name = "Parameter Value[Aligned Sequence Data/Alignment Logs]"
     alternative_names = ["Parameter Value[Alignment Logs]"]
@@ -1190,10 +1192,10 @@ def add_alignment_logs_column(df, glds_prefix, runsheet_df=None, mode=""):
         # If no sample column, just use placeholder values
         if mode == "microbes":
             # Microbes mode (Bowtie2)
-            values = [f"{glds_prefix}sample{i+1}.bowtie2.log" for i in range(len(df))]
+            values = [f"{glds_prefix}sample{i+1}{assay_suffix}.bowtie2.log" for i in range(len(df))]
         else:
             # Default mode (STAR)
-            values = [f"{glds_prefix}sample{i+1}_Log.final.out" for i in range(len(df))]
+            values = [f"{glds_prefix}sample{i+1}{assay_suffix}_Log.final.out" for i in range(len(df))]
     else:
         # Get sample names from assay table
         assay_sample_names = df[sample_col].tolist()
@@ -1217,10 +1219,10 @@ def add_alignment_logs_column(df, glds_prefix, runsheet_df=None, mode=""):
             
             if mode == "microbes":
                 # Microbes mode (Bowtie2)
-                values.append(f"{glds_prefix}{sample}.bowtie2.log")
+                values.append(f"{glds_prefix}{sample}{assay_suffix}.bowtie2.log")
             else:
                 # Default mode (STAR)
-                values.append(f"{glds_prefix}{sample}_Log.final.out")
+                values.append(f"{glds_prefix}{sample}{assay_suffix}_Log.final.out")
     
     # Add the column to the dataframe
     df = update_column(df, column_name, values, alternative_names)
@@ -1324,10 +1326,10 @@ def main():
         print("\n=== PROCESSING TRIMMED SEQUENCE DATA SECTION ===")
         
         # Add Trimmed Sequence Data column
-        assay_df = add_trimmed_data_column(assay_df, glds_prefix, runsheet_df=runsheet_df)
+        assay_df = add_trimmed_data_column(assay_df, glds_prefix, args.assay_suffix, runsheet_df=runsheet_df)
         
         # Add Trimming Reports column
-        assay_df = add_trimming_reports_column(assay_df, glds_prefix, runsheet_df=runsheet_df)
+        assay_df = add_trimming_reports_column(assay_df, glds_prefix, args.assay_suffix, runsheet_df=runsheet_df)
         
         # Add Trimmed Sequence Data MultiQC Reports column at the end of section
         assay_df = add_trimmed_multiqc_reports_column(assay_df, glds_prefix, args.assay_suffix)
@@ -1338,13 +1340,13 @@ def main():
         print("\n=== PROCESSING ALIGNED SEQUENCE DATA SECTION ===")
         
         # Add Aligned Sequence Data column
-        assay_df = add_aligned_sequence_data_column(assay_df, glds_prefix, runsheet_df=runsheet_df, mode=args.mode)
+        assay_df = add_aligned_sequence_data_column(assay_df, glds_prefix, args.assay_suffix, runsheet_df=runsheet_df, mode=args.mode)
         
         # Add Unmapped Reads column
-        assay_df = add_unmapped_reads_column(assay_df, glds_prefix, runsheet_df=runsheet_df, mode=args.mode)
+        assay_df = add_unmapped_reads_column(assay_df, glds_prefix, args.assay_suffix, runsheet_df=runsheet_df, mode=args.mode)
         
         # Add Alignment Logs column
-        assay_df = add_alignment_logs_column(assay_df, glds_prefix, runsheet_df=runsheet_df, mode=args.mode)
+        assay_df = add_alignment_logs_column(assay_df, glds_prefix, args.assay_suffix, runsheet_df=runsheet_df, mode=args.mode)
         
         # Add Aligned Sequence Data MultiQC Reports column at the end of section
         assay_df = add_align_multiqc_reports_column(assay_df, glds_prefix, args.assay_suffix)

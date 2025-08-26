@@ -1,7 +1,12 @@
 process GENEBODY_COVERAGE {
   tag "Sample: ${ meta.id }"
 
+  publishDir "${ publishdir }/${ meta.id }",
+    pattern:  "${ meta.id }.geneBodyCoverage.*" ,
+    mode: params.publish_dir_mode
+
   input:
+    val(publishdir)
     tuple val(meta), path(bam_file), path(bai_file) // bam file sorted by coordinate
     path(genome_bed)
 
@@ -25,7 +30,12 @@ process GENEBODY_COVERAGE {
 process INFER_EXPERIMENT {
   tag "Sample: ${meta.id}"
 
+  publishDir "${ publishdir }",
+    pattern:  "*.out" ,
+    mode: params.publish_dir_mode
+
   input:
+    val(publishdir)
     tuple val(meta), path(bam_file), path(bai_file) // bam file sorted by coordinate
     path(genome_bed)
 
@@ -48,7 +58,12 @@ process INFER_EXPERIMENT {
 process INNER_DISTANCE {
   tag "Sample: ${ meta.id }"
 
+  publishDir "${ publishdir }/${ meta.id }",
+    pattern:  "*.inner_distance*" ,
+    mode: params.publish_dir_mode
+
   input:
+    val(publishdir)
     tuple val(meta), path(bam_file), path(bai_file) // bam file sorted by coordinate
     path(genome_bed)
     val(max_read_length)
@@ -77,7 +92,12 @@ process INNER_DISTANCE {
 process READ_DISTRIBUTION {
   tag "Sample: ${ meta.id }"
 
+  publishDir "${ publishdir }",
+    pattern:  "${ meta.id }.read_dist.out" ,
+    mode: params.publish_dir_mode
+
   input:
+    val(publishdir)
     tuple val(meta), path(bam_file), path(bai_file)  // bam file sorted by coordinate
     path(genome_bed)
 

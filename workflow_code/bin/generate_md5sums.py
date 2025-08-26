@@ -38,8 +38,8 @@ def should_include(filepath, outdir):
     # Skip files in VV_Logs
     if "/VV_Logs/" in filepath:
         return False
-    # Skip files in GeneLab except for qc_metrics
-    if "/GeneLab/" in filepath and not filepath.endswith("qc_metrics" + args.assay_suffix + ".csv"):
+    # Skip files in GeneLab except for qc_metrics and software_versions
+    if "/GeneLab/" in filepath and not (filepath.endswith("qc_metrics" + args.assay_suffix + ".csv") or filepath.endswith("software_versions_GLbulkRNAseq.md")):
         return False
     # Skip any files with 'fastqc' in the path or filename (case-insensitive)
     if 'fastqc' in filepath.lower():

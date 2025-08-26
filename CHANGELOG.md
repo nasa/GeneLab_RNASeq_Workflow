@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.2](https://github.com/nasa/GeneLab_RNASeq_Workflow/tree/NF_RCP_2.0.2) - 2025-08-13
+## [2.0.2](https://github.com/nasa/GeneLab_RNASeq_Workflow/tree/NF_RCP_2.0.2) - 2025-08-26
 
 ### Added
 
@@ -17,6 +17,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Consolidated gene annotation step from standalone module into DGE module
 - Changed GET_ACCESSIONS to use search API, use Biological Data API as a fallback instead 
 - Improve software version handling to prevent rounding of version numbers
+- Output files are now published directly by each process
+- Added params.assay_suffix (default: "_GLbulkRNAseq") to sample outputs:
+  - _R1_trimmed.fastq.gz to ${params.assay_suffix}_R1_trimmed.fastq.gz
+  - _R1_raw.fastq.gz_trimming_report.txt to _R1${params.assay_suffix}_trimming_report.txt
+  - _Aligned.toTranscriptome.out.bam to ${params.assay_suffix}_Aligned.toTranscriptome.out.bam
+  - _SJ.out.tab to ${params.assay_suffix}_SJ.out.tab
+  - _Aligned.sortedByCoord_sorted.out.bam to ${params.assay_suffix}_Aligned.sortedByCoord_sorted.out.bam
+  - _R1_unmapped.fastq.gz to ${params.assay_suffix}_R1_unmapped.fastq.gz
+  - _Log.final.out to ${params.assay_suffix}_Log.final.out
+  - .genes.results to ${params.assay_suffix}.genes.results
+  - _rRNArm.genes.results to ${params.assay_suffix}_rRNArm.genes.results
+  - .isoforms.results to ${params.assay_suffix}.isoforms.results
+  - *.bowtie2.log to *${params.assay_suffix}.bowtie2.log
+  - *_sorted.bam to *${params.assay_suffix}_sorted.bam
 
 ### Removed
 

@@ -152,7 +152,7 @@ workflow RNASEQ_MICROBES {
         genome_bed = PRED_TO_BED.out.genome_bed
 
         // Run FastQC on raw reads  
-        RAW_FASTQC( raw_reads ) 
+        RAW_FASTQC( ch_outdir.map { it + "/00-RawData/FastQC_Reports" }, raw_reads )
         RAW_FASTQC.out.fastqc | map { it -> [ it[1], it[2] ] } // Collect the raw read fastqc zip files
         | flatten
         | collect // Collect all zip files into a single list
@@ -162,14 +162,14 @@ workflow RNASEQ_MICROBES {
         GET_MAX_READ_LENGTH( raw_fastqc_zip )
         max_read_length = GET_MAX_READ_LENGTH.out.length | map { it.toString().toInteger() }
 
-        // Trim raw reads
-        TRIMGALORE( raw_reads )
+        // // Trim raw reads
+        TRIMGALORE( ch_outdir.map { it + "/01-TG_Preproc" }, raw_reads )
         trimmed_reads = TRIMGALORE.out.reads
         trimgalore_reports = TRIMGALORE.out.reports | collect
 
-        // Run FastQC on trimmed reads
+        // // Run FastQC on trimmed reads
 
-        TRIMMED_FASTQC( trimmed_reads )
+        TRIMMED_FASTQC( ch_outdir.map { it + "/01-TG_Preproc/FastQC_Reports" }, trimmed_reads )
         TRIMMED_FASTQC.out.fastqc | map { it -> [ it[1], it[2] ] } 
         | flatten 
         | collect 
@@ -180,19 +180,19 @@ workflow RNASEQ_MICROBES {
         bowtie2_index_dir = BUILD_BOWTIE2_INDEX.out.index_dir
 
         // Align reads using Bowtie2 (output as BAM)
-        ALIGN_BOWTIE2( trimmed_reads, bowtie2_index_dir )
+        ALIGN_BOWTIE2( ch_outdir.map { it + "/02-Bowtie2_Alignment" }, trimmed_reads, bowtie2_index_dir )
         bowtie2_alignment_logs = ALIGN_BOWTIE2.out.alignment_logs | collect
 
         // Sort and index BAM files 
-        SORT_AND_INDEX_BAM( ALIGN_BOWTIE2.out.bam )
+        SORT_AND_INDEX_BAM( ch_outdir.map { it + "/02-Bowtie2_Alignment" }, ALIGN_BOWTIE2.out.bam )
         sorted_bam = SORT_AND_INDEX_BAM.out.sorted_bam
         bams = sorted_bam.map { it[1] } | toSortedList()
 
         // RSeQC modules
-        INFER_EXPERIMENT( sorted_bam, genome_bed )
-        GENEBODY_COVERAGE( sorted_bam, genome_bed )
-        INNER_DISTANCE( sorted_bam, genome_bed, max_read_length )
-        READ_DISTRIBUTION( sorted_bam, genome_bed )
+        GENEBODY_COVERAGE( ch_outdir.map { it + "/RSeQC_Analyses/02_geneBody_coverage" }, sorted_bam, genome_bed )
+        INFER_EXPERIMENT( ch_outdir.map { it + "/RSeQC_Analyses/03_infer_experiment" }, sorted_bam, genome_bed )
+        INNER_DISTANCE( ch_outdir.map { it + "/RSeQC_Analyses/04_inner_distance" }, sorted_bam, genome_bed, max_read_length )
+        READ_DISTRIBUTION( ch_outdir.map { it + "/RSeQC_Analyses/05_read_distribution" }, sorted_bam, genome_bed )
         infer_expt_out = INFER_EXPERIMENT.out.log | map { it[1] }
         | collect
         
@@ -213,32 +213,32 @@ workflow RNASEQ_MICROBES {
         // Create FeatureCounts table from BAMs
         GET_GTF_FEATURES( genome_references )
         gtf_features = GET_GTF_FEATURES.out.gtf_features.map { it.text.trim() }
-        FEATURECOUNTS( ch_meta, genome_references, gtf_features, strandedness, bams )
+        FEATURECOUNTS( ch_outdir.map { it + "/03-FeatureCounts" }, ch_meta, genome_references, gtf_features, strandedness, bams )
         counts = FEATURECOUNTS.out.counts
         
-        QUANTIFY_FEATURECOUNTS_GENES( samples_txt, FEATURECOUNTS.out.counts )
+        QUANTIFY_FEATURECOUNTS_GENES( ch_outdir.map { it + "/03-FeatureCounts" }, samples_txt, FEATURECOUNTS.out.counts )
 
         // Use the GTF to find rRNA genes, remove them from the counts table
         EXTRACT_RRNA( organism_sci, genome_references | map { it[1] })
-        REMOVE_RRNA_FEATURECOUNTS ( counts, EXTRACT_RRNA.out.rrna_ids )
+        REMOVE_RRNA_FEATURECOUNTS ( ch_outdir.map { it + "/03-FeatureCounts" }, counts, EXTRACT_RRNA.out.rrna_ids )
 
         dge_script = "${projectDir}/bin/dge_deseq2.Rmd"
 
         // Normalize counts, DGE, Add annotations to DGE table
-        DGE_DESEQ2( ch_meta, PARSE_ANNOTATIONS_TABLE.out.gene_annotations_url, runsheet_path, counts, dge_script, "" )   
+        DGE_DESEQ2( ch_outdir, ch_meta, PARSE_ANNOTATIONS_TABLE.out.gene_annotations_url, runsheet_path, counts, dge_script, "" )   
         // For rRNArm counts: Normalize counts, DGE, Add annotations to DGE table
-        DGE_DESEQ2_RRNA_RM( ch_meta, PARSE_ANNOTATIONS_TABLE.out.gene_annotations_url, runsheet_path, REMOVE_RRNA_FEATURECOUNTS.out.counts_rrnarm, dge_script, "_rRNArm" )
+        DGE_DESEQ2_RRNA_RM( ch_outdir, ch_meta, PARSE_ANNOTATIONS_TABLE.out.gene_annotations_url, runsheet_path, REMOVE_RRNA_FEATURECOUNTS.out.counts_rrnarm, dge_script, "_rRNArm" )
 
         // MultiQC
         ch_multiqc_config = params.multiqc_config ? Channel.fromPath( params.multiqc_config ) : Channel.fromPath("NO_FILE")
-        RAW_READS_MULTIQC(samples_txt, raw_fastqc_zip, ch_multiqc_config, "raw_")
-        TRIMMED_READS_MULTIQC(samples_txt, trimmed_fastqc_zip | concat( TRIMGALORE.out.reports ) | collect, ch_multiqc_config, "trimmed_")
-        ALIGN_MULTIQC(samples_txt, bowtie2_alignment_logs, ch_multiqc_config, "align_")
-        INFER_EXPERIMENT_MULTIQC(samples_txt, INFER_EXPERIMENT.out.log | map { it[1] } | collect, ch_multiqc_config, "infer_exp_")
-        GENEBODY_COVERAGE_MULTIQC(samples_txt, GENEBODY_COVERAGE.out.log | map { it[1] } | collect, ch_multiqc_config, "geneBody_cov_")
-        INNER_DISTANCE_MULTIQC(samples_txt, INNER_DISTANCE.out.log | map { it[1] } | collect, ch_multiqc_config, "inner_dist_")
-        READ_DISTRIBUTION_MULTIQC(samples_txt, READ_DISTRIBUTION.out.log | map { it[1] } | collect, ch_multiqc_config, "read_dist_")
-        COUNT_MULTIQC(samples_txt, FEATURECOUNTS.out.summary, ch_multiqc_config, "FeatureCounts_")
+        RAW_READS_MULTIQC( ch_outdir.map { it + "/00-RawData/MultiQC_Reports" }, samples_txt, raw_fastqc_zip, ch_multiqc_config, "raw_")
+        TRIMMED_READS_MULTIQC( ch_outdir.map { it + "/01-TG_Preproc/MultiQC_Reports" }, samples_txt, trimmed_fastqc_zip | concat( TRIMGALORE.out.reports ) | collect, ch_multiqc_config, "trimmed_")
+        ALIGN_MULTIQC(ch_outdir.map { it + "/02-Bowtie2_Alignment/MultiQC_Reports" }, samples_txt, bowtie2_alignment_logs, ch_multiqc_config, "align_")
+        INFER_EXPERIMENT_MULTIQC( ch_outdir.map { it + "/RSeQC_Analyses/MultiQC_Reports" }, samples_txt, INFER_EXPERIMENT.out.log | map { it[1] } | collect, ch_multiqc_config, "infer_exp_")
+        GENEBODY_COVERAGE_MULTIQC( ch_outdir.map { it + "/RSeQC_Analyses/MultiQC_Reports" }, samples_txt, GENEBODY_COVERAGE.out.log | map { it[1] } | collect, ch_multiqc_config, "geneBody_cov_")
+        INNER_DISTANCE_MULTIQC( ch_outdir.map { it + "/RSeQC_Analyses/MultiQC_Reports" }, samples_txt, INNER_DISTANCE.out.log | map { it[1] } | collect, ch_multiqc_config, "inner_dist_")
+        READ_DISTRIBUTION_MULTIQC( ch_outdir.map { it + "/RSeQC_Analyses/MultiQC_Reports" }, samples_txt, READ_DISTRIBUTION.out.log | map { it[1] } | collect, ch_multiqc_config, "read_dist_")
+        COUNT_MULTIQC(ch_outdir.map { it + "/03-FeatureCounts/MultiQC_Reports" }, samples_txt, FEATURECOUNTS.out.summary, ch_multiqc_config, "FeatureCounts_")
         
         all_multiqc_input = raw_fastqc_zip
             | concat( TRIMGALORE.out.reports )
@@ -251,7 +251,7 @@ workflow RNASEQ_MICROBES {
             | concat( FEATURECOUNTS.out.summary )
             | collect
 
-        ALL_MULTIQC(samples_txt, all_multiqc_input, ch_multiqc_config, "all_")
+        ALL_MULTIQC( ch_outdir.map { it + "/GeneLab" }, samples_txt, all_multiqc_input, ch_multiqc_config, "all_")
 
         // Parse QC metrics
         all_multiqc_output = RAW_READS_MULTIQC.out.data
@@ -278,73 +278,46 @@ workflow RNASEQ_MICROBES {
             ch_outdir,
             ch_meta,
             runsheet_path,
-            raw_reads | map{ it -> it[1] } | collect,
-            raw_fastqc_zip,
-            RAW_READS_MULTIQC.out.zipped_data,
-            RAW_READS_MULTIQC.out.html
+            RAW_READS_MULTIQC.out.zipped_data
         )
         VV_TRIMMED_READS(
             dp_tools_plugin,
             ch_outdir,
             ch_meta,
             runsheet_path,
-            trimmed_reads | map{ it -> it[1] } | collect,
-            trimmed_fastqc_zip,
-            TRIMMED_READS_MULTIQC.out.zipped_data,
-            TRIMMED_READS_MULTIQC.out.html,
-            TRIMGALORE.out.reports | collect
+            TRIMMED_READS_MULTIQC.out.zipped_data
         )
         VV_BOWTIE2_ALIGNMENT(
             dp_tools_plugin,
             ch_outdir,
             ch_meta,
             runsheet_path,
-            ALIGN_BOWTIE2.out.alignment_logs | collect,
-            ALIGN_BOWTIE2.out.unmapped_reads | collect,
-            SORT_AND_INDEX_BAM.out.sorted_bam | map{ it -> it[1] } | collect,
-            SORT_AND_INDEX_BAM.out.sorted_bam | map{ it -> it[2] } | collect,
-            ALIGN_MULTIQC.out.zipped_data,
-            ALIGN_MULTIQC.out.html
+            ALIGN_MULTIQC.out.zipped_data
         )
         VV_RSEQC(
             dp_tools_plugin,
             ch_outdir,
             ch_meta,
             runsheet_path,
-            ch_rseqc_logs,
             GENEBODY_COVERAGE_MULTIQC.out.zipped_data,
-            GENEBODY_COVERAGE_MULTIQC.out.html,
             INFER_EXPERIMENT_MULTIQC.out.zipped_data,
-            INFER_EXPERIMENT_MULTIQC.out.html,
             Channel.empty() | mix(INNER_DISTANCE_MULTIQC.out.zipped_data) | collect | ifEmpty({ file("PLACEHOLDER1") }),
-            Channel.empty() | mix(INNER_DISTANCE_MULTIQC.out.html) | collect | ifEmpty({ file("PLACEHOLDER2") }),
-            READ_DISTRIBUTION_MULTIQC.out.zipped_data,
-            READ_DISTRIBUTION_MULTIQC.out.html
+            READ_DISTRIBUTION_MULTIQC.out.zipped_data
         )
         VV_FEATURECOUNTS(
             dp_tools_plugin,
             ch_outdir,
             ch_meta,
             runsheet_path,
-            FEATURECOUNTS.out.counts,
-            REMOVE_RRNA_FEATURECOUNTS.out.counts_rrnarm,
-            FEATURECOUNTS.out.summary,
-            QUANTIFY_FEATURECOUNTS_GENES.out.num_non_zero_genes,
             COUNT_MULTIQC.out.zipped_data,
-            COUNT_MULTIQC.out.html
+            REMOVE_RRNA_FEATURECOUNTS.out.counts_rrnarm
         )
         VV_DGE_DESEQ2(
             dp_tools_plugin,
             ch_outdir,
             ch_meta,
             runsheet_path,
-            DGE_DESEQ2.out.norm_counts,
-            DGE_DESEQ2.out.vst_norm_counts,
-            DGE_DESEQ2.out.sample_table,
-            DGE_DESEQ2.out.contrasts,
             DGE_DESEQ2.out.dge_table,
-            DGE_DESEQ2_RRNA_RM.out.norm_counts,
-            DGE_DESEQ2_RRNA_RM.out.vst_norm_counts,
             DGE_DESEQ2_RRNA_RM.out.dge_table
         )
         VV_CONCAT_FILTER( ch_outdir, VV_RAW_READS.out.log | mix( VV_TRIMMED_READS.out.log, // Concatenate and filter V&V logs
