@@ -190,8 +190,9 @@ process VV_STAR_ALIGNMENT {
     val(publishdir)
     val(meta)
     path(runsheet)
-    path(star_alignment_multiqc_report_zip)
-
+    path(star_alignment_multiqc_report_zip) 
+    path(star_unnormalized_counts) 
+    
   output:
     path("VV_log.csv"), optional: params.skip_vv, emit: log
 
@@ -220,6 +221,7 @@ process VV_RSEM_COUNTS {
     path(runsheet)
     path(rsem_counts_multiqc_report_zip)
     path(rsem_genes_results_rrnarm) // RSEM sample.genes.results (rRNArm) 
+    path(rsem_unnormalized_counts) // RSEM unnormalized counts
     
   output:
     path("VV_log.csv"), optional: params.skip_vv, emit: log

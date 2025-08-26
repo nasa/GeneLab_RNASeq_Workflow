@@ -292,7 +292,8 @@ workflow RNASEQ {
             ch_outdir,
             ch_meta,
             runsheet_path,
-            ALIGN_MULTIQC.out.zipped_data
+            ALIGN_MULTIQC.out.zipped_data,
+            QUANTIFY_RSEM_GENES.out.publishables
         )
         VV_RSEQC(
             dp_tools_plugin,
@@ -310,7 +311,8 @@ workflow RNASEQ {
             ch_meta,
             runsheet_path,
             COUNT_MULTIQC.out.zipped_data,
-            REMOVE_RRNA.out.genes_results_rrnarm | collect
+            REMOVE_RRNA.out.genes_results_rrnarm | collect,
+            QUANTIFY_RSEM_GENES.out.publishables
         )
         VV_DGE_DESEQ2(
             dp_tools_plugin,
