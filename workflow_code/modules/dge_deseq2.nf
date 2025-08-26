@@ -25,13 +25,13 @@ process DGE_DESEQ2 {
     output:
         tuple path("Normalized_Counts${output_label}${params.assay_suffix}.csv"),
               path(params.mode == "microbes" ? "FeatureCounts_Unnormalized_Counts${output_label}${params.assay_suffix}.csv" : 
-                   "RSEM_Unnormalized_Counts${output_label}${params.assay_suffix}.csv"),                emit: norm_counts
-        path("contrasts${params.assay_suffix}.csv"),                                     emit: contrasts
-        path("SampleTable${params.assay_suffix}.csv"),                                   emit: sample_table      
-        path("differential_expression${output_label}${params.assay_suffix}.csv"),                       emit: dge_table
-        path("VST_Counts${output_label}${params.assay_suffix}.csv"),                                    emit: vst_norm_counts
-        path("summary.txt"),                                                                            emit: summary
-        path("versions2.txt"),                                                                          emit: versions
+                   "RSEM_Unnormalized_Counts${output_label}${params.assay_suffix}.csv"), emit: norm_counts
+        path("contrasts${params.assay_suffix}.csv"),                                     emit: contrasts, optional: true
+        path("SampleTable${params.assay_suffix}.csv"),                                   emit: sample_table, optional: true
+        path("differential_expression${output_label}${params.assay_suffix}.csv"),        emit: dge_table
+        path("VST_Counts${output_label}${params.assay_suffix}.csv"),                     emit: vst_norm_counts
+        path("summary.txt"),                                                             emit: summary
+        path("versions2.txt"),                                                           emit: versions
 
     script:
         def output_filename_label = output_label ?: ""
