@@ -606,12 +606,12 @@ if (!is.null(annotation_file_path) && annotation_file_path != "" && annotation_f
 write.csv(
     sampleTable,
     file = file.path(params$output_directory, 
-                     paste0("SampleTable", params$output_filename_suffix, ".csv"))
+                     paste0("SampleTable", params$output_filename_label, params$output_filename_suffix, ".csv"))
 )
 write.csv(
     contrasts,
     file = file.path(params$output_directory, 
-                     paste0("contrasts", params$output_filename_suffix, ".csv"))
+                     paste0("contrasts", params$output_filename_label, params$output_filename_suffix, ".csv"))
 )
 write.csv(
     output_table,

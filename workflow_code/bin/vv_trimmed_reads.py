@@ -92,7 +92,7 @@ def check_directory_structure(outdir):
 
 def initialize_vv_log():
     """Initialize or append to the VV_log.csv file."""
-    vv_log_path = "VV_log.csv"  # Create in current working directory for Nextflow
+    vv_log_path = "VV_log.csv"
     
     # Check if file exists
     if not os.path.exists(vv_log_path):
