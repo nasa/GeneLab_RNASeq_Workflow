@@ -292,7 +292,8 @@ workflow RNASEQ_MICROBES {
             ch_outdir,
             ch_meta,
             runsheet_path,
-            ALIGN_MULTIQC.out.zipped_data
+            ALIGN_MULTIQC.out.zipped_data,
+            bams | collect
         )
         VV_RSEQC(
             dp_tools_plugin,

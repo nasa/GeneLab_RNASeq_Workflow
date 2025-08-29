@@ -74,6 +74,7 @@ process VV_BOWTIE2_ALIGNMENT {
     val(meta)
     path(runsheet)  
     path(bowtie2_alignment_multiqc_report_zip)
+    path(sorted_bams)
     
   output:
     path("VV_log.csv"), optional: params.skip_vv, emit: log
@@ -192,6 +193,7 @@ process VV_STAR_ALIGNMENT {
     path(runsheet)
     path(star_alignment_multiqc_report_zip) 
     path(star_unnormalized_counts) 
+    path(sorted_bams)
     
   output:
     path("VV_log.csv"), optional: params.skip_vv, emit: log
