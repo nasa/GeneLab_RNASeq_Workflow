@@ -241,17 +241,17 @@ workflow RNASEQ {
         READ_DISTRIBUTION_MULTIQC( ch_outdir.map { it + "/RSeQC_Analyses/MultiQC_Reports" }, samples_txt, READ_DISTRIBUTION.out.log | map { it[1] } | collect, ch_multiqc_config, "read_dist_")
         COUNT_MULTIQC( ch_outdir.map { it + "/03-RSEM_Counts/MultiQC_Reports" }, samples_txt, rsem_counts, ch_multiqc_config, "RSEM_count_")
         
-        all_multiqc_input = raw_fastqc_zip
-                    | concat( trimgalore_reports )
-                    | concat( trimmed_fastqc_zip )
-                    | concat( star_alignment_logs )
-                    | concat( INFER_EXPERIMENT.out.log | map { it[1] } | collect )
-                    | concat( GENEBODY_COVERAGE.out.log | map { it[1] } | collect )
-                    | concat( INNER_DISTANCE.out.log | map { it[1] } | collect )
-                    | concat( READ_DISTRIBUTION.out.log | map { it[1] } | collect )
-                    | concat( rsem_counts )
-                    | collect
-        ALL_MULTIQC( ch_outdir.map { it + "/GeneLab" }, samples_txt, all_multiqc_input, ch_multiqc_config, "all_")
+        // all_multiqc_input = raw_fastqc_zip
+        //             | concat( trimgalore_reports )
+        //             | concat( trimmed_fastqc_zip )
+        //             | concat( star_alignment_logs )
+        //             | concat( INFER_EXPERIMENT.out.log | map { it[1] } | collect )
+        //             | concat( GENEBODY_COVERAGE.out.log | map { it[1] } | collect )
+        //             | concat( INNER_DISTANCE.out.log | map { it[1] } | collect )
+        //             | concat( READ_DISTRIBUTION.out.log | map { it[1] } | collect )
+        //             | concat( rsem_counts )
+        //             | collect
+        // ALL_MULTIQC( ch_outdir.map { it + "/GeneLab" }, samples_txt, all_multiqc_input, ch_multiqc_config, "all_")
 
         // Parse QC metrics
         all_multiqc_output = RAW_READS_MULTIQC.out.data

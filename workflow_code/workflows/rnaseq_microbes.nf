@@ -240,18 +240,18 @@ workflow RNASEQ_MICROBES {
         READ_DISTRIBUTION_MULTIQC( ch_outdir.map { it + "/RSeQC_Analyses/MultiQC_Reports" }, samples_txt, READ_DISTRIBUTION.out.log | map { it[1] } | collect, ch_multiqc_config, "read_dist_")
         COUNT_MULTIQC(ch_outdir.map { it + "/03-FeatureCounts/MultiQC_Reports" }, samples_txt, FEATURECOUNTS.out.summary, ch_multiqc_config, "FeatureCounts_")
         
-        all_multiqc_input = raw_fastqc_zip
-            | concat( TRIMGALORE.out.reports )
-            | concat( trimmed_fastqc_zip )
-            | concat( bowtie2_alignment_logs )
-            | concat( GENEBODY_COVERAGE.out.log | map { it[1] } | collect )
-            | concat( INFER_EXPERIMENT.out.log | map { it[1] } | collect )
-            | concat( INNER_DISTANCE.out.log | map { it[1] } | collect )
-            | concat( READ_DISTRIBUTION.out.log | map { it[1] } | collect )
-            | concat( FEATURECOUNTS.out.summary )
-            | collect
+        // all_multiqc_input = raw_fastqc_zip
+        //     | concat( TRIMGALORE.out.reports )
+        //     | concat( trimmed_fastqc_zip )
+        //     | concat( bowtie2_alignment_logs )
+        //     | concat( GENEBODY_COVERAGE.out.log | map { it[1] } | collect )
+        //     | concat( INFER_EXPERIMENT.out.log | map { it[1] } | collect )
+        //     | concat( INNER_DISTANCE.out.log | map { it[1] } | collect )
+        //     | concat( READ_DISTRIBUTION.out.log | map { it[1] } | collect )
+        //     | concat( FEATURECOUNTS.out.summary )
+        //     | collect
 
-        ALL_MULTIQC( ch_outdir.map { it + "/GeneLab" }, samples_txt, all_multiqc_input, ch_multiqc_config, "all_")
+        // ALL_MULTIQC( ch_outdir.map { it + "/GeneLab" }, samples_txt, all_multiqc_input, ch_multiqc_config, "all_")
 
         // Parse QC metrics
         all_multiqc_output = RAW_READS_MULTIQC.out.data
