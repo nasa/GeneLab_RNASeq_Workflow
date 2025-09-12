@@ -5,8 +5,18 @@
 
 process DGE_DESEQ2 {
 
+    publishDir "${ publishdir }/04-DESeq2_NormCounts",
+        pattern: "*Counts${output_label}${params.assay_suffix}.csv",
+        mode: params.publish_dir_mode
+
+    publishDir "${ publishdir }/05-DESeq2_DGE",
+        pattern: "{contrasts,SampleTable,differential_expression}*", 
+        mode: params.publish_dir_mode
+
     input:
+        val(publishdir)
         val(meta)
+        val(gene_annotations_url)
         path(runsheet_path)
         path(gene_counts)
         path("dge_deseq2.Rmd")
@@ -15,13 +25,13 @@ process DGE_DESEQ2 {
     output:
         tuple path("Normalized_Counts${output_label}${params.assay_suffix}.csv"),
               path(params.mode == "microbes" ? "FeatureCounts_Unnormalized_Counts${output_label}${params.assay_suffix}.csv" : 
-                   "RSEM_Unnormalized_Counts${output_label}${params.assay_suffix}.csv"),                               emit: norm_counts
-        path("contrasts${output_label}${params.assay_suffix}.csv"),                                                    emit: contrasts
-        path("SampleTable${output_label}${params.assay_suffix}.csv"),                                                  emit: sample_table      
-        path("differential_expression_no_annotations${output_label}${params.assay_suffix}.csv"),                       emit: dge_table
-        path("VST_Counts${output_label}${params.assay_suffix}.csv"),                                        emit: vst_norm_counts
-        path("summary.txt"),                                                                            emit: summary
-        path("versions2.txt"),                                                                          emit: versions
+                   "RSEM_Unnormalized_Counts${output_label}${params.assay_suffix}.csv"), emit: norm_counts
+        path("contrasts${params.assay_suffix}.csv"),                                     emit: contrasts, optional: true
+        path("SampleTable${params.assay_suffix}.csv"),                                   emit: sample_table, optional: true
+        path("differential_expression${output_label}${params.assay_suffix}.csv"),        emit: dge_table
+        path("VST_Counts${output_label}${params.assay_suffix}.csv"),                     emit: vst_norm_counts
+        path("summary.txt"),                                                             emit: summary
+        path("versions2.txt"),                                                           emit: versions
 
     script:
         def output_filename_label = output_label ?: ""
@@ -45,12 +55,19 @@ process DGE_DESEQ2 {
                 output_directory = '\${PWD}',
                 output_filename_label = '${output_filename_label}',
                 output_filename_suffix = '${output_filename_suffix}',
+                annotation_file_path = '${gene_annotations_url}',
                 runsheet_path = '${runsheet_path}',
                 microbes = ${microbes},
                 gene_id_type = '${meta.gene_id_type}',
                 input_counts = '${input_counts_path}',
                 DEBUG_MODE_LIMIT_GENES = FALSE,
-                DEBUG_MODE_ADD_DUMMY_COUNTS = ${debug_dummy_counts}
+                DEBUG_MODE_ADD_DUMMY_COUNTS = ${debug_dummy_counts},
+                dge_filter_method = '${params.dge_filter_method}',
+                dge_filter_sum_threshold = ${params.dge_filter_sum_threshold},
+                dge_filter_sample_percent_threshold = ${params.dge_filter_sample_percent_threshold},
+                dge_filter_sample_percent_max_samples = ${params.dge_filter_sample_percent_max_samples},
+                dge_filter_min_samples_threshold = ${params.dge_filter_min_samples_threshold},
+                dge_filter_count_per_sample_threshold = ${params.dge_filter_count_per_sample_threshold}
             ))"
 
         Rscript -e "versions <- c(); 

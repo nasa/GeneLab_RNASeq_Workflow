@@ -122,9 +122,9 @@ def check_directory_structure(outdir):
     
     return True
 
-def initialize_vv_log(outdir):
+def initialize_vv_log():
     """Initialize or append to the VV_log.csv file."""
-    vv_log_path = os.path.join(outdir, "VV_log.csv")
+    vv_log_path = "VV_log.csv"
     
     if not os.path.exists(vv_log_path):
         with open(vv_log_path, 'w') as f:
@@ -1165,13 +1165,14 @@ def get_inner_distance_multiqc_stats(outdir, samples, log_path, assay_suffix="_G
                       f"Error: {str(e)}")
         return None
 
-def report_inner_distance_issues(outdir, inner_dist_data, log_path):
+def report_inner_distance_issues(outdir, inner_dist_data, log_path, assay_suffix="_GLbulkRNAseq"):
     """Report potential issues with inner distance metrics.
     
     Args:
         outdir: The output directory path
         inner_dist_data: Dictionary of inner distance data by sample
         log_path: Path to the validation log file
+        assay_suffix: Assay suffix for MultiQC filenames
         
     Returns:
         Status string ("GREEN", "YELLOW", or "RED")
@@ -1204,7 +1205,7 @@ def report_inner_distance_issues(outdir, inner_dist_data, log_path):
     # Get the inner distance MultiQC report zip file
     inner_dist_dir = os.path.join(outdir, "RSeQC_Analyses", "04_inner_distance")
     multiqc_dir = os.path.join(outdir, "RSeQC_Analyses", "MultiQC_Reports")
-    multiqc_report = os.path.join(multiqc_dir, f"inner_dist_multiqc_GLbulkRNAseq_data.zip")
+    multiqc_report = os.path.join(multiqc_dir, f"inner_dist_multiqc{assay_suffix}_data.zip")
     
     try:
         if os.path.exists(multiqc_report):
@@ -1734,7 +1735,7 @@ def main():
         sys.exit(1)
     
     # Initialize validation log
-    vv_log_path = initialize_vv_log(args.outdir)
+    vv_log_path = initialize_vv_log()
     
     # Parse the runsheet to get samples
     try:
@@ -1834,7 +1835,7 @@ def main():
         
         # Report inner distance issues
         if inner_dist_data:
-            result = report_inner_distance_issues(args.outdir, inner_dist_data, vv_log_path)
+            result = report_inner_distance_issues(args.outdir, inner_dist_data, vv_log_path, args.assay_suffix)
             check_results["Inner Distance Metrics"] = result
             overall_status = max(overall_status, result)
         else:

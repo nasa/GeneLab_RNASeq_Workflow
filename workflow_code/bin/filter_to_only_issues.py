@@ -4,7 +4,7 @@ import argparse
 
 # Set up command line arguments
 parser = argparse.ArgumentParser()
-parser.add_argument('--assay_suffix', type=str, required=True, 
+parser.add_argument('--assay_suffix', type=str, default="", 
                     help='Suffix for input/output files (e.g. "_GLbulkRNAseq")')
 args = parser.parse_args()
 

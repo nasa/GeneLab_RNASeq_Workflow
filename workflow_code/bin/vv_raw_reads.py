@@ -86,9 +86,9 @@ def check_directory_structure(outdir):
     
     return True
 
-def initialize_vv_log(outdir):
+def initialize_vv_log():
     """Initialize or append to the VV_log.csv file."""
-    vv_log_path = os.path.join(outdir, "VV_log.csv")
+    vv_log_path = "VV_log.csv" 
     
     # Check if file exists
     if not os.path.exists(vv_log_path):
@@ -143,7 +143,7 @@ def log_check_result(log_path, component, sample_id, check_name, status, message
     with open(log_path, 'a') as f:
         f.write(f"{component},{sample_id},{check_name},{status},{flag_code},{message},{details}\n")
 
-def check_raw_fastq_existence(outdir, samples, paired_end, log_path):
+def check_raw_fastq_existence(outdir, samples, paired_end, log_path, assay_suffix="_GLbulkRNAseq"):
     """Check if the expected FASTQ files exist for each sample."""
     fastq_dir = os.path.join(outdir, "00-RawData", "Fastq")
     missing_files = []
@@ -153,8 +153,8 @@ def check_raw_fastq_existence(outdir, samples, paired_end, log_path):
     for sample in samples:
         if is_paired:
             # Check for R1 and R2 files for paired-end sequencing
-            r1_file = os.path.join(fastq_dir, f"{sample}_R1_raw.fastq.gz")
-            r2_file = os.path.join(fastq_dir, f"{sample}_R2_raw.fastq.gz")
+            r1_file = os.path.join(fastq_dir, f"{sample}{assay_suffix}_R1_raw.fastq.gz")
+            r2_file = os.path.join(fastq_dir, f"{sample}{assay_suffix}_R2_raw.fastq.gz")
             
             if not os.path.exists(r1_file):
                 missing_files.append(r1_file)
@@ -162,7 +162,7 @@ def check_raw_fastq_existence(outdir, samples, paired_end, log_path):
                 missing_files.append(r2_file)
         else:
             # Check for single file for single-end sequencing
-            single_file = os.path.join(fastq_dir, f"{sample}_raw.fastq.gz")
+            single_file = os.path.join(fastq_dir, f"{sample}{assay_suffix}_raw.fastq.gz")
             
             if not os.path.exists(single_file):
                 missing_files.append(single_file)
@@ -180,7 +180,7 @@ def check_raw_fastq_existence(outdir, samples, paired_end, log_path):
                      f"All FASTQ files found", "")
     return True
 
-def check_gzip_integrity(outdir, samples, paired_end, log_path):
+def check_gzip_integrity(outdir, samples, paired_end, log_path, assay_suffix="_GLbulkRNAseq"):
     """Check GZIP integrity for all FASTQ files using gzip -t."""
     fastq_dir = os.path.join(outdir, "00-RawData", "Fastq")
     failed_files = []
@@ -191,12 +191,12 @@ def check_gzip_integrity(outdir, samples, paired_end, log_path):
     for sample in samples:
         if is_paired:
             # Get R1 and R2 files for paired-end sequencing
-            r1_file = os.path.join(fastq_dir, f"{sample}_R1_raw.fastq.gz")
-            r2_file = os.path.join(fastq_dir, f"{sample}_R2_raw.fastq.gz")
+            r1_file = os.path.join(fastq_dir, f"{sample}{assay_suffix}_R1_raw.fastq.gz")
+            r2_file = os.path.join(fastq_dir, f"{sample}{assay_suffix}_R2_raw.fastq.gz")
             files_to_check = [r1_file, r2_file]
         else:
             # Get single file for single-end sequencing
-            single_file = os.path.join(fastq_dir, f"{sample}_raw.fastq.gz")
+            single_file = os.path.join(fastq_dir, f"{sample}{assay_suffix}_raw.fastq.gz")
             files_to_check = [single_file]
         
         for file_path in files_to_check:
@@ -226,7 +226,7 @@ def check_gzip_integrity(outdir, samples, paired_end, log_path):
                          "No FASTQ files found to check", "")
         return False
 
-def validate_fastq_format(outdir, samples, paired_end, log_path, max_lines=200000000):
+def validate_fastq_format(outdir, samples, paired_end, log_path, assay_suffix="_GLbulkRNAseq", max_lines=200000000):
     """Validate FASTQ format by checking that header lines start with @.
     Only checks the first 200 million lines for performance reasons."""
     fastq_dir = os.path.join(outdir, "00-RawData", "Fastq")
@@ -238,12 +238,12 @@ def validate_fastq_format(outdir, samples, paired_end, log_path, max_lines=20000
     for sample in samples:
         if is_paired:
             # Get R1 and R2 files for paired-end sequencing
-            r1_file = os.path.join(fastq_dir, f"{sample}_R1_raw.fastq.gz")
-            r2_file = os.path.join(fastq_dir, f"{sample}_R2_raw.fastq.gz")
+            r1_file = os.path.join(fastq_dir, f"{sample}{assay_suffix}_R1_raw.fastq.gz")
+            r2_file = os.path.join(fastq_dir, f"{sample}{assay_suffix}_R2_raw.fastq.gz")
             files_to_check = [r1_file, r2_file]
         else:
             # Get single file for single-end sequencing
-            single_file = os.path.join(fastq_dir, f"{sample}_raw.fastq.gz")
+            single_file = os.path.join(fastq_dir, f"{sample}{assay_suffix}_raw.fastq.gz")
             files_to_check = [single_file]
         
         for file_path in files_to_check:
@@ -308,7 +308,7 @@ def validate_fastq_format(outdir, samples, paired_end, log_path, max_lines=20000
                         "No files found to validate", "")
         return False
 
-def check_raw_fastqc_existence(outdir, samples, paired_end, log_path):
+def check_raw_fastqc_existence(outdir, samples, paired_end, log_path, assay_suffix="_GLbulkRNAseq"):
     """Check if FastQC output files exist for each sample."""
     fastqc_dir = os.path.join(outdir, "00-RawData", "FastQC_Reports")
     missing_files = []
@@ -318,16 +318,16 @@ def check_raw_fastqc_existence(outdir, samples, paired_end, log_path):
     for sample in samples:
         if is_paired:
             # Check for R1 and R2 FastQC files for paired-end sequencing
-            r1_html = os.path.join(fastqc_dir, f"{sample}_R1_raw_fastqc.html")
-            r1_zip = os.path.join(fastqc_dir, f"{sample}_R1_raw_fastqc.zip")
-            r2_html = os.path.join(fastqc_dir, f"{sample}_R2_raw_fastqc.html")
-            r2_zip = os.path.join(fastqc_dir, f"{sample}_R2_raw_fastqc.zip")
+            r1_html = os.path.join(fastqc_dir, f"{sample}{assay_suffix}_R1_raw_fastqc.html")
+            r1_zip = os.path.join(fastqc_dir, f"{sample}{assay_suffix}_R1_raw_fastqc.zip")
+            r2_html = os.path.join(fastqc_dir, f"{sample}{assay_suffix}_R2_raw_fastqc.html")
+            r2_zip = os.path.join(fastqc_dir, f"{sample}{assay_suffix}_R2_raw_fastqc.zip")
             
             files_to_check = [r1_html, r1_zip, r2_html, r2_zip]
         else:
             # Check for single FastQC files for single-end sequencing
-            html_file = os.path.join(fastqc_dir, f"{sample}_raw_fastqc.html")
-            zip_file = os.path.join(fastqc_dir, f"{sample}_raw_fastqc.zip")
+            html_file = os.path.join(fastqc_dir, f"{sample}{assay_suffix}_raw_fastqc.html")
+            zip_file = os.path.join(fastqc_dir, f"{sample}{assay_suffix}_raw_fastqc.zip")
             
             files_to_check = [html_file, zip_file]
         
@@ -965,7 +965,7 @@ def main():
     args = parser.parse_args()
 
     # Initialize VV log
-    vv_log_path = initialize_vv_log(args.outdir)
+    vv_log_path = initialize_vv_log()
     
     # Check directory structure
     check_directory_structure(args.outdir)
@@ -995,19 +995,22 @@ def main():
     print(f'has_ercc: {has_ercc_values}')
     print(f'organism: {organism_values}')
 
+    # Initialize VV log file
+    vv_log_path = initialize_vv_log()
+
     # Initiate validation checks in logical order
     
     # 1. Check for raw FASTQ files existence
-    check_raw_fastq_existence(args.outdir, sample_names, paired_end_values, vv_log_path)
+    check_raw_fastq_existence(args.outdir, sample_names, paired_end_values, vv_log_path, args.assay_suffix)
     
     # 2. Check GZIP integrity of FASTQ files
-    check_gzip_integrity(args.outdir, sample_names, paired_end_values, vv_log_path)
+    check_gzip_integrity(args.outdir, sample_names, paired_end_values, vv_log_path, args.assay_suffix)
     
     # 3. Validate FASTQ format
-    validate_fastq_format(args.outdir, sample_names, paired_end_values, vv_log_path)
+    validate_fastq_format(args.outdir, sample_names, paired_end_values, vv_log_path, args.assay_suffix)
     
     # 4. Check FastQC outputs existence
-    check_raw_fastqc_existence(args.outdir, sample_names, paired_end_values, vv_log_path)
+    check_raw_fastqc_existence(args.outdir, sample_names, paired_end_values, vv_log_path, args.assay_suffix)
     
     # 5. Check all samples are in MultiQC report
     check_samples_multiqc(args.outdir, sample_names, paired_end_values, vv_log_path, args.assay_suffix)

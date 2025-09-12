@@ -1,15 +1,6 @@
 // main.nf
 nextflow.enable.dsl=2
 
-def colorCodes = [
-    c_line: "┅" * 70,
-    c_back_bright_red: "\u001b[41;1m",
-    c_bright_green: "\u001b[32;1m",
-    c_blue: "\033[0;34m",
-    c_yellow: "\u001b[33;1m",
-    c_reset: "\033[0m"
-]
-
 // Command for: 'nextflow run main.nf --version'
 if (params.version) {
     println """${workflow.manifest.name}
@@ -19,14 +10,11 @@ Workflow Version: ${workflow.manifest.version}"""
 
 // Print the pipeline version on start
 println """
-${colorCodes.c_bright_green}
 ${workflow.manifest.name}
 Workflow Version: ${workflow.manifest.version}
-${colorCodes.c_reset}
 """.stripIndent()
 
 // Debug warning
-println("${colorCodes.c_yellow}")
 if (params.limit_samples_to || params.truncate_to || params.force_single_end || params.genome_subsample) {
     println("WARNING: Debugging options enabled!")
     println("Sample limit: ${params.limit_samples_to ?: 'Not set'}")
@@ -36,7 +24,6 @@ if (params.limit_samples_to || params.truncate_to || params.force_single_end || 
 } else {
     println("No debugging options enabled")
 }
-println("${colorCodes.c_reset}")
 
 include { RNASEQ } from './workflows/rnaseq.nf'
 include { RNASEQ_MICROBES } from './workflows/rnaseq_microbes.nf'

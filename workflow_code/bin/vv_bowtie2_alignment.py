@@ -79,9 +79,9 @@ def check_directory_structure(outdir):
     
     return True
 
-def initialize_vv_log(outdir):
+def initialize_vv_log():
     """Initialize or append to the VV_log.csv file."""
-    vv_log_path = os.path.join(outdir, "VV_log.csv")
+    vv_log_path = "VV_log.csv"
     
     if not os.path.exists(vv_log_path):
         with open(vv_log_path, 'w') as f:
@@ -658,7 +658,7 @@ def add_bowtie2_group_stats(outdir, multiqc_data, log_path):
     
     return True
 
-def check_bowtie2_existence(outdir, samples, paired_end, log_path):
+def check_bowtie2_existence(outdir, samples, paired_end, log_path, assay_suffix):
     """Check if all expected bowtie2 alignment files exist for each sample."""
     align_dir = os.path.join(outdir, "02-Bowtie2_Alignment")
     missing_files = []
@@ -666,7 +666,7 @@ def check_bowtie2_existence(outdir, samples, paired_end, log_path):
 
     # First check for MultiQC data
     multiqc_dir = os.path.join(align_dir, "MultiQC_Reports")
-    multiqc_file = os.path.join(multiqc_dir, "align_multiqc_GLbulkRNAseq_data.zip")
+    multiqc_file = os.path.join(multiqc_dir, f"align_multiqc{assay_suffix}_data.zip")
     if not os.path.exists(multiqc_file):
         missing_files.append(multiqc_file)
 
@@ -682,19 +682,19 @@ def check_bowtie2_existence(outdir, samples, paired_end, log_path):
 
         # Required files for both SE and PE
         required_files = [
-            f"{sample}.bowtie2.log",
-            f"{sample}_sorted.bam",
-            f"{sample}_sorted.bam.bai"
+            f"{sample}{assay_suffix}.bowtie2.log",
+            f"{sample}{assay_suffix}_sorted.bam",
+            f"{sample}{assay_suffix}_sorted.bam.bai"
         ]
 
         # Add unmapped files based on paired/single end
         if is_paired:
             required_files.extend([
-                f"{sample}_R1_unmapped.fastq.gz",
-                f"{sample}_R2_unmapped.fastq.gz"
+                f"{sample}{assay_suffix}_R1_unmapped.fastq.gz",
+                f"{sample}{assay_suffix}_R2_unmapped.fastq.gz"
             ])
         else:
-            required_files.append(f"{sample}_unmapped.fastq.gz")
+            required_files.append(f"{sample}{assay_suffix}_unmapped.fastq.gz")
 
         # Check each required file
         for file_name in required_files:
@@ -744,7 +744,7 @@ def main():
     args = parser.parse_args()
 
     # Initialize VV log
-    vv_log_path = initialize_vv_log(args.outdir)
+    vv_log_path = initialize_vv_log()
     
     # Check directory structure
     check_directory_structure(args.outdir)
@@ -777,7 +777,7 @@ def main():
     # Initiate validation checks in logical order
     
     # 1. Check for bowtie2 alignment files existence
-    check_bowtie2_existence(args.outdir, sample_names, paired_end_values, vv_log_path)
+    check_bowtie2_existence(args.outdir, sample_names, paired_end_values, vv_log_path, args.assay_suffix)
 
     # 2. Check that samples are present in MultiQC data
     check_samples_multiqc(args.outdir, sample_names, paired_end_values, vv_log_path, args.assay_suffix)
