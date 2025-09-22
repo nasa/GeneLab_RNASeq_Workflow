@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fixed handling of "None" factor conditions in `vv_dge_deseq2.py`
+- Fixed passing through of ISA archive for runsheet-based runs
 
 ## [2.0.2](https://github.com/nasa/GeneLab_RNASeq_Workflow/tree/NF_RCP_2.0.2) - 2025-08-26
 

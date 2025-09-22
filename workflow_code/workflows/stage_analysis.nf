@@ -53,6 +53,9 @@ workflow STAGE_ANALYSIS {
             }
             ISA_TO_RUNSHEET( ch_outdir, osd_accession, glds_accession, isa_archive, dp_tools_plugin )
             runsheet_path = ISA_TO_RUNSHEET.out.runsheet
+        } else if ( isa_archive_path != null ) {
+            // if runsheet_path is provided and isa_archive_path is also provided, just pass through the provided ISA archive
+            isa_archive = isa_archive_path
         }
 
         // Validate input parameters and runsheet
