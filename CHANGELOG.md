@@ -37,8 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - .genes.results to ${params.assay_suffix}.genes.results
   - _rRNArm.genes.results to ${params.assay_suffix}_rRNArm.genes.results
   - .isoforms.results to ${params.assay_suffix}.isoforms.results
-  - *.bowtie2.log to *${params.assay_suffix}.bowtie2.log
-  - *_sorted.bam to *${params.assay_suffix}_sorted.bam
+  - .bowtie2.log to ${params.assay_suffix}.bowtie2.log
+  - _sorted.bam to ${params.assay_suffix}_sorted.bam
 
 ### Removed
 
