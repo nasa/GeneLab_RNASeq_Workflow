@@ -52,6 +52,9 @@ ch_force_single_end = Channel.value(params.force_single_end)
 ch_reference_store_path = Channel.value(params.reference_store_path)
 ch_derived_store_path = Channel.value(params.derived_store_path)
 
+// set entry point param
+ch_entry_point = params.entry_point ? Channel.value(params.entry_point) : Channel.value('auto-detect')
+
 // set reference params
 ch_reference_source = params.reference_source ? Channel.value(params.reference_source) : null
 ch_reference_version = params.reference_version ? Channel.value(params.reference_version) : null
@@ -80,7 +83,8 @@ workflow {
             ch_reference_fasta,
             ch_reference_gtf,
             ch_reference_store_path,
-            ch_derived_store_path
+            ch_derived_store_path,
+            ch_entry_point
         )
     } else {
         RNASEQ(
@@ -98,7 +102,8 @@ workflow {
             ch_reference_fasta,
             ch_reference_gtf,
             ch_reference_store_path,
-            ch_derived_store_path
+            ch_derived_store_path,
+            ch_entry_point
         )
     }
 }

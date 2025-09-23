@@ -328,6 +328,20 @@ nextflow run NF_RCP_2.0.3/main.nf \
   
   * `--dge_filter_count_per_sample_threshold` - Multiplier for sample-scaled count threshold (type: number, default: 1)
 
+* **Entry Point Parameters** - Options for starting the workflow from different processing steps:
+  >**Note:** When using `--accession` with step-based entry points, the workflow downloads the appropriate processed files from [OSDR](https://osdr.nasa.gov/bio/repo/) and generates the required runsheet. When using both `--accession` and `--runsheet_path` together, the workflow will validate that the runsheet contains the expected input file columns. See `examples/runsheet/README.md` for runsheet format details. See the [OSDR File Downloader](https://github.com/asaravia-butler/OSDR_File_Downloader) GitHub repository for more examples of programmatically accessing files stored in [OSDR](https://osdr.nasa.gov/bio/repo/).
+* `--entry_point` - specifies the workflow entry point (type: string, default: "raw_reads"). Valid options:
+  - `raw_reads`: Full pipeline from raw FASTQ files (default behavior)
+  - `trimmed_reads`: Start from trimmed FASTQ files (alignment onwards)
+  - `bam_files`: Start from aligned BAM files (counting onwards)
+  - `genes_results`: Start from individual .genes.results files (DGE analysis only, `--mode default` only)
+  - `counts_table`: Start from raw counts table (DGE analysis only)
+  - `dge_table`: Add annotations to existing DGE table (annotation only)
+
+* `--strandedness` - sets the strandedness for entry points that skip alignment (type: string, options: "forward", "reverse", "none", default: "none")
+
+ 
+
 <br>
 
 **Additional Optional Parameters:**

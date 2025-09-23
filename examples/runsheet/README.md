@@ -26,6 +26,19 @@
 | Factor Value[<name, e.g. Spaceflight>] | string | A set of one or more columns specifying the experimental group the sample belongs to. In the simplest form, a column named 'Factor Value[group]' is sufficient. | Space Flight |
 | Original Sample Name | string | Used to map the sample name that will be used for processing to the original sample name. This is often identical except in cases where the original name includes spaces or weird characters. | Mmus_BAL-TAL_LRTN_BSL_Rep1_B7 |
 
+## Entry Point Columns (for step-based workflows)
+
+For entry points other than the default `raw_reads`, include the relevant columns below:
+
+| Column Name | Entry Point | Type | Description | Example |
+|:------------|:------------|:-----|:------------|:--------|
+| trimmed_read1_path | trimmed_reads | string | Path to trimmed forward reads file | /my/data/sample_1_trimmed.fastq.gz |
+| trimmed_read2_path | trimmed_reads | string | Path to trimmed reverse reads file (paired-end only) | /my/data/sample_2_trimmed.fastq.gz |
+| bam_path | bam_files | string | Path to aligned BAM file | /my/data/sample_aligned.bam |
+| genes_results_path | genes_results | string | Path to RSEM .genes.results file (`--mode default` only) | /my/data/sample.genes.results |
+| counts_table_path | counts_table | string | Path to raw counts table file | /my/data/RSEM_Unnormalized_Counts.csv|
+| dge_table_path | dge_table | string | Path to DGE table  | /my/data/differential_expression.csv |
+
 ## Optional columns
 
 | Column Name | Type | Description | Example |
