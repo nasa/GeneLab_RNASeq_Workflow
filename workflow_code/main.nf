@@ -27,7 +27,7 @@ if (params.limit_samples_to || params.truncate_to || params.force_single_end || 
 
 include { RNASEQ } from './workflows/rnaseq.nf'
 include { RNASEQ_MICROBES } from './workflows/rnaseq_microbes.nf'
-include { STAGE_ANALYSIS } from './workflows/stage_analysis.nf'
+include { STAGE_ANALYSIS } from './subworkflows/stage_analysis.nf'
 
 include { GENERATE_MD5SUMS } from './modules/generate_md5sums.nf'
 include { UPDATE_ASSAY_TABLE } from './modules/update_assay_table.nf'

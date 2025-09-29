@@ -38,6 +38,42 @@
                 "format": "file-path",
                 "description": "Location of the raw reads file. For paired-end data, this specifies the reverse reads fastq.gz file. For single-end data, this column should be omitted."
             },
+            "trimmed_read1_path": {
+                "type": "string",
+                "pattern": "^\\S+\\.f(ast)?q\\.gz$",
+                "format": "file-path",
+                "description": "Location of the trimmed reads file. For paired-end data, this specifies the forward trimmed reads fastq.gz file. Used with `--entry_point trimmed_reads`."
+            },
+            "trimmed_read2_path": {
+                "type": "string",
+                "pattern": "^\\S+\\.f(ast)?q\\.gz$",
+                "format": "file-path",
+                "description": "Location of the trimmed reads file. For paired-end data, this specifies the reverse trimmed reads fastq.gz file. For single-end data, this column should be omitted. Used with `--entry_point trimmed_reads`."
+            },
+            "bam_path": {
+                "type": "string",
+                "pattern": "^\\S+\\.bam$",
+                "format": "file-path",
+                "description": "Location of the BAM file. Used with `--entry_point bam_files`."
+            },
+            "genes_results_path": {
+                "type": "string",
+                "pattern": "^\\S+\\.genes\\.results$",
+                "format": "file-path",
+                "description": "Location of the RSEM genes.results file. Used with `--entry_point counts_table`."
+            },
+            "counts_table_path": {
+                "type": "string",
+                "pattern": "^\\S+\\.(csv|txt|tsv)$",
+                "format": "file-path",
+                "description": "Location of the counts table file. Used with `--entry_point counts_table`."
+            },
+            "dge_table_path": {
+                "type": "string",
+                "pattern": "^\\S+\\.(csv|txt|tsv)$",
+                "format": "file-path",
+                "description": "Location of the DGE table file. Used with `--entry_point dge_table`."
+            },
             "Original Sample Name": {
                 "description": "Used to map the sample name that will be used for processing to the original sample name. This is often identical except in cases where the original name includes spaces or weird characters."
             }
@@ -52,8 +88,7 @@
             "Sample Name",
             "has_ERCC",
             "paired_end",
-            "organism",
-            "read1_path"
+            "organism"
         ],
         "if": {
             "properties": {
