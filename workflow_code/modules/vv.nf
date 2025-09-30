@@ -49,6 +49,7 @@ process VV_TRIMMED_READS {
 
   output:
     path("VV_log.csv"), optional: params.skip_vv, emit: log
+    path("versions.yml"), emit: versions
 
   script:
     """
@@ -56,6 +57,9 @@ process VV_TRIMMED_READS {
     if ${ !params.skip_vv } ; then
       vv_trimmed_reads.py --runsheet ${runsheet} --outdir ${publishdir} --assay-suffix ${params.assay_suffix}
     fi
+
+    echo '"${task.process}":' > versions.yml
+    echo "    dp_tools: \$(pip show dp_tools | grep Version | sed 's/Version: //')" >> versions.yml
     """
 }
 
@@ -78,6 +82,7 @@ process VV_BOWTIE2_ALIGNMENT {
     
   output:
     path("VV_log.csv"), optional: params.skip_vv, emit: log
+    path("versions.yml"), emit: versions
 
   script:
     """
@@ -85,6 +90,9 @@ process VV_BOWTIE2_ALIGNMENT {
     if ${ !params.skip_vv } ; then
       vv_bowtie2_alignment.py --runsheet ${runsheet} --outdir ${publishdir} --assay-suffix ${params.assay_suffix}
     fi
+
+    echo '"${task.process}":' > versions.yml
+    echo "    dp_tools: \$(pip show dp_tools | grep Version | sed 's/Version: //')" >> versions.yml
     """
 } 
 
@@ -109,6 +117,7 @@ process VV_RSEQC {
 
   output:
       path("VV_log.csv"), optional: params.skip_vv, emit: log
+      path("versions.yml"), emit: versions
 
   script:
     """
@@ -116,6 +125,9 @@ process VV_RSEQC {
     if ${ !params.skip_vv } ; then
       vv_rseqc.py --runsheet ${runsheet} --outdir ${publishdir} --assay_suffix ${params.assay_suffix}
     fi
+
+    echo '"${task.process}":' > versions.yml
+    echo "    dp_tools: \$(pip show dp_tools | grep Version | sed 's/Version: //')" >> versions.yml
     """
 }
 

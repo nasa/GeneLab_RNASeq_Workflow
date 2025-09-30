@@ -1,4 +1,5 @@
 include { RAW_READS_WORKFLOW } from '../subworkflows/rnaseq_subworkflows.nf'
+include { TRIMMED_READS_WORKFLOW } from '../subworkflows/rnaseq_subworkflows.nf'
 
 include { validateParameters; paramsSummaryLog; samplesheetToList } from 'plugin/nf-schema'
 
@@ -44,8 +45,22 @@ workflow RNASEQ {
                 break
                 
             case "trimmed_reads":
-                println "TRIMMED_READS entry point not yet implemented"
-                exit 1
+                println "Executing TRIMMED_READS_WORKFLOW"
+                TRIMMED_READS_WORKFLOW(
+                    ch_outdir,
+                    dp_tools_plugin,
+                    annotations_csv_url_string,
+                    accession,
+                    isa_archive_path,
+                    runsheet_path,
+                    api_url,
+                    reference_store_path,
+                    derived_store_path,
+                    reference_source,
+                    reference_version,
+                    reference_fasta,
+                    reference_gtf
+                )
                 break
                 
             case "bam_files":
