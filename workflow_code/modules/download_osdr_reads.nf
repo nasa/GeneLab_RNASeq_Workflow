@@ -5,7 +5,6 @@
 process DOWNLOAD_OSDR_READS {
     tag "Sample: ${ meta.id }"
     
-    errorStrategy 'ignore'  // Don't fail workflow if files not found
     
     publishDir { 
         read_type == "raw" ? 
@@ -103,7 +102,6 @@ Reason: Files not found in OSDR repository
 Date: \$(date)
 EOF
                 echo "Created failure log: ${meta.id}${params.assay_suffix}_failed_download_${read_type}.txt"
-                exit 0  # Exit successfully to continue workflow
             fi
         fi
         
@@ -164,7 +162,6 @@ Reason: Files not found in OSDR repository
 Date: \$(date)
 EOF
                     echo "Created failure log: ${meta.id}${params.assay_suffix}_failed_download_${read_type}.txt"
-                    exit 0  # Exit successfully to continue workflow
                 fi
             fi
         fi

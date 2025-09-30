@@ -150,6 +150,7 @@ process VV_FEATURECOUNTS {
 
   output:
     path("VV_log.csv"), optional: params.skip_vv, emit: log
+    path("versions.yml"), emit: versions
 
   script:
   """
@@ -157,6 +158,9 @@ process VV_FEATURECOUNTS {
   if ${ !params.skip_vv } ; then
     vv_featurecounts.py --runsheet ${runsheet} --outdir ${publishdir} --assay-suffix ${params.assay_suffix}
   fi
+
+  echo '"${task.process}":' > versions.yml
+  echo "    dp_tools: \$(pip show dp_tools | grep Version | sed 's/Version: //')" >> versions.yml
   """
 }
 
@@ -239,6 +243,7 @@ process VV_RSEM_COUNTS {
     
   output:
     path("VV_log.csv"), optional: params.skip_vv, emit: log
+    path("versions.yml"), emit: versions
   
   script:
     """
@@ -246,6 +251,9 @@ process VV_RSEM_COUNTS {
     if ${ !params.skip_vv } ; then
       vv_rsem_counts.py --runsheet ${runsheet} --outdir ${publishdir} --assay-suffix ${params.assay_suffix}
     fi
+
+    echo '"${task.process}":' > versions.yml
+    echo "    dp_tools: \$(pip show dp_tools | grep Version | sed 's/Version: //')" >> versions.yml
     """
 }
 

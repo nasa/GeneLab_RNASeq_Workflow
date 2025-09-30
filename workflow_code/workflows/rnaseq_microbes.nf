@@ -1,5 +1,4 @@
-include { RAW_READS_MICROBES_WORKFLOW } from '../subworkflows/rnaseq_microbes_subworkflows.nf'
-include { TRIMMED_READS_MICROBES_WORKFLOW } from '../subworkflows/rnaseq_microbes_subworkflows.nf'
+include { RAW_READS_MICROBES_WORKFLOW; TRIMMED_READS_MICROBES_WORKFLOW; BAM_FILES_MICROBES_WORKFLOW } from '../subworkflows/rnaseq_microbes_subworkflows.nf'
 
 include { validateParameters; paramsSummaryLog; samplesheetToList } from 'plugin/nf-schema'
 
@@ -70,8 +69,22 @@ workflow RNASEQ_MICROBES {
                 break
                 
             case "bam_files":
-                println "BAM_FILES entry point not yet implemented for microbes"
-                exit 1
+                println "Executing BAM_FILES_MICROBES_WORKFLOW"
+                BAM_FILES_MICROBES_WORKFLOW(
+                    ch_outdir,
+                    dp_tools_plugin,
+                    annotations_csv_url_string,
+                    accession,
+                    isa_archive_path,
+                    runsheet_path,
+                    api_url,
+                    reference_source,
+                    reference_version,
+                    reference_fasta,
+                    reference_gtf,
+                    reference_store_path,
+                    derived_store_path
+                )
                 break
                 
             case "counts_table":
