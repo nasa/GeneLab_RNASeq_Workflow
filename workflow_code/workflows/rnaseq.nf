@@ -1,4 +1,4 @@
-include { RAW_READS_WORKFLOW; TRIMMED_READS_WORKFLOW; BAM_FILES_WORKFLOW } from '../subworkflows/rnaseq_subworkflows.nf'
+include { RAW_READS_WORKFLOW; TRIMMED_READS_WORKFLOW; BAM_FILES_WORKFLOW; GENES_RESULTS_WORKFLOW } from '../subworkflows/rnaseq_subworkflows.nf'
 
 include { validateParameters; paramsSummaryLog; samplesheetToList } from 'plugin/nf-schema'
 
@@ -82,8 +82,22 @@ workflow RNASEQ {
                 break
                 
             case "genes_results":
-                println "GENES_RESULTS entry point not yet implemented"
-                exit 1
+                println "Executing GENES_RESULTS_WORKFLOW"
+                GENES_RESULTS_WORKFLOW(
+                    ch_outdir,
+                    dp_tools_plugin,
+                    annotations_csv_url_string,
+                    accession,
+                    isa_archive_path,
+                    runsheet_path,
+                    api_url,
+                    reference_store_path,
+                    derived_store_path,
+                    reference_source,
+                    reference_version,
+                    reference_fasta,
+                    reference_gtf
+                )
                 break
                 
             case "counts_table":

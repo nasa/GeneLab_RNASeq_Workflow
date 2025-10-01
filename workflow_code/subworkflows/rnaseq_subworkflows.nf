@@ -48,7 +48,7 @@ include { VV_RAW_READS;
     VV_CONCAT_FILTER } from '../modules/vv.nf'
 include { SOFTWARE_VERSIONS } from '../modules/software_versions.nf'
 include { GENERATE_PROTOCOL } from '../modules/generate_protocol.nf'
-include { STAGE_ENTRY_TRIMMED_READS; STAGE_ENTRY_BAM_FILES } from './stage_entry_points.nf'
+include { STAGE_ENTRY_TRIMMED_READS; STAGE_ENTRY_BAM_FILES; STAGE_ENTRY_GENES_RESULTS } from './stage_entry_points.nf'
 
 workflow RAW_READS_WORKFLOW {
     take:
@@ -658,6 +658,7 @@ workflow TRIMMED_READS_WORKFLOW {
             runsheet_path
         )
 }
+
 workflow BAM_FILES_WORKFLOW {
     take:
         ch_outdir
@@ -848,4 +849,196 @@ workflow BAM_FILES_WORKFLOW {
             genome_references_pre_ercc,
             runsheet_path
         )
+}
+
+workflow GENES_RESULTS_WORKFLOW {
+    take:
+        ch_outdir
+        dp_tools_plugin
+        annotations_csv_url_string
+        accession
+        isa_archive_path
+        runsheet_path
+        api_url
+        reference_store_path
+        derived_store_path
+        reference_source
+        reference_version
+        reference_fasta
+        reference_gtf
+
+    main:
+        // Stage analysis setup (directory structure, inputs, and RSEM genes.results files)
+        STAGE_ENTRY_GENES_RESULTS(
+            ch_outdir,
+            dp_tools_plugin,
+            accession,
+            isa_archive_path,
+            runsheet_path,
+            api_url
+        )
+        ch_outdir = STAGE_ENTRY_GENES_RESULTS.out.ch_outdir
+        samples = STAGE_ENTRY_GENES_RESULTS.out.samples
+        genes_results = STAGE_ENTRY_GENES_RESULTS.out.genes_results
+        samples_txt = STAGE_ENTRY_GENES_RESULTS.out.samples_txt
+        runsheet_path = STAGE_ENTRY_GENES_RESULTS.out.runsheet_path
+        isa_archive = STAGE_ENTRY_GENES_RESULTS.out.isa_archive
+        osd_accession = STAGE_ENTRY_GENES_RESULTS.out.osd_accession
+        glds_accession = STAGE_ENTRY_GENES_RESULTS.out.glds_accession
+
+        // Get dataset-wide metadata
+        samples | first | map { meta, reads -> meta } | set { ch_meta }
+        ch_meta | map { meta -> meta.organism_sci } | set { organism_sci }
+
+        PARSE_ANNOTATIONS_TABLE( annotations_csv_url_string, organism_sci )
+
+        // // Use reference input and gene annotations file workflow params if provided
+        // if ( params.reference_fasta && params.reference_gtf ) {
+        //     genome_references_pre_subsample = Channel.fromPath([params.reference_fasta, params.reference_gtf], checkIfExists: true ).toList()
+        //     Channel.value( params.reference_source ) | set { reference_source }
+        //     Channel.value( params.reference_version ) | set { reference_version }
+        //     Channel.value( params.reference_fasta ) | set { reference_fasta_url }
+        //     Channel.value( params.reference_gtf ) | set { reference_gtf_url }
+        //     Channel.value( params.gene_annotations_file ) | set { gene_annotations_url }
+        // } else{
+        //     // Use annotations table to get reference inputs, organism-specific gene annotations file
+        //     reference_source = PARSE_ANNOTATIONS_TABLE.out.reference_source
+        //     reference_version = PARSE_ANNOTATIONS_TABLE.out.reference_version
+        //     reference_fasta_url = PARSE_ANNOTATIONS_TABLE.out.reference_fasta_url
+        //     reference_gtf_url = PARSE_ANNOTATIONS_TABLE.out.reference_gtf_url
+        //     gene_annotations_url = PARSE_ANNOTATIONS_TABLE.out.gene_annotations_url
+        // }
+
+        // DOWNLOAD_REFERENCES( reference_store_path, organism_sci, reference_source, reference_version, reference_fasta_url, reference_gtf_url )
+        // genome_references_pre_subsample = DOWNLOAD_REFERENCES.out.reference_files
+
+        // // Genomic region subsampling step is used only for debugging / testing 
+        // if ( params.genome_subsample ) {
+        //     SUBSAMPLE_GENOME( derived_store_path, organism_sci, genome_references_pre_subsample, reference_source, reference_version )
+        //     SUBSAMPLE_GENOME.out.build | flatten | toList | set { genome_references_pre_ercc }
+        // } else {
+        //     genome_references_pre_subsample | flatten | toList | set { genome_references_pre_ercc }
+        // }
+
+
+        // // Add ERCC Fasta and GTF to genome files
+        // DOWNLOAD_ERCC( ch_meta.map { it.has_ercc }, reference_store_path ).ifEmpty([file("ERCC92.fa"), file("ERCC92.gtf")]) | set { ch_maybe_ercc_refs }
+        // CONCAT_ERCC( reference_store_path, organism_sci, reference_source, reference_version, genome_references_pre_ercc, ch_maybe_ercc_refs, ch_meta.map { it.has_ercc } )
+        // .ifEmpty { genome_references_pre_ercc.value }  | set { genome_references }
+        
+        // // Convert GTF file to RSeQC-compatible BED file
+        // GTF_TO_PRED(
+        //     derived_store_path,
+        //     organism_sci,
+        //     reference_source,
+        //     reference_version,
+        //     genome_references | map { it[1] }
+        // )
+        // PRED_TO_BED( 
+        //     derived_store_path,
+        //     organism_sci,
+        //     reference_source,
+        //     reference_version,
+        //     GTF_TO_PRED.out.genome_pred
+        // )
+        // genome_bed = PRED_TO_BED.out.genome_bed
+        
+        // // For BAM entry point: Convert params.strandedness to canonical values
+        // def params_strandedness = params.strandedness ?: "none"
+        // def converted_strandedness = params_strandedness == "forward" ? "sense" : params_strandedness == "reverse" ? "antisense" : params_strandedness == "none" ? "unstranded" : params_strandedness
+        // strandedness = Channel.value(converted_strandedness)
+
+        // // Build RSEM transcriptome index
+        // BUILD_RSEM_INDEX(derived_store_path, organism_sci, reference_source, reference_version, genome_references, ch_meta )
+        // rsem_index_dir = BUILD_RSEM_INDEX.out.index_dir
+
+        // // Run RSEM on the transcriptome-aligned BAMs from STAR to calculate isoform-level transcript expression estimates and create a gene counts table
+        // COUNT_ALIGNED( ch_outdir.map { it + "/03-RSEM_Counts" }, bam_files, rsem_index_dir, strandedness )
+        // rsem_counts = COUNT_ALIGNED.out.counts | map { it[1] } | collect
+        // QUANTIFY_RSEM_GENES( ch_outdir.map { it + "/03-RSEM_Counts" }, samples_txt, rsem_counts )
+
+        // EXTRACT_RRNA ( organism_sci, genome_references | map { it[1] })
+        // REMOVE_RRNA ( ch_outdir.map { it + "/03-RSEM_Counts" }, EXTRACT_RRNA.out.rrna_ids, COUNT_ALIGNED.out.genes_results )
+
+        // dge_script = "${projectDir}/bin/dge_deseq2.Rmd"
+        
+        // // Normalize counts, DGE, Add annotations to DGE table
+        // DGE_DESEQ2( ch_outdir, ch_meta, PARSE_ANNOTATIONS_TABLE.out.gene_annotations_url, runsheet_path, COUNT_ALIGNED.out.genes_results.map{ it[1] } | collect, dge_script, "" )
+        // // For rRNArm counts: Normalize counts, DGE, Add annotations to DGE table
+        // DGE_DESEQ2_RRNA_RM( ch_outdir, ch_meta, PARSE_ANNOTATIONS_TABLE.out.gene_annotations_url, runsheet_path, REMOVE_RRNA.out.genes_results_rrnarm | toSortedList, dge_script, "_rRNArm" )
+
+        // // MultiQC
+        // ch_multiqc_config = params.multiqc_config ? Channel.fromPath( params.multiqc_config ) : Channel.fromPath("NO_FILE")
+        // COUNT_MULTIQC( ch_outdir.map { it + "/03-RSEM_Counts/MultiQC_Reports" }, samples_txt, rsem_counts, ch_multiqc_config, "RSEM_count_")
+
+        // // Parse QC metrics
+        // all_multiqc_output = COUNT_MULTIQC.out.data
+        // PARSE_QC_METRICS(
+        //     ch_outdir,
+        //     osd_accession,
+        //     ch_meta,
+        //     isa_archive.ifEmpty(file("ISA.zip")),  // Use a placeholder if isa_archive is empty
+        //     all_multiqc_output,
+        //     QUANTIFY_RSEM_GENES.out.publishables,
+        //     runsheet_path
+        // )
+        // VV_RSEM_COUNTS(
+        //     dp_tools_plugin,
+        //     ch_outdir,
+        //     ch_meta,
+        //     runsheet_path,
+        //     COUNT_MULTIQC.out.zipped_data,
+        //     REMOVE_RRNA.out.genes_results_rrnarm | collect,
+        //     QUANTIFY_RSEM_GENES.out.publishables
+        // )
+        // VV_DGE_DESEQ2(
+        //     dp_tools_plugin,
+        //     ch_outdir,
+        //     ch_meta,
+        //     runsheet_path,
+        //     DGE_DESEQ2.out.dge_table,
+        //     DGE_DESEQ2_RRNA_RM.out.dge_table
+        // )
+        // // Concatenate and filter V&V logs
+        // VV_CONCAT_FILTER(
+        //     ch_outdir,
+        //     VV_RSEM_COUNTS.out.log
+        //         | mix( 
+        //             VV_DGE_DESEQ2.out.log
+        //         )
+        //         | collect
+        // )
+
+        // // Software Version Capturing
+        // nf_version = '"NEXTFLOW":\n    nextflow: '.concat("${nextflow.version}\n")
+        // ch_nextflow_version = Channel.value(nf_version)
+        // ch_software_versions = Channel.empty()
+        // // Mix in versions from each process
+        // ch_software_versions = ch_software_versions
+        //     | mix(GTF_TO_PRED.out.versions)
+        //     | mix(PRED_TO_BED.out.versions)
+        //     | mix(COUNT_ALIGNED.out.versions)
+        //     | mix(COUNT_MULTIQC.out.versions)
+        //     | mix(DGE_DESEQ2.out.versions)
+        //     | mix(VV_RSEM_COUNTS.out.versions)
+        //     | mix(ch_nextflow_version)
+        // // Process the versions:
+        // ch_software_versions 
+        //     | unique  
+        //     | collectFile(
+        //         newLine: true
+        //     )
+        //     | set { ch_final_software_versions }
+        // // Convert software versions combined yaml to markdown table
+        // SOFTWARE_VERSIONS(ch_outdir, ch_final_software_versions)
+
+        // GENERATE_PROTOCOL(ch_outdir,
+        //     ch_meta,
+        //     strandedness,
+        //     SOFTWARE_VERSIONS.out.software_versions_yaml,
+        //     reference_source,
+        //     reference_version,
+        //     genome_references_pre_ercc,
+        //     runsheet_path
+        // )
 }

@@ -98,7 +98,7 @@ Attempted file names:
 - ${r1_legacy}
 - ${r2_legacy}
 
-Reason: Files not found in OSDR repository
+Reason: Files not found in OSDR
 Date: \$(date)
 EOF
                 echo "Created failure log: ${meta.id}${params.assay_suffix}_failed_download_${read_type}.txt"
@@ -158,7 +158,7 @@ Attempted file names:
 - ${se_legacy}
 - ${se_legacy_r1}
 
-Reason: Files not found in OSDR repository
+Reason: Files not found in OSDR
 Date: \$(date)
 EOF
                     echo "Created failure log: ${meta.id}${params.assay_suffix}_failed_download_${read_type}.txt"

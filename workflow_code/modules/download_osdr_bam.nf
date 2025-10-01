@@ -66,7 +66,7 @@ Attempted file names:
 - ${bam_current}
 - ${bam_legacy}
 
-Reason: Files not found in OSDR repository
+Reason: Files not found in OSDR
 Date: \$(date)
 EOF
             echo "Created failure log: ${meta.id}${params.assay_suffix}_failed_download_bam.txt"
