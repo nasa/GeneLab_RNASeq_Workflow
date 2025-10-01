@@ -183,13 +183,17 @@ process VV_DGE_DESEQ2 {
 
   output:
     path("VV_log.csv"), optional: params.skip_vv, emit: log
-
+    path("versions.yml"), emit: versions
+    
   script:
   def mode_params = params.mode == "microbes" ? "--mode microbes" : ""
   """
   if ${ !params.skip_vv } ; then
     vv_dge_deseq2.py --runsheet ${runsheet} --outdir ${publishdir} --assay_suffix ${params.assay_suffix} ${mode_params}
   fi
+
+  echo '"${task.process}":' > versions.yml
+  echo "    dp_tools: \$(pip show dp_tools | grep Version | sed 's/Version: //')" >> versions.yml
   """
 }
 

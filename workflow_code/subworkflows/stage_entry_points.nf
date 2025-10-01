@@ -1,4 +1,4 @@
-include { PARSE_RUNSHEET; mutate_to_single_end; PARSE_TRIMMED_RUNSHEET; PARSE_BAM_RUNSHEET } from './parse_runsheet.nf'
+include { PARSE_RUNSHEET; mutate_to_single_end; PARSE_TRIMMED_RUNSHEET; PARSE_BAM_RUNSHEET; PARSE_GENES_RESULTS_RUNSHEET } from './parse_runsheet.nf'
 include { FETCH_ISA } from '../modules/fetch_isa.nf'
 include { ISA_TO_RUNSHEET } from '../modules/isa_to_runsheet.nf'
 include { GET_ACCESSIONS } from '../modules/get_accessions.nf'
@@ -9,6 +9,7 @@ include { DOWNLOAD_OSDR_GENES_RESULTS } from '../modules/download_osdr_genes_res
 include { validateParameters; paramsSummaryLog } from 'plugin/nf-schema'
 include { COPY_READS } from '../modules/copy_reads.nf'
 include { COPY_BAMS } from '../modules/copy_bams.nf'
+include { COPY_GENES_RESULTS } from '../modules/copy_genes_results.nf'
 
 
 /**
@@ -381,9 +382,9 @@ workflow STAGE_ENTRY_GENES_RESULTS {
                             | collectFile(name: "samples.txt", sort: true, newLine: true)
 
         } else {
-            PARSE_BAM_RUNSHEET( runsheet_path )
-            samples = PARSE_BAM_RUNSHEET.out.samples
-            runsheet_path = PARSE_BAM_RUNSHEET.out.runsheet
+            PARSE_GENES_RESULTS_RUNSHEET( runsheet_path )
+            samples = PARSE_GENES_RESULTS_RUNSHEET.out.samples
+            runsheet_path = PARSE_GENES_RESULTS_RUNSHEET.out.runsheet
             
             // Rename genes.results files to standard names
             COPY_GENES_RESULTS(ch_outdir, samples)

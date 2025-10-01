@@ -6,17 +6,15 @@ process COPY_GENES_RESULTS {
 
     input:
         val(publishdir)
-        tuple val(meta), path("input.genes.results")
+        tuple val(meta), path("?.genes.results")
 
     output:
-        tuple val(meta), path("${meta.id}*.bam"), emit: genes_results
+        tuple val(meta), path("${meta.id}${params.assay_suffix}.genes.results"), emit: genes_results
 
     script:
         def genes_results_name = "${meta.id}${params.assay_suffix}.genes.results"
         """
-        # Copy and rename genes.results file to standard format
-        cp "input.genes.results" "${genes_results_name}"
-        echo "Copied genes.results: input.genes.results -> ${genes_results_name}"
+        cp -P 1.genes.results ${genes_results_name}
         """
 }
 

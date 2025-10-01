@@ -20,10 +20,7 @@ process COPY_BAMS {
             "${meta.id}${params.assay_suffix}.bam" :
             "${meta.id}${params.assay_suffix}_Aligned.toTranscriptome.out.bam"
         """
-        # Copy and rename BAM file to standard format
-        input_bam=\$(ls *.bam | head -1)
-        cp "\$input_bam" "${bam_name}"
-        echo "Copied BAM: \$input_bam -> ${bam_name}"
+        cp -P 1.bam ${bam_name}
         """
 }
 
