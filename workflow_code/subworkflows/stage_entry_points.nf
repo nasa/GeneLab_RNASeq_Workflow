@@ -7,6 +7,7 @@ include { DOWNLOAD_OSDR_READS } from '../modules/download_osdr_reads.nf'
 include { DOWNLOAD_OSDR_BAM } from '../modules/download_osdr_bam.nf'
 include { validateParameters; paramsSummaryLog } from 'plugin/nf-schema'
 include { COPY_READS } from '../modules/copy_reads.nf'
+include { COPY_BAMS } from '../modules/copy_bams.nf'
 
 
 /**
@@ -278,10 +279,12 @@ workflow STAGE_ENTRY_BAM_FILES {
             samples = PARSE_BAM_RUNSHEET.out.samples
             runsheet_path = PARSE_BAM_RUNSHEET.out.runsheet
             
-            bam_files = samples
+            // Rename BAM files to standard names
+            COPY_BAMS(ch_outdir, samples)
+            bam_files = COPY_BAMS.out.bam_files
+            samples_txt = bam_files | map { it[0].id }
+                            | collectFile(name: "samples.txt", sort: true, newLine: true)
         }
-        samples_txt = bam_files | map { it[0].id }
-                        | collectFile(name: "samples.txt", sort: true, newLine: true)
 
     emit:
         ch_outdir       = ch_outdir
