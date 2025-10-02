@@ -1,4 +1,4 @@
-include { PARSE_RUNSHEET; mutate_to_single_end; PARSE_TRIMMED_RUNSHEET; PARSE_BAM_RUNSHEET; PARSE_GENES_RESULTS_RUNSHEET } from './parse_runsheet.nf'
+include { PARSE_RUNSHEET; mutate_to_single_end; PARSE_TRIMMED_RUNSHEET; PARSE_BAM_RUNSHEET; PARSE_GENES_RESULTS_RUNSHEET; PARSE_COUNTS_TABLE_RUNSHEET } from './parse_runsheet.nf'
 include { FETCH_ISA } from '../modules/fetch_isa.nf'
 include { ISA_TO_RUNSHEET } from '../modules/isa_to_runsheet.nf'
 include { GET_ACCESSIONS } from '../modules/get_accessions.nf'
@@ -6,11 +6,12 @@ include { STAGE_RAW_READS } from './stage_raw_reads.nf'
 include { DOWNLOAD_OSDR_READS } from '../modules/download_osdr_reads.nf'
 include { DOWNLOAD_OSDR_BAM } from '../modules/download_osdr_bam.nf'
 include { DOWNLOAD_OSDR_GENES_RESULTS } from '../modules/download_osdr_genes_results.nf'
+include { DOWNLOAD_OSDR_COUNTS_TABLE } from '../modules/download_osdr_counts_table.nf'
 include { validateParameters; paramsSummaryLog } from 'plugin/nf-schema'
 include { COPY_READS } from '../modules/copy_reads.nf'
 include { COPY_BAMS } from '../modules/copy_bams.nf'
 include { COPY_GENES_RESULTS } from '../modules/copy_genes_results.nf'
-
+include { COPY_COUNTS_TABLE } from '../modules/copy_counts_table.nf'
 
 /**
  * For use within STAGE_ENTRY_TRIMMED_READS
@@ -348,7 +349,7 @@ workflow STAGE_ENTRY_GENES_RESULTS {
         // Validate input parameters and runsheet
         validateParameters()
         
-        // If entry point is bam_files and no original runsheet was provided, download BAM files from OSDR 
+        // If entry point is genes_results and no original runsheet was provided, download genes.results files from OSDR 
         if ( params.entry_point == "genes_results" && params.runsheet_path == null ) {
             PARSE_RUNSHEET( runsheet_path )
             samples = PARSE_RUNSHEET.out.samples
@@ -398,6 +399,103 @@ workflow STAGE_ENTRY_GENES_RESULTS {
         samples         = samples
         genes_results   = genes_results
         samples_txt     = samples_txt
+        runsheet_path   = runsheet_path
+        isa_archive     = isa_archive
+        osd_accession   = osd_accession
+        glds_accession  = glds_accession
+}
+
+workflow STAGE_ENTRY_COUNTS_TABLE {
+    take:
+        ch_outdir
+        dp_tools_plugin
+        accession
+        isa_archive_path
+        runsheet_path
+        api_url
+
+    main:
+        // Parse accession, structure output directory as:
+        // params.outdir/
+        //   ├── [GLDS-#|results]/ # Main pipeline results
+        //   └── nextflow_info/    # Pipeline execution metadata
+        Channel.empty() | set { osd_accession }
+        Channel.empty() | set { glds_accession }
+        
+        if ( accession ) {
+            GET_ACCESSIONS( accession, api_url )
+            osd_accession = GET_ACCESSIONS.out.accessions_txt.map { it.readLines()[0].trim() }
+            glds_accession = GET_ACCESSIONS.out.accessions_txt.map { it.readLines()[1].trim() }
+            ch_outdir = ch_outdir.combine(glds_accession).map { outdir, glds -> "$outdir/$glds" }
+        }
+        else {
+            ch_outdir = ch_outdir.map { it + "/results" }
+        }
+        ch_outdir = ch_outdir.first()
+
+        Channel.empty() | set { isa_archive }
+        if ( runsheet_path == null ) {
+            if ( isa_archive_path == null ) {
+                FETCH_ISA( ch_outdir, osd_accession, glds_accession )
+                isa_archive = FETCH_ISA.out.isa_archive
+            } else {
+                isa_archive = isa_archive_path
+            }
+            ISA_TO_RUNSHEET( ch_outdir, osd_accession, glds_accession, isa_archive, dp_tools_plugin )
+            runsheet_path = ISA_TO_RUNSHEET.out.runsheet
+
+        } else if ( isa_archive_path != null ) {
+            isa_archive = isa_archive_path
+        }
+
+        // Validate input parameters and runsheet
+        validateParameters()
+        
+        // If entry point is bam_files and no original runsheet was provided, download BAM files from OSDR 
+        if ( params.entry_point == "counts_table" && params.runsheet_path == null ) {
+            PARSE_RUNSHEET( runsheet_path )
+            // Extract just metadata
+            samples = PARSE_RUNSHEET.out.samples.map { meta, reads -> meta }
+            
+            DOWNLOAD_OSDR_COUNTS_TABLE( 
+                ch_outdir, 
+                osd_accession, 
+                glds_accession
+            )
+            
+            // Check for download failures and exit gracefully if any occurred
+            DOWNLOAD_OSDR_COUNTS_TABLE.out.failure_log
+                | collect
+                | subscribe { failure_files ->
+                    if (failure_files.size() > 0) {
+                        log.info "OSDR genes.results file download failed for ${failure_files.size()} samples"
+                        failure_files.each { file -> 
+                            def sample_id = file.name.split("${params.assay_suffix}_failed_download_")[0]
+                            log.info "OSDR genes.results file download failed for ${sample_id}"
+                        }
+                        log.info "OSDR genes.results file download failed for ${sample_id}"
+                        System.exit(0)  // Graceful exit without error
+                    } else {
+                        log.info "All genes.results files downloaded successfully"
+                    }
+                }
+            
+            counts_table = DOWNLOAD_OSDR_COUNTS_TABLE.out.counts_table
+
+        } else {
+            PARSE_COUNTS_TABLE_RUNSHEET( runsheet_path )
+            samples = PARSE_COUNTS_TABLE_RUNSHEET.out.samples
+            runsheet_path = PARSE_COUNTS_TABLE_RUNSHEET.out.runsheet
+            
+            // Copy/rename counts table to standard location
+            COPY_COUNTS_TABLE(ch_outdir, PARSE_COUNTS_TABLE_RUNSHEET.out.counts_table)
+            counts_table = COPY_COUNTS_TABLE.out.counts_table
+        }
+
+    emit:
+        ch_outdir       = ch_outdir
+        samples         = samples
+        counts_table    = counts_table
         runsheet_path   = runsheet_path
         isa_archive     = isa_archive
         osd_accession   = osd_accession
