@@ -556,12 +556,13 @@ workflow PARSE_COUNTS_TABLE_RUNSHEET {
         // Extract sample metadata 
         ch_samples = ch_rows.map { tuple_item -> tuple_item[0] }
         
-        // Extract counts table path (same file for all samples, so take unique)
+        // Filter out empty entries and get unique counts table path
         counts_table = ch_rows
-            | map { meta, counts_path -> file(counts_path) }
+            | map { meta, counts_path -> counts_path } 
+            | filter { it != null && it != "" } 
             | unique()
-            | first 
-        // Validate consistency across samples
+            | first
+            | map { path -> file(path) }  
         ch_samples
             .map { meta -> [meta.has_ercc, meta.paired_end, meta.organism_sci] }
             .unique()

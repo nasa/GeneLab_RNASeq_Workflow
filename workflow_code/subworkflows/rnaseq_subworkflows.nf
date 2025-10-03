@@ -1084,13 +1084,10 @@ workflow COUNTS_TABLE_WORKFLOW {
         def converted_strandedness = params_strandedness == "forward" ? "sense" : params_strandedness == "reverse" ? "antisense" : params_strandedness == "none" ? "unstranded" : params_strandedness
         strandedness = Channel.value(converted_strandedness)
 
-        // Pass in genes results entry point files
-        //input is counts table
-
-        EXTRACT_RRNA ( organism_sci, genome_references | map { it[1] })
-
+        // Use the GTF to find rRNA genes, remove them from the counts table
+        EXTRACT_RRNA( organism_sci, genome_references | map { it[1] })
         
-        REMOVE_RRNA_COUNTS_TABLE( ch_outdir.map { it + "/03-RSEM_Counts" }, EXTRACT_RRNA.out.rrna_ids, counts_table )
+        REMOVE_RRNA_COUNTS_TABLE( ch_outdir.map { it + "/03-RSEM_Counts" }, counts_table, EXTRACT_RRNA.out.rrna_ids )
 
         dge_script = "${projectDir}/bin/dge_deseq2.Rmd"
         
