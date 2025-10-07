@@ -1,4 +1,4 @@
-include { RAW_READS_WORKFLOW; TRIMMED_READS_WORKFLOW; BAM_FILES_WORKFLOW; GENES_RESULTS_WORKFLOW; COUNTS_TABLE_WORKFLOW } from '../subworkflows/rnaseq_subworkflows.nf'
+include { RAW_READS_WORKFLOW; TRIMMED_READS_WORKFLOW; BAM_FILES_WORKFLOW; GENES_RESULTS_WORKFLOW; COUNTS_TABLE_WORKFLOW; DGE_TABLE_WORKFLOW } from '../subworkflows/rnaseq_subworkflows.nf'
 
 include { validateParameters; paramsSummaryLog; samplesheetToList } from 'plugin/nf-schema'
 
@@ -118,14 +118,24 @@ workflow RNASEQ {
                     reference_gtf
                 )
                 break
-                
+
             case "dge_table":
-                println "DGE_TABLE entry point not yet implemented"
-                exit 1
-                break
-                
-            default:
-                println "ERROR: Invalid entry point '${params.entry_point}'"
-                exit 1
+                println "Executing DGE_TABLE_WORKFLOW"
+                DGE_TABLE_WORKFLOW(
+                    ch_outdir,
+                    dp_tools_plugin,
+                    annotations_csv_url_string,
+                    accession,
+                    isa_archive_path,
+                    runsheet_path,
+                    api_url,
+                    reference_store_path,
+                    derived_store_path,
+                    reference_source,
+                    reference_version,
+                    reference_fasta,
+                    reference_gtf
+                )
+                break      
         }
 }

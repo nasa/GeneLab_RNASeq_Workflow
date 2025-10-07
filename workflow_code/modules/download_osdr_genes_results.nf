@@ -79,6 +79,6 @@ EOF
     fi
     
     echo "Final files for sample ${meta.id}:"
-    ls -la *.genes.results
+    ls -la *.genes.results 2>/dev/null || echo "No genes.results files found"
     """
 }

@@ -30,6 +30,7 @@ include { QUANTIFY_FEATURECOUNTS_GENES } from '../modules/quantify_featurecounts
 include { EXTRACT_RRNA } from '../modules/extract_rrna.nf'
 include { REMOVE_RRNA_FEATURECOUNTS } from '../modules/remove_rrna_featurecounts.nf'
 include { REMOVE_RRNA_COUNTS_TABLE } from '../modules/remove_rrna_counts_table.nf'
+include { ANNOTATE_DGE_TABLE } from '../modules/annotate_dge_table.nf'
 include { DGE_DESEQ2 } from '../modules/dge_deseq2.nf'
 include { DGE_DESEQ2 as DGE_DESEQ2_RRNA_RM } from '../modules/dge_deseq2.nf'   
 include { 
@@ -53,7 +54,7 @@ include { VV_RAW_READS;
     VV_CONCAT_FILTER } from '../modules/vv.nf'
 include { SOFTWARE_VERSIONS } from '../modules/software_versions.nf'
 include { GENERATE_PROTOCOL } from '../modules/generate_protocol.nf'
-include { STAGE_ENTRY_TRIMMED_READS; STAGE_ENTRY_BAM_FILES; STAGE_ENTRY_COUNTS_TABLE } from './stage_entry_points.nf'
+include { STAGE_ENTRY_TRIMMED_READS; STAGE_ENTRY_BAM_FILES; STAGE_ENTRY_COUNTS_TABLE; STAGE_ENTRY_DGE_TABLE } from './stage_entry_points.nf'
 
 workflow RAW_READS_MICROBES_WORKFLOW {
     take:
@@ -864,7 +865,7 @@ workflow COUNTS_TABLE_MICROBES_WORKFLOW {
         derived_store_path
 
     main:
-        // Stage analysis setup (directory structure, inputs, and RSEM genes.results files)
+        // Stage analysis setup (directory structure, inputs, and counts table)
         STAGE_ENTRY_COUNTS_TABLE(
             ch_outdir,
             dp_tools_plugin,
@@ -998,4 +999,68 @@ workflow COUNTS_TABLE_MICROBES_WORKFLOW {
 
     emit:
         SOFTWARE_VERSIONS.out.software_versions
+}
+
+workflow DGE_TABLE_MICROBES_WORKFLOW {
+        take:
+        ch_outdir
+        dp_tools_plugin
+        annotations_csv_url_string
+        accession
+        isa_archive_path
+        runsheet_path
+        api_url
+        reference_source
+        reference_version
+        reference_fasta
+        reference_gtf
+        reference_store_path
+        derived_store_path
+
+    main:
+        // Stage analysis setup (directory structure, inputs, and dge table)
+        STAGE_ENTRY_DGE_TABLE(
+            ch_outdir,
+            dp_tools_plugin,
+            accession,
+            isa_archive_path,
+            runsheet_path,
+            api_url
+        )
+        ch_outdir = STAGE_ENTRY_DGE_TABLE.out.ch_outdir
+        samples = STAGE_ENTRY_DGE_TABLE.out.samples
+        dge_table = STAGE_ENTRY_DGE_TABLE.out.dge_table
+        runsheet_path = STAGE_ENTRY_DGE_TABLE.out.runsheet_path
+        isa_archive = STAGE_ENTRY_DGE_TABLE.out.isa_archive
+        osd_accession = STAGE_ENTRY_DGE_TABLE.out.osd_accession
+        glds_accession = STAGE_ENTRY_DGE_TABLE.out.glds_accession
+
+        // Get dataset-wide metadata (samples is just meta objects for dge_table entry point)
+        samples | first | set { ch_meta }
+        
+        ch_meta | map { it.organism_sci } | set { organism_sci }
+
+        PARSE_ANNOTATIONS_TABLE( annotations_csv_url_string, organism_sci )
+
+        ANNOTATE_DGE_TABLE( ch_outdir, PARSE_ANNOTATIONS_TABLE.out.gene_annotations_url, ch_meta, dge_table )
+
+
+        // Software Version Capturing
+        nf_version = '"NEXTFLOW":\n    nextflow: '.concat("${nextflow.version}\n")
+        ch_nextflow_version = Channel.value(nf_version)
+        ch_software_versions = Channel.empty()
+        // Mix in versions from each process
+        ch_software_versions = ch_software_versions
+            | mix(ANNOTATE_DGE_TABLE.out.versions)
+            | mix(ch_nextflow_version)
+        // Process the versions:
+        ch_software_versions 
+            | unique  
+            | collectFile(
+                newLine: true
+            )
+            | set { ch_final_software_versions }
+        // Convert software versions combined yaml to markdown table
+        SOFTWARE_VERSIONS(ch_outdir, ch_final_software_versions)
+
 }

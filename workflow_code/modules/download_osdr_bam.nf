@@ -89,6 +89,6 @@ EOF
     fi
     
     echo "Final files for sample ${meta.id}:"
-    ls -la *.bam
+    ls -la *.bam 2>/dev/null || echo "No BAM files found"
     """
 }

@@ -88,7 +88,7 @@ EOF
     fi
     
     echo "Final files:"
-    ls -la *.csv
+    ls -la *.csv 2>/dev/null || echo "No counts table files found"
     """
 }
 

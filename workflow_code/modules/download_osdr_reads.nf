@@ -192,6 +192,6 @@ EOF
     fi
     
     echo "Final files for sample ${meta.id}:"
-    ls -la *.fastq.gz
+    ls -la *.fastq.gz 2>/dev/null || echo "No read files found"
     """
 }
