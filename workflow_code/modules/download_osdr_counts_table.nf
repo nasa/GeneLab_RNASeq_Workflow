@@ -18,8 +18,8 @@ process DOWNLOAD_OSDR_COUNTS_TABLE {
     val(glds_accession)
 
     output:
-    path("*Unnormalized_Counts*.csv"), emit: counts_table, optional: true
-    path("*failed_download*.txt"), emit: failure_log, optional: true
+    path("*Unnormalized_Counts${params.assay_suffix}.csv"), emit: counts_table, optional: true
+    path("counts_table_failure${params.assay_suffix}.txt"), emit: failure_log, optional: true
 
     script:
     // Detect mode and set appropriate counts table filename
@@ -43,7 +43,7 @@ process DOWNLOAD_OSDR_COUNTS_TABLE {
     find sample_downloads_current -name "${counts_current}" -exec mv {} . \\; 2>/dev/null || true
     
     if [ ! -f "${counts_current}" ]; then
-        echo "Current counts table not found, trying legacy naming..."
+        echo "Current counts table not found, trying without assay suffix..."
         python3 ${projectDir}/bin/osdr_downloader.py \\
             --osd ${osd_accession} \\
             --measurement "transcription profiling" \\
@@ -59,7 +59,7 @@ process DOWNLOAD_OSDR_COUNTS_TABLE {
             echo "This dataset may not have counts table available in OSDR."
             
             # Create failure log file
-            cat > "failed_download_counts_table.txt" << EOF
+            cat > "counts_table_failure${params.assay_suffix}.txt" << EOF
 Failed to download counts table
 OSD: ${osd_accession}
 GLDS: ${glds_accession}
@@ -73,18 +73,23 @@ Attempted file names:
 Reason: Files not found in OSDR
 Date: \$(date)
 EOF
-            echo "Created failure log: failed_download_counts_table.txt"
+            echo "Created failure log: counts_table_failure${params.assay_suffix}.txt"
         fi
     fi
     
-    # Rename to standard format (remove GLDS prefix)
-    counts_file=\$(ls *Unnormalized_Counts*.csv 2>/dev/null | head -1)
-    
-    if [ -n "\$counts_file" ]; then
-        standard_name=\$(echo "\$counts_file" | sed "s/${glds_accession}_rna_seq_//")
-        mv "\$counts_file" "\$standard_name"
-        echo "Renamed counts table to standard format:"
-        echo "  \$counts_file -> \$standard_name"
+    # Rename downloaded file to expected name
+    if [ -f "${counts_current}" ]; then
+        if [ "${params.mode}" == "microbes" ]; then
+            mv "${counts_current}" "FeatureCounts_Unnormalized_Counts${params.assay_suffix}.csv"
+        else
+            mv "${counts_current}" "RSEM_Unnormalized_Counts${params.assay_suffix}.csv"
+        fi
+    elif [ -f "${counts_legacy}" ]; then
+        if [ "${params.mode}" == "microbes" ]; then
+            mv "${counts_legacy}" "FeatureCounts_Unnormalized_Counts${params.assay_suffix}.csv"
+        else
+            mv "${counts_legacy}" "RSEM_Unnormalized_Counts${params.assay_suffix}.csv"
+        fi
     fi
     
     echo "Final files:"

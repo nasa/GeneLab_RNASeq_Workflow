@@ -16,7 +16,7 @@ process DOWNLOAD_OSDR_BAM {
 
     output:
     tuple val(meta), path("*.bam"), emit: bam_files, optional: true
-    path("*failed_download*.txt"), emit: failure_log, optional: true
+    path("${meta.id}_bam_failure${params.assay_suffix}.txt"), emit: failure_log, optional: true
 
     script:
     // Detect mode and set appropriate BAM filename pattern
@@ -28,7 +28,7 @@ process DOWNLOAD_OSDR_BAM {
         "${glds_accession}_rna_seq_${meta.id}_Aligned.toTranscriptome.out.bam"
     
     """
-    # Download BAM file for quantification
+    # Download BAM file 
     echo "Trying current BAM naming with assay suffix..."
     python3 ${projectDir}/bin/osdr_downloader.py \\
         --osd ${osd_accession} \\
@@ -56,7 +56,7 @@ process DOWNLOAD_OSDR_BAM {
             echo "This dataset may not have BAM files available in OSDR."
             
             # Create failure log file
-            cat > "${meta.id}${params.assay_suffix}_failed_download_bam.txt" << EOF
+            cat > "${meta.id}_bam_failure${params.assay_suffix}.txt" << EOF
 Failed to download BAM file for sample: ${meta.id}
 OSD: ${osd_accession}
 GLDS: ${glds_accession}
@@ -69,22 +69,25 @@ Attempted file names:
 Reason: Files not found in OSDR
 Date: \$(date)
 EOF
-            echo "Created failure log: ${meta.id}${params.assay_suffix}_failed_download_bam.txt"
+            echo "Created failure log: ${meta.id}_bam_failure${params.assay_suffix}.txt"
         fi
     fi
     
-    # Rename to standardized name for downstream processing
-    bam_file=\$(ls *.bam 2>/dev/null | head -1)
-    
-    if [ -n "\$bam_file" ]; then
-        if [[ "${params.mode}" == "microbes" ]]; then
-            mv "\$bam_file" "${meta.id}${params.assay_suffix}.bam"
-            echo "Renamed BAM file to standard format:"
-            echo "  \$bam_file -> ${meta.id}${params.assay_suffix}.bam"
-        else
-            mv "\$bam_file" "${meta.id}_Aligned.toTranscriptome.out.bam"
-            echo "Renamed BAM file to standard format:"
-            echo "  \$bam_file -> ${meta.id}_Aligned.toTranscriptome.out.bam"
+    # Rename downloaded file to expected name
+    if [ -f "${bam_current}" ] || [ -f "${bam_legacy}" ]; then
+        # Rename to expected name
+        bam_file=\$(ls *.bam 2>/dev/null | head -1)
+        
+        if [ -n "\$bam_file" ]; then
+            if [[ "${params.mode}" == "microbes" ]]; then
+                mv "\$bam_file" "${meta.id}${params.assay_suffix}.bam"
+                echo "Renamed BAM file to standard format:"
+                echo "  \$bam_file -> ${meta.id}${params.assay_suffix}.bam"
+            else
+                mv "\$bam_file" "${meta.id}_Aligned.toTranscriptome.out.bam"
+                echo "Renamed BAM file to standard format:"
+                echo "  \$bam_file -> ${meta.id}_Aligned.toTranscriptome.out.bam"
+            fi
         fi
     fi
     

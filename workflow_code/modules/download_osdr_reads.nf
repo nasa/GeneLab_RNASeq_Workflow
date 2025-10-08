@@ -22,7 +22,7 @@ process DOWNLOAD_OSDR_READS {
 
     output:
     tuple val(meta), path("*.fastq.gz"), emit: trimmed_reads, optional: true
-    path("*failed_download*.txt"), emit: failure_log, optional: true
+    path("${meta.id}_${read_type}_read_failure${params.assay_suffix}.txt"), emit: failure_log, optional: true
 
     script:
     // Current naming with assay suffix
@@ -38,8 +38,8 @@ process DOWNLOAD_OSDR_READS {
     """
     # Construct exact filenames based on GeneLab naming convention
     if [ "${meta.paired_end}" = "true" ]; then
-        # Paired-end: try current naming first, then legacy
-        echo "Trying current paired-end naming with assay suffix..."
+        # Paired-end: try with assay suffix first, then try without
+        echo "Trying paired-end naming with assay suffix..."
         # Download R1 and R2 separately to avoid API issues with multiple search terms
         python3 ${projectDir}/bin/osdr_downloader.py \\
             --osd ${osd_accession} \\
@@ -84,7 +84,7 @@ process DOWNLOAD_OSDR_READS {
                 echo "This dataset may not have trimmed reads available in OSDR."
                 
                 # Create failure log file
-                cat > "${meta.id}${params.assay_suffix}_failed_download_${read_type}.txt" << EOF
+                cat > "${meta.id}_${read_type}_read_failure${params.assay_suffix}.txt" << EOF
 Failed to download ${read_type} reads for sample: ${meta.id}
 OSD: ${osd_accession}
 GLDS: ${glds_accession}
@@ -101,13 +101,13 @@ Attempted file names:
 Reason: Files not found in OSDR
 Date: \$(date)
 EOF
-                echo "Created failure log: ${meta.id}${params.assay_suffix}_failed_download_${read_type}.txt"
+                echo "Created failure log: ${meta.id}_${read_type}_read_failure${params.assay_suffix}.txt"
             fi
         fi
         
     else
-        # Single-end: try current naming first, then legacy variants
-        echo "Trying current single-end naming with assay suffix..."
+        # Single-end: try with assay suffix first, then try without
+        echo "Trying single-end naming with assay suffix..."
         python3 ${projectDir}/bin/osdr_downloader.py \\
             --osd ${osd_accession} \\
             --measurement "transcription profiling" \\
@@ -118,7 +118,7 @@ EOF
         find sample_downloads_current -name "${se_current}" -exec mv {} . \\; 2>/dev/null || true
         
         if [ ! -f "${se_current}" ]; then
-            echo "Current SE file not found, trying legacy naming..."
+            echo "Current SE file not found, trying without assay suffix..."
             python3 ${projectDir}/bin/osdr_downloader.py \\
                 --osd ${osd_accession} \\
                 --measurement "transcription profiling" \\
@@ -129,7 +129,7 @@ EOF
             find sample_downloads_legacy -name "${se_legacy}" -exec mv {} . \\; 2>/dev/null || true
             
             if [ ! -f "${se_legacy}" ]; then
-                echo "Legacy SE file not found, trying legacy R1 naming..."
+                echo "Legacy SE file not found, trying R1 naming..."
                 python3 ${projectDir}/bin/osdr_downloader.py \\
                     --osd ${osd_accession} \\
                     --measurement "transcription profiling" \\
@@ -145,7 +145,7 @@ EOF
                     echo "This dataset may not have trimmed reads available in OSDR."
                     
                     # Create failure log file
-                    cat > "${meta.id}${params.assay_suffix}_failed_download_${read_type}.txt" << EOF
+                    cat > "${meta.id}_${read_type}_read_failure${params.assay_suffix}.txt" << EOF
 Failed to download ${read_type} reads for sample: ${meta.id}
 OSD: ${osd_accession}
 GLDS: ${glds_accession}
@@ -161,33 +161,31 @@ Attempted file names:
 Reason: Files not found in OSDR
 Date: \$(date)
 EOF
-                    echo "Created failure log: ${meta.id}${params.assay_suffix}_failed_download_${read_type}.txt"
+                    echo "Created failure log: ${meta.id}_${read_type}_read_failure${params.assay_suffix}.txt"
                 fi
             fi
         fi
     fi
     
-    # Rename files to standardized names for downstream processing
+    # Rename downloaded files to expected names
     if [ "${meta.paired_end}" = "true" ]; then
-        # Find the actual downloaded files and rename to standard format
         r1_file=\$(ls *R1*${read_type}.fastq.gz 2>/dev/null | head -1)
         r2_file=\$(ls *R2*${read_type}.fastq.gz 2>/dev/null | head -1)
         
         if [ -n "\$r1_file" ] && [ -n "\$r2_file" ]; then
-            mv "\$r1_file" "${meta.id}_R1_${read_type}.fastq.gz"
-            mv "\$r2_file" "${meta.id}_R2_${read_type}.fastq.gz"
-            echo "Renamed paired-end files to standard format:"
-            echo "  \$r1_file -> ${meta.id}_R1_${read_type}.fastq.gz"
-            echo "  \$r2_file -> ${meta.id}_R2_${read_type}.fastq.gz"
+            mv "\$r1_file" "${meta.id}${params.assay_suffix}_R1_${read_type}.fastq.gz"
+            mv "\$r2_file" "${meta.id}${params.assay_suffix}_R2_${read_type}.fastq.gz"
+            echo "Renamed paired-end files to expected name:"
+            echo "  \$r1_file -> ${meta.id}${params.assay_suffix}_R1_${read_type}.fastq.gz"
+            echo "  \$r2_file -> ${meta.id}${params.assay_suffix}_R2_${read_type}.fastq.gz"
         fi
     else
-        # Single-end: rename to standard format
         se_file=\$(ls *${read_type}.fastq.gz 2>/dev/null | head -1)
         
         if [ -n "\$se_file" ]; then
-            mv "\$se_file" "${meta.id}_${read_type}.fastq.gz"
-            echo "Renamed single-end file to standard format:"
-            echo "  \$se_file -> ${meta.id}_${read_type}.fastq.gz"
+            mv "\$se_file" "${meta.id}${params.assay_suffix}_${read_type}.fastq.gz"
+            echo "Renamed single-end file to expected name:"
+            echo "  \$se_file -> ${meta.id}${params.assay_suffix}_${read_type}.fastq.gz"
         fi
     fi
     

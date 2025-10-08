@@ -16,7 +16,7 @@ process DOWNLOAD_OSDR_GENES_RESULTS {
 
     output:
     tuple val(meta), path("*.genes.results"), emit: genes_results, optional: true
-    path("*failed_download*.txt"), emit: failure_log, optional: true
+    path("${meta.id}_genes_results_failure${params.assay_suffix}.txt"), emit: failure_log, optional: true
 
     script:
     // Current naming with assay suffix
@@ -36,7 +36,7 @@ process DOWNLOAD_OSDR_GENES_RESULTS {
     find sample_downloads_current -name "${genes_results_current}" -exec mv {} . \\; 2>/dev/null || true
     
     if [ ! -f "${genes_results_current}" ]; then
-        echo "Current genes.results file not found, trying legacy naming..."
+        echo "Current genes.results file not found, trying without assay suffix..."
         python3 ${projectDir}/bin/osdr_downloader.py \\
             --osd ${osd_accession} \\
             --measurement "transcription profiling" \\
@@ -52,7 +52,7 @@ process DOWNLOAD_OSDR_GENES_RESULTS {
             echo "This dataset may not have genes.results files available in OSDR."
             
             # Create failure log file
-            cat > "${meta.id}${params.assay_suffix}_failed_download_genes_results.txt" << EOF
+            cat > "${meta.id}_genes_results_failure${params.assay_suffix}.txt" << EOF
 Failed to download genes.results file for sample: ${meta.id}
 OSD: ${osd_accession}
 GLDS: ${glds_accession}
@@ -65,17 +65,20 @@ Attempted file names:
 Reason: Files not found in OSDR
 Date: \$(date)
 EOF
-            echo "Created failure log: ${meta.id}${params.assay_suffix}_failed_download_genes_results.txt"
+            echo "Created failure log: ${meta.id}_genes_results_failure${params.assay_suffix}.txt"
         fi
     fi
     
-    # Rename to standardized name for downstream processing
-    genes_file=\$(ls *.genes.results 2>/dev/null | head -1)
-    
-    if [ -n "\$genes_file" ]; then
-        mv "\$genes_file" "${meta.id}${params.assay_suffix}.genes.results"
-        echo "Renamed genes.results file to standard format:"
-        echo "  \$genes_file -> ${meta.id}${params.assay_suffix}.genes.results"
+      # Rename downloaded file to expected name
+      if [ -f "${genes_results_current}" ] || [ -f "${genes_results_legacy}" ]; then
+        # Rename to expected name
+        genes_file=\$(ls *.genes.results 2>/dev/null | head -1)
+        
+        if [ -n "\$genes_file" ]; then
+            mv "\$genes_file" "${meta.id}${params.assay_suffix}.genes.results"
+            echo "Renamed genes.results file to standard format:"
+            echo "  \$genes_file -> ${meta.id}${params.assay_suffix}.genes.results"
+        fi
     fi
     
     echo "Final files for sample ${meta.id}:"

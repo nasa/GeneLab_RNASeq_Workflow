@@ -12,7 +12,7 @@ process DOWNLOAD_OSDR_DGE_TABLE {
 
     output:
     path("*differential_expression*.csv"), emit: dge_table, optional: true
-    path("*failed_download*.txt"), emit: failure_log, optional: true
+    path("dge_table_failure${params.assay_suffix}.txt"), emit: failure_log, optional: true
 
     script:
     // Set current (with suffix) and legacy (no suffix) DGE table filenames
@@ -31,8 +31,13 @@ process DOWNLOAD_OSDR_DGE_TABLE {
     
     find sample_downloads_current -name "${dge_current}" -exec mv {} . \\; 2>/dev/null || true
     
-    if [ ! -f "${dge_current}" ]; then
-        echo "Current DGE table not found, trying legacy naming..."
+    # Rename to expected name if found
+    if [ -f "${dge_current}" ]; then
+        mv "${dge_current}" "differential_expression${params.assay_suffix}.csv"
+    fi
+    
+    if [ ! -f "differential_expression${params.assay_suffix}.csv" ]; then
+        echo "Current DGE table not found, trying without assay suffix..."
         python3 ${projectDir}/bin/osdr_downloader.py \\
             --osd ${osd_accession} \\
             --measurement "transcription profiling" \\
@@ -42,13 +47,18 @@ process DOWNLOAD_OSDR_DGE_TABLE {
         
         find sample_downloads_legacy -name "${dge_legacy}" -exec mv {} . \\; 2>/dev/null || true
         
-        if [ ! -f "${dge_legacy}" ]; then
+        # Rename to expected name if found
+        if [ -f "${dge_legacy}" ]; then
+            mv "${dge_legacy}" "differential_expression${params.assay_suffix}.csv"
+        fi
+        
+        if [ ! -f "differential_expression${params.assay_suffix}.csv" ]; then
             echo "WARNING: Could not find DGE table"
             echo "Tried: ${dge_current}, ${dge_legacy}"
             echo "This dataset may not have DGE table available in OSDR."
             
             # Create failure log file
-            cat > "failed_download_dge_table.txt" << EOF
+            cat > "dge_table_failure${params.assay_suffix}.txt" << EOF
 Failed to download DGE table
 OSD: ${osd_accession}
 GLDS: ${glds_accession}
@@ -61,7 +71,7 @@ Attempted file names:
 Reason: Files not found in OSDR
 Date: \$(date)
 EOF
-            echo "Created failure log: failed_download_dge_table.txt"
+            echo "Created failure log: dge_table_failure${params.assay_suffix}.txt"
         fi
     fi
     
