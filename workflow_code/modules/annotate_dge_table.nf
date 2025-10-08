@@ -10,7 +10,6 @@ process ANNOTATE_DGE_TABLE {
         val(gene_annotations_url)
         val(meta)
         path("?.csv")
-        path("annotate_dge_table.Rmd")
 
     output:
         path("differential_expression${params.assay_suffix}.csv"),        emit: dge_table
@@ -20,21 +19,15 @@ process ANNOTATE_DGE_TABLE {
         def output_filename_suffix = params.assay_suffix ?: ""
 
         """
-        Rscript -e "rmarkdown::render('annotate_dge_table.Rmd', 
-            output_file = 'Annotate_DGE_Table.html',
-            output_dir = '\${PWD}',
-            params = list(
-                work_dir = '\${PWD}',
-                output_directory = '\${PWD}',
-                output_filename_suffix = '${output_filename_suffix}',
-                annotation_file_path = '${gene_annotations_url}',
-                gene_id_type = '${meta.gene_id_type}',
-                input_table_path = '1.csv'
-            ))"
+        annotate_dge_table.R \
+            '1.csv' \
+            '${gene_annotations_url}' \
+            '${meta.gene_id_type}' \
+            'differential_expression${output_filename_suffix}.csv'
 
         Rscript -e "versions <- c(); 
                     versions['R'] <- gsub(' .*', '', gsub('R version ', '', R.version\\\$version.string));
-                    pkg_list <- c('dplyr', 'knitr');
+                    pkg_list <- c('dplyr');
                     for(pkg in pkg_list) {
                         versions[pkg] <- as.character(packageVersion(pkg))
                     };
