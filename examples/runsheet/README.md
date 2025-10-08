@@ -28,7 +28,7 @@
 
 ## Entry Point Columns (for step-based workflows)
 
-For entry points other than the default `raw_reads`, include the relevant columns below:
+For entry points other than the default `raw_reads`, include the relevant columns below to specify the input files:
 
 | Column Name | Entry Point | Type | Description | Example |
 |:------------|:------------|:-----|:------------|:--------|

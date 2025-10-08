@@ -239,6 +239,7 @@ nextflow run NF_RCP_2.0.3/main.nf \
 
 <br>
 
+
 #### Required Parameters For All Approaches:
 
 * `NF_RCP_2.0.3/main.nf` - Instructs Nextflow to run the NF_RCP workflow 
@@ -289,6 +290,20 @@ nextflow run NF_RCP_2.0.3/main.nf \
 <br>
 
 #### Optional Parameters:
+
+* `--entry_point` - Specifies the workflow entry point to start from (default: `raw_reads`). Available options:
+  - `raw_reads` - Start from raw read files (`.fastq.gz`) (default)
+  - `trimmed_reads` - Start from trimmed read files (`.fastq.gz`). Raw read quality-checking and trimming are skipped
+  - `bam_files` - Start from BAM files (`.bam`) (requires `--strandedness` parameter). For `--mode default`, expects STAR-aligned transcriptome BAM files. For `--mode microbes`, expects Bowtie2-aligned BAM files
+  - `genes_results` - Start from RSEM gene expression files (`.genes.results`) (`--mode default` only)
+  - `counts_table` - Start from a raw counts table (`.csv`)
+  - `dge_table` - Start from a DGE output table. Adds gene annotation columns to the input table or replaces them if they already exist (`.csv`)
+
+> Note: For `bam_files` entry point, the `--strandedness` parameter is required.
+
+> Note: For runsheet-based runs, see the [runsheet README](examples/runsheet/README.md) for input file specifications.
+
+* `--strandedness` - Specifies the strandedness of RNA-seq data (`none`, `forward`, or `reverse`; default: `none`). Only required when using `bam_files` entry point
 
 * `--gene_annotations_file` - Specifies the URL or path to a gene annotation file that adds additional gene annotation columns to the differential expression output table. This can be:
 
