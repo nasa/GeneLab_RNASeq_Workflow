@@ -26,7 +26,7 @@
 | Factor Value[<name, e.g. Spaceflight>] | string | A set of one or more columns specifying the experimental group the sample belongs to. In the simplest form, a column named 'Factor Value[group]' is sufficient. | Space Flight |
 | Original Sample Name | string | Used to map the sample name that will be used for processing to the original sample name. This is often identical except in cases where the original name includes spaces or weird characters. | Mmus_BAL-TAL_LRTN_BSL_Rep1_B7 |
 
-## Entry Point Columns (for step-based workflows)
+## Entry Point Columns
 
 For entry points other than the default `raw_reads`, include the relevant columns below to specify the input files:
 
