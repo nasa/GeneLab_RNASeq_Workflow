@@ -5,7 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.3](https://github.com/nasa/GeneLab_RNASeq_Workflow/tree/NF_RCP_2.0.3) - 2025-09-26
+## [2.1.0](https://github.com/nasa/GeneLab_RNASeq_Workflow/tree/NF_RCP_2.1.0) - 2025-10-09
+
+### Added
+
+- Added support for specifying workflow entry points via the `--entry_point` parameter. Users can now start the workflow from intermediate steps (`raw_reads` (default), `trimmed_reads`, `bam_files`, `genes_results`, `counts_table`, or `dge_table`) instead of always starting from raw reads.
 
 ### Fixed
 

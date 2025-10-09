@@ -161,6 +161,16 @@
           "default": "none",
           "description": "Sets strandedness used for RSEM quantification when the workflow is started after alignment",
           "enum": ["forward", "reverse", "none"]
+        },
+        "counts_table_path": {
+          "type": "string",
+          "description": "Path to counts table file. Used with `counts_table` entry point.",
+          "format": "file-path"
+        },
+        "dge_table_path": {
+          "type": "string",
+          "description": "Path to DGE table file. Used with `dge_table` entry point.",
+          "format": "file-path"
         }
       },
       "required": ["mode", "assay_suffix"]

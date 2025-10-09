@@ -453,8 +453,18 @@ workflow STAGE_ENTRY_COUNTS_TABLE {
         // Validate input parameters and runsheet
         validateParameters()
         
-        // If entry point is bam_files and no original runsheet was provided, download BAM files from OSDR 
-        if ( params.entry_point == "counts_table" && params.runsheet_path == null ) {
+        // If direct counts table path provided, use it instead of runsheet parsing
+        if ( params.counts_table_path ) {
+            // Still parse runsheet for metadata, but use direct file path
+            PARSE_RUNSHEET( runsheet_path )
+            samples = PARSE_RUNSHEET.out.samples.map { meta, reads -> meta }
+            
+            // Copy direct file to standard location
+            COPY_COUNTS_TABLE(ch_outdir, file(params.counts_table_path))
+            counts_table = COPY_COUNTS_TABLE.out.counts_table
+            
+        } else if ( params.entry_point == "counts_table" && params.runsheet_path == null ) {
+            // If entry point is counts_table and no original runsheet was provided, download from OSDR
             PARSE_RUNSHEET( runsheet_path )
             // Extract just metadata
             samples = PARSE_RUNSHEET.out.samples.map { meta, reads -> meta }
@@ -480,6 +490,7 @@ workflow STAGE_ENTRY_COUNTS_TABLE {
             counts_table = DOWNLOAD_OSDR_COUNTS_TABLE.out.counts_table
 
         } else {
+            // Use runsheet-based approach
             PARSE_COUNTS_TABLE_RUNSHEET( runsheet_path )
             samples = PARSE_COUNTS_TABLE_RUNSHEET.out.samples
             runsheet_path = PARSE_COUNTS_TABLE_RUNSHEET.out.runsheet
@@ -545,8 +556,18 @@ workflow STAGE_ENTRY_DGE_TABLE {
         // Validate input parameters and runsheet
         validateParameters()
         
-        // If entry point is dge_table and no original runsheet was provided, download counts table from OSDR 
-        if ( params.entry_point == "dge_table" && params.runsheet_path == null ) {
+        // If direct DGE table path provided, use it instead of runsheet parsing
+        if ( params.dge_table_path ) {
+            // Parse runsheet for metadata, but use params.dge_table_path for input file
+            PARSE_RUNSHEET( runsheet_path )
+            samples = PARSE_RUNSHEET.out.samples.map { meta, reads -> meta }
+            
+            // Rename DGE table to expected name
+            COPY_DGE_TABLE(ch_outdir, file(params.dge_table_path))
+            dge_table = COPY_DGE_TABLE.out.dge_table
+            
+        } else if ( params.entry_point == "dge_table" && params.runsheet_path == null ) {
+            // If entry point is dge_table and no original runsheet was provided, download from OSDR
             PARSE_RUNSHEET( runsheet_path )
             // Extract just metadata
             samples = PARSE_RUNSHEET.out.samples.map { meta, reads -> meta }
@@ -572,6 +593,7 @@ workflow STAGE_ENTRY_DGE_TABLE {
             dge_table = DOWNLOAD_OSDR_DGE_TABLE.out.dge_table
 
         } else {
+            // Use runsheet-based approach
             PARSE_DGE_TABLE_RUNSHEET( runsheet_path )
             samples = PARSE_DGE_TABLE_RUNSHEET.out.samples
             runsheet_path = PARSE_DGE_TABLE_RUNSHEET.out.runsheet
