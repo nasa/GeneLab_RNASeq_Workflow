@@ -453,13 +453,13 @@ workflow STAGE_ENTRY_COUNTS_TABLE {
         // Validate input parameters and runsheet
         validateParameters()
         
-        // If direct counts table path provided, use it instead of runsheet parsing
+        // If params.counts_table_path provided, use it instead of runsheet parsing
         if ( params.counts_table_path ) {
-            // Still parse runsheet for metadata, but use direct file path
+            // Parse runsheet for metadata, but use params.counts_table_path for input file
             PARSE_RUNSHEET( runsheet_path )
             samples = PARSE_RUNSHEET.out.samples.map { meta, reads -> meta }
             
-            // Copy direct file to standard location
+            // Rename counts table to expected name
             COPY_COUNTS_TABLE(ch_outdir, file(params.counts_table_path))
             counts_table = COPY_COUNTS_TABLE.out.counts_table
             
@@ -556,7 +556,7 @@ workflow STAGE_ENTRY_DGE_TABLE {
         // Validate input parameters and runsheet
         validateParameters()
         
-        // If direct DGE table path provided, use it instead of runsheet parsing
+        // If params.dge_table_path provided, use it instead of runsheet parsing
         if ( params.dge_table_path ) {
             // Parse runsheet for metadata, but use params.dge_table_path for input file
             PARSE_RUNSHEET( runsheet_path )
