@@ -1,5 +1,5 @@
 /*
-    Downloads BAM files for a specific sample ID from OSDR using the OSDR File Downloader
+    Downloads BAM files for a specific sample ID from OSDR using file list TSV
 */
 
 process DOWNLOAD_OSDR_BAM {
@@ -13,85 +13,39 @@ process DOWNLOAD_OSDR_BAM {
     val(osd_accession)
     val(glds_accession)
     val(meta)
+    path(file_list)
 
     output:
-    tuple val(meta), path("*.bam"), emit: bam_files, optional: true
-    path("${meta.id}_bam_failure${params.assay_suffix}.txt"), emit: failure_log, optional: true
+    tuple val(meta), path("*.bam"), emit: bam_files
 
     script:
-    // Detect mode and set appropriate BAM filename pattern
-    def bam_current = params.mode == "microbes" ? 
-        "${glds_accession}_rna_seq_${meta.id}${params.assay_suffix}.bam" :
-        "${glds_accession}_rna_seq_${meta.id}${params.assay_suffix}_Aligned.toTranscriptome.out.bam"
-    def bam_legacy = params.mode == "microbes" ?
-        "${glds_accession}_rna_seq_${meta.id}.bam" :
-        "${glds_accession}_rna_seq_${meta.id}_Aligned.toTranscriptome.out.bam"
+    def bam_suffix = params.mode == "microbes" ? 
+        ".bam" :
+        "_Aligned.toTranscriptome.out.bam"
+    def output_name = params.mode == "microbes" ?
+        "${meta.id}${params.assay_suffix}.bam" :
+        "${meta.id}_Aligned.toTranscriptome.out.bam"
     
     """
-    # Download BAM file 
-    echo "Trying current BAM naming with assay suffix..."
-    python3 ${projectDir}/bin/osdr_downloader.py \\
-        --osd ${osd_accession} \\
-        --measurement "transcription profiling" \\
-        --tech "RNA-Seq" \\
-        --search "${bam_current}" \\
-        --out sample_downloads_current
+    # Use provided file list TSV
+    tsv_file="${file_list}"
     
-    find sample_downloads_current -name "${bam_current}" -exec mv {} . \\; 2>/dev/null || true
+    # Find BAM file for this sample - exact matching with assay suffix first
+    bam_url=\$(grep "^${glds_accession}_rna_seq_${meta.id}${params.assay_suffix}${bam_suffix}" "\$tsv_file" | cut -f2 | head -1)
     
-    if [ ! -f "${bam_current}" ]; then
-        echo "Current BAM file not found, trying legacy naming..."
-        python3 ${projectDir}/bin/osdr_downloader.py \\
-            --osd ${osd_accession} \\
-            --measurement "transcription profiling" \\
-            --tech "RNA-Seq" \\
-            --search "${bam_legacy}" \\
-            --out sample_downloads_legacy
-        
-        find sample_downloads_legacy -name "${bam_legacy}" -exec mv {} . \\; 2>/dev/null || true
-        
-        if [ ! -f "${bam_legacy}" ]; then
-            echo "WARNING: Could not find BAM file for sample ${meta.id}"
-            echo "Tried: ${bam_current}, ${bam_legacy}"
-            echo "This dataset may not have BAM files available in OSDR."
-            
-            # Create failure log file
-            cat > "${meta.id}_bam_failure${params.assay_suffix}.txt" << EOF
-Failed to download BAM file for sample: ${meta.id}
-OSD: ${osd_accession}
-GLDS: ${glds_accession}
-Assay Suffix: ${params.assay_suffix}
-
-Attempted file names:
-- ${bam_current}
-- ${bam_legacy}
-
-Reason: Files not found in OSDR
-Date: \$(date)
-EOF
-            echo "Created failure log: ${meta.id}_bam_failure${params.assay_suffix}.txt"
-        fi
+    # If not found, try without assay suffix (legacy naming)
+    if [ -z "\$bam_url" ]; then
+        bam_url=\$(grep "^${glds_accession}_rna_seq_${meta.id}${bam_suffix}" "\$tsv_file" | cut -f2 | head -1)
     fi
     
-    # Rename downloaded file to expected name
-    if [ -f "${bam_current}" ] || [ -f "${bam_legacy}" ]; then
-        # Rename to expected name
-        bam_file=\$(ls *.bam 2>/dev/null | head -1)
-        
-        if [ -n "\$bam_file" ]; then
-            if [[ "${params.mode}" == "microbes" ]]; then
-                mv "\$bam_file" "${meta.id}${params.assay_suffix}.bam"
-                echo "Renamed BAM file to standard format:"
-                echo "  \$bam_file -> ${meta.id}${params.assay_suffix}.bam"
-            else
-                mv "\$bam_file" "${meta.id}_Aligned.toTranscriptome.out.bam"
-                echo "Renamed BAM file to standard format:"
-                echo "  \$bam_file -> ${meta.id}_Aligned.toTranscriptome.out.bam"
-            fi
-        fi
+    if [ -z "\$bam_url" ]; then
+        echo "ERROR: Could not find BAM file for ${meta.id} in file list"
+        exit 1
     fi
     
-    echo "Final files for sample ${meta.id}:"
-    ls -la *.bam 2>/dev/null || echo "No BAM files found"
+    echo "Downloading BAM: \$bam_url"
+    wget -q -O bam_temp.bam "\$bam_url" || exit 1
+    
+    mv bam_temp.bam "${output_name}"
     """
 }

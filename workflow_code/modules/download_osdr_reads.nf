@@ -1,10 +1,9 @@
 /*
-    Downloads read files for a specific sample ID from OSDR using the OSDR File Downloader
+    Downloads read files for a specific sample ID from OSDR using file list TSV
 */
 
 process DOWNLOAD_OSDR_READS {
     tag "Sample: ${ meta.id }"
-    
     
     publishDir { 
         read_type == "raw" ? 
@@ -19,177 +18,68 @@ process DOWNLOAD_OSDR_READS {
     val(glds_accession)
     val(meta)
     val(read_type)  // "raw", "trimmed", etc.
+    path(file_list)
 
     output:
-    tuple val(meta), path("*.fastq.gz"), emit: trimmed_reads, optional: true
-    path("${meta.id}_${read_type}_read_failure${params.assay_suffix}.txt"), emit: failure_log, optional: true
+    tuple val(meta), path("*.fastq.gz"), emit: trimmed_reads
 
     script:
-    // Current naming with assay suffix
-    def r1_current = "${glds_accession}_rna_seq_${meta.id}${params.assay_suffix}_R1_${read_type}.fastq.gz"
-    def r2_current = "${glds_accession}_rna_seq_${meta.id}${params.assay_suffix}_R2_${read_type}.fastq.gz"
-    def se_current = "${glds_accession}_rna_seq_${meta.id}${params.assay_suffix}_${read_type}.fastq.gz"
-    // Legacy naming without assay suffix
-    def r1_legacy = "${glds_accession}_rna_seq_${meta.id}_R1_${read_type}.fastq.gz"
-    def r2_legacy = "${glds_accession}_rna_seq_${meta.id}_R2_${read_type}.fastq.gz"
-    def se_legacy = "${glds_accession}_rna_seq_${meta.id}_${read_type}.fastq.gz"
-    def se_legacy_r1 = "${glds_accession}_rna_seq_${meta.id}_R1_${read_type}.fastq.gz"
-    
     """
-    # Construct exact filenames based on GeneLab naming convention
-    if [ "${meta.paired_end}" = "true" ]; then
-        # Paired-end: try with assay suffix first, then try without
-        echo "Trying paired-end naming with assay suffix..."
-        # Download R1 and R2 separately to avoid API issues with multiple search terms
-        python3 ${projectDir}/bin/osdr_downloader.py \\
-            --osd ${osd_accession} \\
-            --measurement "transcription profiling" \\
-            --tech "RNA-Seq" \\
-            --search "${r1_current}" \\
-            --out sample_downloads_current_r1
-        
-        python3 ${projectDir}/bin/osdr_downloader.py \\
-            --osd ${osd_accession} \\
-            --measurement "transcription profiling" \\
-            --tech "RNA-Seq" \\
-            --search "${r2_current}" \\
-            --out sample_downloads_current_r2
-        
-        find sample_downloads_current_r1 -name "${r1_current}" -exec mv {} . \\; 2>/dev/null || true
-        find sample_downloads_current_r2 -name "${r2_current}" -exec mv {} . \\; 2>/dev/null || true
-        
-        if [ ! -f "${r1_current}" ] || [ ! -f "${r2_current}" ]; then
-            echo "Current PE files not found, trying legacy naming..."
-            # Download R1 and R2 separately
-            python3 ${projectDir}/bin/osdr_downloader.py \\
-                --osd ${osd_accession} \\
-                --measurement "transcription profiling" \\
-                --tech "RNA-Seq" \\
-                --search "${r1_legacy}" \\
-                --out sample_downloads_legacy_r1
-            
-            python3 ${projectDir}/bin/osdr_downloader.py \\
-                --osd ${osd_accession} \\
-                --measurement "transcription profiling" \\
-                --tech "RNA-Seq" \\
-                --search "${r2_legacy}" \\
-                --out sample_downloads_legacy_r2
-            
-            find sample_downloads_legacy_r1 -name "${r1_legacy}" -exec mv {} . \\; 2>/dev/null || true
-            find sample_downloads_legacy_r2 -name "${r2_legacy}" -exec mv {} . \\; 2>/dev/null || true
-            
-            if [ ! -f "${r1_legacy}" ] || [ ! -f "${r2_legacy}" ]; then
-                echo "WARNING: Could not find paired-end files for sample ${meta.id}"
-                echo "Tried: ${r1_current}, ${r2_current}, ${r1_legacy}, ${r2_legacy}"
-                echo "This dataset may not have trimmed reads available in OSDR."
-                
-                # Create failure log file
-                cat > "${meta.id}_${read_type}_read_failure${params.assay_suffix}.txt" << EOF
-Failed to download ${read_type} reads for sample: ${meta.id}
-OSD: ${osd_accession}
-GLDS: ${glds_accession}
-Assay Suffix: ${params.assay_suffix}
-Read Type: ${read_type}
-Paired End: ${meta.paired_end}
-
-Attempted file names:
-- ${r1_current}
-- ${r2_current}  
-- ${r1_legacy}
-- ${r2_legacy}
-
-Reason: Files not found in OSDR
-Date: \$(date)
-EOF
-                echo "Created failure log: ${meta.id}_${read_type}_read_failure${params.assay_suffix}.txt"
-            fi
-        fi
-        
-    else
-        # Single-end: try with assay suffix first, then try without
-        echo "Trying single-end naming with assay suffix..."
-        python3 ${projectDir}/bin/osdr_downloader.py \\
-            --osd ${osd_accession} \\
-            --measurement "transcription profiling" \\
-            --tech "RNA-Seq" \\
-            --search "${se_current}" \\
-            --out sample_downloads_current
-        
-        find sample_downloads_current -name "${se_current}" -exec mv {} . \\; 2>/dev/null || true
-        
-        if [ ! -f "${se_current}" ]; then
-            echo "Current SE file not found, trying without assay suffix..."
-            python3 ${projectDir}/bin/osdr_downloader.py \\
-                --osd ${osd_accession} \\
-                --measurement "transcription profiling" \\
-                --tech "RNA-Seq" \\
-                --search "${se_legacy}" \\
-                --out sample_downloads_legacy
-            
-            find sample_downloads_legacy -name "${se_legacy}" -exec mv {} . \\; 2>/dev/null || true
-            
-            if [ ! -f "${se_legacy}" ]; then
-                echo "Legacy SE file not found, trying R1 naming..."
-                python3 ${projectDir}/bin/osdr_downloader.py \\
-                    --osd ${osd_accession} \\
-                    --measurement "transcription profiling" \\
-                    --tech "RNA-Seq" \\
-                    --search "${se_legacy_r1}" \\
-                    --out sample_downloads_legacy_r1
-                
-                find sample_downloads_legacy_r1 -name "${se_legacy_r1}" -exec mv {} . \\; 2>/dev/null || true
-                
-                if [ ! -f "${se_legacy_r1}" ]; then
-                    echo "WARNING: Could not find single-end file for sample ${meta.id}"
-                    echo "Tried: ${se_current}, ${se_legacy}, ${se_legacy_r1}"
-                    echo "This dataset may not have trimmed reads available in OSDR."
-                    
-                    # Create failure log file
-                    cat > "${meta.id}_${read_type}_read_failure${params.assay_suffix}.txt" << EOF
-Failed to download ${read_type} reads for sample: ${meta.id}
-OSD: ${osd_accession}
-GLDS: ${glds_accession}
-Assay Suffix: ${params.assay_suffix}
-Read Type: ${read_type}
-Paired End: ${meta.paired_end}
-
-Attempted file names:
-- ${se_current}
-- ${se_legacy}
-- ${se_legacy_r1}
-
-Reason: Files not found in OSDR
-Date: \$(date)
-EOF
-                    echo "Created failure log: ${meta.id}_${read_type}_read_failure${params.assay_suffix}.txt"
-                fi
-            fi
-        fi
-    fi
+    tsv_file="${file_list}"
     
-    # Rename downloaded files to expected names
+    # Parse file list to find exact files for this sample and read type
     if [ "${meta.paired_end}" = "true" ]; then
-        r1_file=\$(ls *R1*${read_type}.fastq.gz 2>/dev/null | head -1)
-        r2_file=\$(ls *R2*${read_type}.fastq.gz 2>/dev/null | head -1)
+        # Find R1 and R2 files - exact matching with assay suffix first
+        r1_url=\$(grep "^${glds_accession}_rna.seq_${meta.id}${params.assay_suffix}_R1_${read_type}.fastq.gz" "\$tsv_file" | cut -f2 | head -1)
+        r2_url=\$(grep "^${glds_accession}_rna.seq_${meta.id}${params.assay_suffix}_R2_${read_type}.fastq.gz" "\$tsv_file" | cut -f2 | head -1)
         
-        if [ -n "\$r1_file" ] && [ -n "\$r2_file" ]; then
-            mv "\$r1_file" "${meta.id}${params.assay_suffix}_R1_${read_type}.fastq.gz"
-            mv "\$r2_file" "${meta.id}${params.assay_suffix}_R2_${read_type}.fastq.gz"
-            echo "Renamed paired-end files to expected name:"
-            echo "  \$r1_file -> ${meta.id}${params.assay_suffix}_R1_${read_type}.fastq.gz"
-            echo "  \$r2_file -> ${meta.id}${params.assay_suffix}_R2_${read_type}.fastq.gz"
+        # If not found, try without assay suffix (legacy naming)
+        if [ -z "\$r1_url" ] || [ -z "\$r2_url" ]; then
+            r1_url=\$(grep "^${glds_accession}_rna.seq_${meta.id}_R1_${read_type}.fastq.gz" "\$tsv_file" | cut -f2 | head -1)
+            r2_url=\$(grep "^${glds_accession}_rna.seq_${meta.id}_R2_${read_type}.fastq.gz" "\$tsv_file" | cut -f2 | head -1)
         fi
+        
+        if [ -z "\$r1_url" ] || [ -z "\$r2_url" ]; then
+            echo "ERROR: Could not find paired-end ${read_type} reads for ${meta.id} in file list"
+            exit 1
+        fi
+        
+        echo "Downloading R1: \$r1_url"
+        wget -q -O r1.fastq.gz "\$r1_url" || exit 1
+        
+        echo "Downloading R2: \$r2_url"
+        wget -q -O r2.fastq.gz "\$r2_url" || exit 1
+        
+        mv r1.fastq.gz "${meta.id}${params.assay_suffix}_R1_${read_type}.fastq.gz"
+        mv r2.fastq.gz "${meta.id}${params.assay_suffix}_R2_${read_type}.fastq.gz"
     else
-        se_file=\$(ls *${read_type}.fastq.gz 2>/dev/null | head -1)
+        # Find SE file - exact matching with assay suffix first
+        se_url=\$(grep "^${glds_accession}_rna.seq_${meta.id}${params.assay_suffix}_${read_type}.fastq.gz" "\$tsv_file" | cut -f2 | head -1)
         
-        if [ -n "\$se_file" ]; then
-            mv "\$se_file" "${meta.id}${params.assay_suffix}_${read_type}.fastq.gz"
-            echo "Renamed single-end file to expected name:"
-            echo "  \$se_file -> ${meta.id}${params.assay_suffix}_${read_type}.fastq.gz"
+        # If not found, try with R1 suffix (some SE data has R1 in the name)
+        if [ -z "\$se_url" ]; then
+            se_url=\$(grep "^${glds_accession}_rna.seq_${meta.id}${params.assay_suffix}_R1_${read_type}.fastq.gz" "\$tsv_file" | cut -f2 | head -1)
         fi
+        
+        # If still not found, try without assay suffix (legacy naming)
+        if [ -z "\$se_url" ]; then
+            se_url=\$(grep "^${glds_accession}_rna.seq_${meta.id}_${read_type}.fastq.gz" "\$tsv_file" | cut -f2 | head -1)
+        fi
+        
+        # If still not found, try legacy with R1
+        if [ -z "\$se_url" ]; then
+            se_url=\$(grep "^${glds_accession}_rna.seq_${meta.id}_R1_${read_type}.fastq.gz" "\$tsv_file" | cut -f2 | head -1)
+        fi
+        
+        if [ -z "\$se_url" ]; then
+            echo "ERROR: Could not find single-end ${read_type} reads for ${meta.id} in file list"
+            exit 1
+        fi
+        
+        echo "Downloading SE: \$se_url"
+        wget -q -O se.fastq.gz "\$se_url" || exit 1
+        
+        mv se.fastq.gz "${meta.id}${params.assay_suffix}_${read_type}.fastq.gz"
     fi
-    
-    echo "Final files for sample ${meta.id}:"
-    ls -la *.fastq.gz 2>/dev/null || echo "No read files found"
     """
 }

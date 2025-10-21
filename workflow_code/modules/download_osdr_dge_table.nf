@@ -1,5 +1,5 @@
 /*
-    Downloads dge table from OSDR using the OSDR File Downloader
+    Downloads DGE table from OSDR using file list TSV
 */
 
 process DOWNLOAD_OSDR_DGE_TABLE {
@@ -9,74 +9,35 @@ process DOWNLOAD_OSDR_DGE_TABLE {
     val(publishdir)
     val(osd_accession)
     val(glds_accession)
+    path(file_list)
 
     output:
-    path("*differential_expression*.csv"), emit: dge_table, optional: true
-    path("dge_table_failure${params.assay_suffix}.txt"), emit: failure_log, optional: true
+    path("*differential_expression*.csv"), emit: dge_table
 
     script:
-    // Set current (with suffix) and legacy (no suffix) DGE table filenames
-    def dge_current = "${glds_accession}_rna_seq_differential_expression${params.assay_suffix}.csv"
-    def dge_legacy  = "${glds_accession}_rna_seq_differential_expression.csv"
+    def output_name = "differential_expression${params.assay_suffix}.csv"
     
     """
-    # Download DGE table
-    echo "Trying current DGE table naming with assay suffix..."
-    python3 ${projectDir}/bin/osdr_downloader.py \\
-        --osd ${osd_accession} \\
-        --measurement "transcription profiling" \\
-        --tech "RNA-Seq" \\
-        --search "${dge_current}" \\
-        --out sample_downloads_current
+    # Use provided file list TSV
+    tsv_file="${file_list}"
     
-    find sample_downloads_current -name "${dge_current}" -exec mv {} . \\; 2>/dev/null || true
+    # Find DGE table - try with assay suffix first
+    dge_url=\$(grep "^${glds_accession}_rna_seq_differential_expression${params.assay_suffix}.csv" "\$tsv_file" | cut -f2 | head -1)
     
-    # Rename to expected name if found
-    if [ -f "${dge_current}" ]; then
-        mv "${dge_current}" "differential_expression${params.assay_suffix}.csv"
+    # If not found, try without assay suffix (legacy naming)
+    if [ -z "\$dge_url" ]; then
+        dge_url=\$(grep "^${glds_accession}_rna_seq_differential_expression.csv" "\$tsv_file" | cut -f2 | head -1)
     fi
     
-    if [ ! -f "differential_expression${params.assay_suffix}.csv" ]; then
-        echo "Current DGE table not found, trying without assay suffix..."
-        python3 ${projectDir}/bin/osdr_downloader.py \\
-            --osd ${osd_accession} \\
-            --measurement "transcription profiling" \\
-            --tech "RNA-Seq" \\
-            --search "${dge_legacy}" \\
-            --out sample_downloads_legacy
-        
-        find sample_downloads_legacy -name "${dge_legacy}" -exec mv {} . \\; 2>/dev/null || true
-        
-        # Rename to expected name if found
-        if [ -f "${dge_legacy}" ]; then
-            mv "${dge_legacy}" "differential_expression${params.assay_suffix}.csv"
-        fi
-        
-        if [ ! -f "differential_expression${params.assay_suffix}.csv" ]; then
-            echo "WARNING: Could not find DGE table"
-            echo "Tried: ${dge_current}, ${dge_legacy}"
-            echo "This dataset may not have DGE table available in OSDR."
-            
-            # Create failure log file
-            cat > "dge_table_failure${params.assay_suffix}.txt" << EOF
-Failed to download DGE table
-OSD: ${osd_accession}
-GLDS: ${glds_accession}
-Assay Suffix: ${params.assay_suffix}
-
-Attempted file names:
-- ${dge_current}
-- ${dge_legacy}
-
-Reason: Files not found in OSDR
-Date: \$(date)
-EOF
-            echo "Created failure log: dge_table_failure${params.assay_suffix}.txt"
-        fi
+    if [ -z "\$dge_url" ]; then
+        echo "ERROR: Could not find differential expression table in file list"
+        exit 1
     fi
     
-    echo "Final files:"
-    ls -la *.csv 2>/dev/null || echo "No DGE table files found"
+    echo "Downloading DGE table: \$dge_url"
+    wget -q -O dge_temp.csv "\$dge_url" || exit 1
+    
+    mv dge_temp.csv "${output_name}"
     """
 }
 

@@ -3,6 +3,7 @@ include { FETCH_ISA } from '../modules/fetch_isa.nf'
 include { ISA_TO_RUNSHEET } from '../modules/isa_to_runsheet.nf'
 include { GET_ACCESSIONS } from '../modules/get_accessions.nf'
 include { STAGE_RAW_READS } from './stage_raw_reads.nf'
+include { GET_OSDR_FILE_LIST } from '../modules/get_osdr_file_list.nf'
 include { DOWNLOAD_OSDR_READS } from '../modules/download_osdr_reads.nf'
 include { DOWNLOAD_OSDR_BAM } from '../modules/download_osdr_bam.nf'
 include { DOWNLOAD_OSDR_GENES_RESULTS } from '../modules/download_osdr_genes_results.nf'
@@ -142,30 +143,17 @@ workflow STAGE_ENTRY_TRIMMED_READS {
         if ( params.entry_point == "trimmed_reads" && params.runsheet_path == null ) {
             PARSE_RUNSHEET( runsheet_path )
             samples = PARSE_RUNSHEET.out.samples
+            
+            GET_OSDR_FILE_LIST( osd_accession )
+            
             DOWNLOAD_OSDR_READS( 
                 ch_outdir, 
                 osd_accession, 
                 glds_accession,
                 samples.map { meta, reads -> meta },
-                "trimmed" 
+                "trimmed",
+                GET_OSDR_FILE_LIST.out.file_list
             )
-            
-            // Check for download failures and exit gracefully if any occurred
-            DOWNLOAD_OSDR_READS.out.failure_log
-                | collect
-                | subscribe { failure_files ->
-                    if (failure_files.size() > 0) {
-                        log.info "OSDR trimmed read file download failed for ${failure_files.size()} samples"
-                        failure_files.each { file -> 
-                            // Extract sample ID from filename like "FL_Bsu_1_GLbulkRNAseq_failed_download_trimmed.txt"
-                            def sample_id = file.name.split("${params.assay_suffix}_failed_download_")[0]
-                            log.info "OSDR trimmed read file download failed for ${sample_id}"
-                        }
-                        System.exit(0)  // Graceful exit without error
-                    } else {
-                        log.info "All trimmed read files downloaded successfully"
-                    }
-                }
             
             // Output is already in the right format: [meta, files]
             trimmed_reads = DOWNLOAD_OSDR_READS.out.trimmed_reads
@@ -253,29 +241,16 @@ workflow STAGE_ENTRY_BAM_FILES {
             PARSE_RUNSHEET( runsheet_path )
             samples = PARSE_RUNSHEET.out.samples
             
+            // Download OSDR file list TSV first
+            GET_OSDR_FILE_LIST( osd_accession )
+            
             DOWNLOAD_OSDR_BAM( 
                 ch_outdir, 
                 osd_accession, 
                 glds_accession,
-                samples.map { meta, reads -> meta }
+                samples.map { meta, reads -> meta },
+                GET_OSDR_FILE_LIST.out.file_list
             )
-            
-            // Check for download failures and exit gracefully if any occurred
-            DOWNLOAD_OSDR_BAM.out.failure_log
-                | collect
-                | subscribe { failure_files ->
-                    if (failure_files.size() > 0) {
-                        log.info "OSDR BAM file download failed for ${failure_files.size()} samples"
-                        failure_files.each { file -> 
-                            def sample_id = file.name.split("${params.assay_suffix}_failed_download_")[0]
-                            log.info "OSDR BAM file download failed for ${sample_id}"
-                        }
-                        log.info "OSDR BAM file download failed for ${sample_id}"
-                        System.exit(0)  // Graceful exit without error
-                    } else {
-                        log.info "All BAM files downloaded successfully"
-                    }
-                }
             
             bam_files = DOWNLOAD_OSDR_BAM.out.bam_files
 
@@ -356,29 +331,16 @@ workflow STAGE_ENTRY_GENES_RESULTS {
             PARSE_RUNSHEET( runsheet_path )
             samples = PARSE_RUNSHEET.out.samples
             
+            // Download OSDR file list TSV first
+            GET_OSDR_FILE_LIST( osd_accession )
+            
             DOWNLOAD_OSDR_GENES_RESULTS( 
                 ch_outdir, 
                 osd_accession, 
                 glds_accession,
-                samples.map { meta, reads -> meta }
+                samples.map { meta, reads -> meta },
+                GET_OSDR_FILE_LIST.out.file_list
             )
-            
-            // Check for download failures and exit gracefully if any occurred
-            DOWNLOAD_OSDR_GENES_RESULTS.out.failure_log
-                | collect
-                | subscribe { failure_files ->
-                    if (failure_files.size() > 0) {
-                        log.info "OSDR genes.results file download failed for ${failure_files.size()} samples"
-                        failure_files.each { file -> 
-                            def sample_id = file.name.split("${params.assay_suffix}_failed_download_")[0]
-                            log.info "OSDR genes.results file download failed for ${sample_id}"
-                        }
-                        log.info "OSDR genes.results file download failed for ${sample_id}"
-                        System.exit(0)  // Graceful exit without error
-                    } else {
-                        log.info "All genes.results files downloaded successfully"
-                    }
-                }
             
             genes_results = DOWNLOAD_OSDR_GENES_RESULTS.out.genes_results
             samples_txt = genes_results | map { it[0].id }
@@ -469,23 +431,15 @@ workflow STAGE_ENTRY_COUNTS_TABLE {
             // Extract just metadata
             samples = PARSE_RUNSHEET.out.samples.map { meta, reads -> meta }
             
+            // Download OSDR file list TSV first
+            GET_OSDR_FILE_LIST( osd_accession )
+            
             DOWNLOAD_OSDR_COUNTS_TABLE( 
                 ch_outdir, 
                 osd_accession, 
-                glds_accession
+                glds_accession,
+                GET_OSDR_FILE_LIST.out.file_list
             )
-            
-            // Check for download failures and exit gracefully if any occurred
-            DOWNLOAD_OSDR_COUNTS_TABLE.out.failure_log
-                | ifEmpty { null }
-                | subscribe { failure_file ->
-                    if (failure_file != null) {
-                        log.info "OSDR counts table file download failed"
-                        System.exit(0)  // Graceful exit without error
-                    } else {
-                        log.info "Counts table downloaded successfully"
-                    }
-                }
             
             counts_table = DOWNLOAD_OSDR_COUNTS_TABLE.out.counts_table
 
@@ -572,23 +526,15 @@ workflow STAGE_ENTRY_DGE_TABLE {
             // Extract just metadata
             samples = PARSE_RUNSHEET.out.samples.map { meta, reads -> meta }
             
+            // Download OSDR file list TSV first
+            GET_OSDR_FILE_LIST( osd_accession )
+            
             DOWNLOAD_OSDR_DGE_TABLE( 
                 ch_outdir, 
                 osd_accession, 
-                glds_accession
+                glds_accession,
+                GET_OSDR_FILE_LIST.out.file_list
             )
-            
-            // Check for download failures and exit gracefully if any occurred
-            DOWNLOAD_OSDR_DGE_TABLE.out.failure_log
-                | ifEmpty { null }
-                | subscribe { failure_file ->
-                    if (failure_file != null) {
-                        log.info "OSDR DGE table file download failed"
-                        System.exit(0)  // Graceful exit without error
-                    } else {
-                        log.info "DGE table downloaded successfully"
-                    }
-                }
             
             dge_table = DOWNLOAD_OSDR_DGE_TABLE.out.dge_table
 

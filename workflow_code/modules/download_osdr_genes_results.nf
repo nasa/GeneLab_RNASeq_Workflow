@@ -1,5 +1,5 @@
 /*
-    Downloads RSEM genes.results files for a specific sample ID from OSDR using the OSDR File Downloader
+    Downloads RSEM genes.results files for a specific sample ID from OSDR using file list TSV
 */
 
 process DOWNLOAD_OSDR_GENES_RESULTS {
@@ -13,75 +13,32 @@ process DOWNLOAD_OSDR_GENES_RESULTS {
     val(osd_accession)
     val(glds_accession)
     val(meta)
+    path(file_list)
 
     output:
-    tuple val(meta), path("*.genes.results"), emit: genes_results, optional: true
-    path("${meta.id}_genes_results_failure${params.assay_suffix}.txt"), emit: failure_log, optional: true
+    tuple val(meta), path("*.genes.results"), emit: genes_results
 
     script:
-    // Current naming with assay suffix
-    def genes_results_current = "${glds_accession}_rna_seq_${meta.id}${params.assay_suffix}.genes.results"
-    def genes_results_legacy = "${glds_accession}_rna_seq_${meta.id}.genes.results"
-    
     """
-    # Download RSEM genes.results file
-    echo "Trying current genes.results naming with assay suffix..."
-    python3 ${projectDir}/bin/osdr_downloader.py \\
-        --osd ${osd_accession} \\
-        --measurement "transcription profiling" \\
-        --tech "RNA-Seq" \\
-        --search "${genes_results_current}" \\
-        --out sample_downloads_current
+    # Use provided file list TSV
+    tsv_file="${file_list}"
     
-    find sample_downloads_current -name "${genes_results_current}" -exec mv {} . \\; 2>/dev/null || true
+    # Find genes.results file for this sample - match exact filename
+    genes_url=\$(grep "^${glds_accession}_rna_seq_${meta.id}${params.assay_suffix}.genes.results" "\$tsv_file" | cut -f2 | head -1)
     
-    if [ ! -f "${genes_results_current}" ]; then
-        echo "Current genes.results file not found, trying without assay suffix..."
-        python3 ${projectDir}/bin/osdr_downloader.py \\
-            --osd ${osd_accession} \\
-            --measurement "transcription profiling" \\
-            --tech "RNA-Seq" \\
-            --search "${genes_results_legacy}" \\
-            --out sample_downloads_legacy
-        
-        find sample_downloads_legacy -name "${genes_results_legacy}" -exec mv {} . \\; 2>/dev/null || true
-        
-        if [ ! -f "${genes_results_legacy}" ]; then
-            echo "WARNING: Could not find genes.results file for sample ${meta.id}"
-            echo "Tried: ${genes_results_current}, ${genes_results_legacy}"
-            echo "This dataset may not have genes.results files available in OSDR."
-            
-            # Create failure log file
-            cat > "${meta.id}_genes_results_failure${params.assay_suffix}.txt" << EOF
-Failed to download genes.results file for sample: ${meta.id}
-OSD: ${osd_accession}
-GLDS: ${glds_accession}
-Assay Suffix: ${params.assay_suffix}
-
-Attempted file names:
-- ${genes_results_current}
-- ${genes_results_legacy}
-
-Reason: Files not found in OSDR
-Date: \$(date)
-EOF
-            echo "Created failure log: ${meta.id}_genes_results_failure${params.assay_suffix}.txt"
-        fi
+    # If not found, try without assay suffix (legacy naming)
+    if [ -z "\$genes_url" ]; then
+        genes_url=\$(grep "^${glds_accession}_rna_seq_${meta.id}.genes.results" "\$tsv_file" | cut -f2 | head -1)
     fi
     
-      # Rename downloaded file to expected name
-      if [ -f "${genes_results_current}" ] || [ -f "${genes_results_legacy}" ]; then
-        # Rename to expected name
-        genes_file=\$(ls *.genes.results 2>/dev/null | head -1)
-        
-        if [ -n "\$genes_file" ]; then
-            mv "\$genes_file" "${meta.id}${params.assay_suffix}.genes.results"
-            echo "Renamed genes.results file to standard format:"
-            echo "  \$genes_file -> ${meta.id}${params.assay_suffix}.genes.results"
-        fi
+    if [ -z "\$genes_url" ]; then
+        echo "ERROR: Could not find genes.results file for ${meta.id} in file list"
+        exit 1
     fi
     
-    echo "Final files for sample ${meta.id}:"
-    ls -la *.genes.results 2>/dev/null || echo "No genes.results files found"
+    echo "Downloading genes.results: \$genes_url"
+    wget -q -O genes_temp.genes.results "\$genes_url" || exit 1
+    
+    mv genes_temp.genes.results "${meta.id}${params.assay_suffix}.genes.results"
     """
 }
