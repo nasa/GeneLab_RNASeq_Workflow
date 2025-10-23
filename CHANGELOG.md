@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Limit STAR alignment to a maximum of 10 concurrent jobs by setting `maxForks = 10` in local.config, slurm.config
+- Remove mix from qc_metrics validation text file for non-ERCC datasets
 
 ### Fixed
 

@@ -27,8 +27,20 @@ def get_runsheet_order(runsheet_path):
     return None
 
 
-def generate_validation_report(fieldnames, populated_fields, mode, assay_suffix, paired_end):
+def generate_validation_report(fieldnames, populated_fields, mode, assay_suffix, paired_end, runsheet=None):
     """Generate a validation report showing which columns are missing data"""
+    
+    # Check if this is an ERCC dataset by looking at the runsheet
+    is_ercc_dataset = False
+    try:
+        if runsheet and os.path.exists(runsheet):
+            df = pd.read_csv(runsheet)
+            if 'has_ERCC' in df.columns:
+                # Check if any row has has_ERCC = 1 (assuming it's a boolean column)
+                is_ercc_dataset = df['has_ERCC'].any() if df['has_ERCC'].dtype in ['int64', 'bool'] else False
+    except Exception:
+        # If we can't determine, assume it's not ERCC
+        is_ercc_dataset = False
     
     # Define field categories
     metadata_fields = [
@@ -36,8 +48,12 @@ def generate_validation_report(fieldnames, populated_fields, mode, assay_suffix,
         'library_selection', 'library_layout', 'strandedness', 'read_depth', 
         'read_length', 'rrna_contamination', 'rin', 'organism_part', 'cell_line', 
         'cell_type', 'secondary_organism', 'strain', 'animal_source', 'seed_source', 
-        'source_accession', 'mix'
+        'source_accession'
     ]
+    
+    # Only include 'mix' field if this is an ERCC dataset
+    if is_ercc_dataset:
+        metadata_fields.append('mix')
     
     gene_count_fields = ['gene_detected_gt10', 'gene_total', 'gene_detected_gt10_pct']
     
@@ -310,7 +326,7 @@ def main(osd_num, paired_end, assay_suffix, mode, runsheet=None):
     
     # Generate validation report
     try:
-        generate_validation_report(fieldnames, populated_fields, mode, assay_suffix, paired_end)
+        generate_validation_report(fieldnames, populated_fields, mode, assay_suffix, paired_end, runsheet)
     except Exception as e:
         print(f"WARNING: Failed to generate validation report: {str(e)}")
 
