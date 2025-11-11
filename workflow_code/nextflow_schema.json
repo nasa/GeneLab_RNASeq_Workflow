@@ -173,7 +173,7 @@
           "format": "file-path"
         }
       },
-      "required": ["mode", "assay_suffix"]
+      "required": ["mode"]
     },
     "references": {
       "title": "References",
