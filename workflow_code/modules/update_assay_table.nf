@@ -10,7 +10,8 @@ process UPDATE_ASSAY_TABLE {
 
     script:
     def mode_param = params.mode == "microbes" ? "--mode microbes" : ""
+    def assay_suffix_arg = params.assay_suffix ? "--assay_suffix ${params.assay_suffix}" : ""
     """
-    update_assay_table.py --outdir ${ch_processed_directory} ${mode_param} --assay_suffix ${params.assay_suffix} --glds_accession ${params.accession}
+    update_assay_table.py --outdir ${ch_processed_directory} ${mode_param} ${assay_suffix_arg} --glds_accession ${params.accession}
     """
 }

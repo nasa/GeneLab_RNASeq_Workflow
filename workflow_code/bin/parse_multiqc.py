@@ -27,7 +27,7 @@ def get_runsheet_order(runsheet_path):
     return None
 
 
-def generate_validation_report(fieldnames, populated_fields, mode, assay_suffix, paired_end, runsheet=None):
+def generate_validation_report(fieldnames, populated_fields, mode, assay_suffix, paired_end, runsheet=None, filled_fields=None, validation_mismatches=None):
     """Generate a validation report showing which columns are missing data"""
     
     # Check if this is an ERCC dataset by looking at the runsheet
@@ -201,6 +201,27 @@ def generate_validation_report(fieldnames, populated_fields, mode, assay_suffix,
             for field in missing_rseqc:
                 f.write(f"** {field}\n")
             f.write("\n")
+        
+        # Auto-filled fields section
+        if filled_fields:
+            f.write("Auto-filled fields (from MultiQC data):\n")
+            for field in sorted(filled_fields):
+                if field == 'read_depth':
+                    f.write(f"** {field} (filled from raw_total_sequences_f)\n")
+                elif field == 'read_length':
+                    f.write(f"** {field} (filled from raw_avg_sequence_length_f)\n")
+                else:
+                    f.write(f"** {field}\n")
+            f.write("\n")
+        
+        # Validation mismatches section
+        if validation_mismatches:
+            f.write("Validation mismatches (assay table vs MultiQC data):\n")
+            for sample, field, assay_value, multiqc_value in sorted(validation_mismatches):
+                f.write(f"** Sample: {sample}, Field: {field}\n")
+                f.write(f"   Assay table value: {assay_value}\n")
+                f.write(f"   MultiQC value: {multiqc_value}\n")
+            f.write("\n")
 
 
 def main(osd_num, paired_end, assay_suffix, mode, runsheet=None):
@@ -291,6 +312,10 @@ def main(osd_num, paired_end, assay_suffix, mode, runsheet=None):
     
     # Track which fields have data for validation report
     populated_fields = set()
+    # Track which fields were auto-filled
+    filled_fields = set()
+    # Track validation mismatches (assay table vs MultiQC)
+    validation_mismatches = []
     
     with open(output_filename, mode='w', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -321,12 +346,51 @@ def main(osd_num, paired_end, assay_suffix, mode, runsheet=None):
                 if v is not None and v != '':
                     populated_fields.add(k)
             
+            # Validate and fill in missing read_depth and read_length from raw FastQC data
+            # If read_depth exists, validate it matches raw_total_sequences_f (total sequences = read depth)
+            if all_fields.get('read_depth') and all_fields.get('read_depth') != '':
+                if all_fields.get('raw_total_sequences_f'):
+                    try:
+                        assay_read_depth = int(float(all_fields['read_depth']))
+                        multiqc_read_depth = int(float(all_fields['raw_total_sequences_f']))
+                        if assay_read_depth != multiqc_read_depth:
+                            validation_mismatches.append((sample, 'read_depth', assay_read_depth, multiqc_read_depth))
+                    except (ValueError, TypeError):
+                        pass
+            # If read_depth is empty, fill from raw_total_sequences_f
+            elif all_fields.get('raw_total_sequences_f'):
+                try:
+                    all_fields['read_depth'] = int(float(all_fields['raw_total_sequences_f']))
+                    populated_fields.add('read_depth')
+                    filled_fields.add('read_depth')
+                except (ValueError, TypeError):
+                    pass
+            
+            # If read_length exists, validate it matches raw_avg_sequence_length_f (average length = read length)
+            if all_fields.get('read_length') and all_fields.get('read_length') != '':
+                if all_fields.get('raw_avg_sequence_length_f'):
+                    try:
+                        assay_read_length = int(float(all_fields['read_length']))
+                        multiqc_read_length = int(float(all_fields['raw_avg_sequence_length_f']))
+                        if assay_read_length != multiqc_read_length:
+                            validation_mismatches.append((sample, 'read_length', assay_read_length, multiqc_read_length))
+                    except (ValueError, TypeError):
+                        pass
+            # If read_length is empty, fill from raw_avg_sequence_length_f
+            elif all_fields.get('raw_avg_sequence_length_f'):
+                try:
+                    all_fields['read_length'] = int(float(all_fields['raw_avg_sequence_length_f']))
+                    populated_fields.add('read_length')
+                    filled_fields.add('read_length')
+                except (ValueError, TypeError):
+                    pass
+            
             # Write rows with osd_num and sample fields
             writer.writerow({'osd_num': 'OSD-' + osd_num, 'sample': sample, **metadata, **all_fields})
     
     # Generate validation report
     try:
-        generate_validation_report(fieldnames, populated_fields, mode, assay_suffix, paired_end, runsheet)
+        generate_validation_report(fieldnames, populated_fields, mode, assay_suffix, paired_end, runsheet, filled_fields, validation_mismatches)
     except Exception as e:
         print(f"WARNING: Failed to generate validation report: {str(e)}")
 
@@ -767,7 +831,7 @@ if __name__ == '__main__':
     
     parser.add_argument('--osd-num')
     parser.add_argument('--paired', action='store_true')
-    parser.add_argument('--assay_suffix', default='_GLbulkRNAseq')
+    parser.add_argument('--assay_suffix', default='')
     parser.add_argument('--mode', default='default')
     parser.add_argument('--runsheet', default=None)
     args = parser.parse_args()
