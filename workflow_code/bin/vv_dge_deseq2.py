@@ -2585,7 +2585,7 @@ def main():
     parser = argparse.ArgumentParser(description="Verify and validate DESeq2 normalization and DGE outputs")
     parser.add_argument("--outdir", required=True, help="Path to the output directory")
     parser.add_argument("--runsheet", required=True, help="Path to the runsheet CSV file")
-    parser.add_argument("--assay_suffix", default="_GLbulkRNAseq", help="Assay suffix")
+    parser.add_argument("--assay_suffix", default="", help="Assay suffix (default: empty)")
     parser.add_argument("--stratify_by", default="", help="Factor to stratify analysis by (e.g., 'Plant Part')")
     parser.add_argument("--mode", default="default", choices=["default", "microbes"], 
                        help="Processing mode: 'default' for RSEM or 'microbes' for FeatureCounts")

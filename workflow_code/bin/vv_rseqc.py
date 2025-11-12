@@ -1720,7 +1720,7 @@ def main():
     parser = argparse.ArgumentParser(description="Validate RSeQC output files")
     parser.add_argument("--runsheet", required=True, help="Path to the runsheet CSV file")
     parser.add_argument("--outdir", required=True, help="Path to the output directory")
-    parser.add_argument("--assay_suffix", default="_GLbulkRNAseq", help="Assay suffix for MultiQC reports")
+    parser.add_argument("--assay_suffix", default="", help="Assay suffix for MultiQC reports (default: empty)")
     
     args = parser.parse_args()
     

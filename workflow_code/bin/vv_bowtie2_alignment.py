@@ -739,8 +739,8 @@ def main():
     parser.add_argument('--runsheet', '-r', required=True, help='Path to the runsheet CSV file')
     parser.add_argument('--outdir', '-o', default=os.getcwd(), 
                         help='Output directory (GLDS-## folder), defaults to current directory')
-    parser.add_argument('--assay-suffix', default="_GLbulkRNAseq", 
-                        help='Assay suffix used in MultiQC data filenames (default: _GLbulkRNAseq)')
+    parser.add_argument('--assay-suffix', default="", 
+                        help='Assay suffix used in MultiQC data filenames (default: empty)')
     args = parser.parse_args()
 
     # Initialize VV log

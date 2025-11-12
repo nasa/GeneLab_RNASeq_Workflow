@@ -165,15 +165,15 @@ def check_trimmed_fastq_existence(outdir, samples, paired_end, log_path, assay_s
             r1_file = os.path.join(fastq_dir, f"{sample}{assay_suffix}_R1_trimmed.fastq.gz")
             r2_file = os.path.join(fastq_dir, f"{sample}{assay_suffix}_R2_trimmed.fastq.gz")
             
-            if not os.path.exists(r1_file):
+            if not os.path.lexists(r1_file):
                 missing_files.append(r1_file)
-            if not os.path.exists(r2_file):
+            if not os.path.lexists(r2_file):
                 missing_files.append(r2_file)
         else:
             # Check for single file for single-end sequencing
             single_file = os.path.join(fastq_dir, f"{sample}{assay_suffix}_trimmed.fastq.gz")
             
-            if not os.path.exists(single_file):
+            if not os.path.lexists(single_file):
                 missing_files.append(single_file)
     
     if missing_files:
@@ -1392,8 +1392,8 @@ def main():
     parser.add_argument('--runsheet', '-r', required=True, help='Path to the runsheet CSV file')
     parser.add_argument('--outdir', '-o', default=os.getcwd(), 
                         help='Output directory (GLDS-## folder), defaults to current directory')
-    parser.add_argument('--assay-suffix', default="_GLbulkRNAseq", 
-                        help='Assay suffix used in MultiQC report filenames (default: _GLbulkRNAseq)')
+    parser.add_argument('--assay-suffix', default="", 
+                        help='Assay suffix used in MultiQC report filenames (default: empty)')
     args = parser.parse_args()
     
     # Initialize VV log
