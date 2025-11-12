@@ -39,7 +39,7 @@ def should_include(filepath, outdir):
     if "/VV_Logs/" in filepath:
         return False
     # Skip files in GeneLab except for qc_metrics and software_versions
-    if "/GeneLab/" in filepath and not (filepath.endswith("qc_metrics" + args.assay_suffix + ".csv") or filepath.endswith("software_versions_GLbulkRNAseq.md")):
+    if "/GeneLab/" in filepath and not (filepath.endswith("qc_metrics" + args.assay_suffix + ".csv") or filepath.endswith("software_versions" + args.assay_suffix + ".md")):
         return False
     # Skip any files with 'fastqc' in the path or filename (case-insensitive)
     if 'fastqc' in filepath.lower():
@@ -83,10 +83,10 @@ def should_include(filepath, outdir):
     # Skip ISA.zip
     if filepath.endswith("ISA.zip"):
         return False
-    # Skip STAR_NumNonZeroGenes_GLbulkRNAseq.csv and RSEM_NumNonZeroGenes_GLbulkRNAseq.csv
-    if os.path.basename(filepath) in [
-        "STAR_NumNonZeroGenes_GLbulkRNAseq.csv",
-        "RSEM_NumNonZeroGenes_GLbulkRNAseq.csv"
+    # Skip STAR_NumNonZeroGenes and RSEM_NumNonZeroGenes files
+    if basename in [
+        f"STAR_NumNonZeroGenes{args.assay_suffix}.csv",
+        f"RSEM_NumNonZeroGenes{args.assay_suffix}.csv"
     ]:
         return False
     return True
@@ -94,7 +94,7 @@ def should_include(filepath, outdir):
 def main():
     parser = argparse.ArgumentParser(description='Generate MD5 sum files for GeneLab data.')
     parser.add_argument('--outdir', required=True, help='Output directory containing files to process')
-    parser.add_argument('--assay_suffix', required=True, help='Suffix for assay type (e.g., _GLbulkRNAseq)')
+    parser.add_argument('--assay_suffix', default='', help='Suffix for assay type (e.g., _GLbulkRNAseq, default: empty)')
     
     global args
     args = parser.parse_args()

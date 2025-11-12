@@ -10,17 +10,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added support for specifying workflow entry points via the `--entry_point` parameter. Users can now start the workflow from intermediate steps (`raw_reads` (default), `trimmed_reads`, `bam_files`, `genes_results`, `counts_table`, or `dge_table`) instead of always starting from raw reads.
+- Added auto-fill for missing `read_depth` and `read_length` from raw FastQC MultiQC data in `parse_multiqc.py`
+- Added validation in `parse_multiqc.py` to compare existing `read_depth` and `read_length` values with MultiQC data and report mismatches
+- Added `add_read_length()` function in `update_assay_table.py` to auto-fill "Parameter Value[Read Length]" from MultiQC data if missing
+- Added normalization for `strandedness` (uppercase) and `library_selection` (ribo→ribo-depletion, poly→polyA enrichment) in `parse_multiqc.py` and `update_assay_table.py`
+- Added changes report file to `update_assay_table.py`
 
 ### Changed
 
 - Limit STAR alignment to a maximum of 10 concurrent jobs by setting `maxForks = 10` in local.config, slurm.config
-- Remove mix from qc_metrics validation text file for non-ERCC datasets
 
 ### Fixed
 
 - Fixed handling of "None" factor conditions in `vv_dge_deseq2.py`
 - Fixed passing through of ISA archive for runsheet-based runs
 - Stream data in `concat_logs.py` instead of loading log files into memory
+- Fixed modules and scripts that required params.assay_suffix to be a non-empty string
+- Fixed `parse_qc_metrics` validation report: excluded `mix` field for non-ERCC datasets, added auto-fill and validation mismatch reporting for `read_depth` and `read_length`
 
 ## [2.0.2](https://github.com/nasa/GeneLab_RNASeq_Workflow/tree/NF_RCP_2.0.2) - 2025-08-26
 

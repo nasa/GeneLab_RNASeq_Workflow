@@ -341,10 +341,26 @@ def main(osd_num, paired_end, assay_suffix, mode, runsheet=None):
             populated_fields.add('osd_num')
             populated_fields.add('sample')
             
-            # Track populated metadata fields
+            # Track populated metadata fields and normalize if needed
             for k, v in metadata.items():
                 if v is not None and v != '':
                     populated_fields.add(k)
+                    # Normalize strandedness and library_selection in metadata
+                    if k == 'strandedness':
+                        normalized_v = str(v).upper()
+                        if v != normalized_v:
+                            validation_mismatches.append((sample, 'strandedness', v, normalized_v))
+                            metadata[k] = normalized_v
+                    elif k == 'library_selection':
+                        lib_sel_lower = str(v).lower()
+                        normalized_v = v
+                        if 'ribo' in lib_sel_lower:
+                            normalized_v = 'ribo-depletion'
+                        elif 'poly' in lib_sel_lower:
+                            normalized_v = 'polyA enrichment'
+                        if v != normalized_v:
+                            validation_mismatches.append((sample, 'library_selection', v, normalized_v))
+                            metadata[k] = normalized_v
             
             # Validate and fill in missing read_depth and read_length from raw FastQC data
             # If read_depth exists, validate it matches raw_total_sequences_f (total sequences = read depth)
@@ -384,6 +400,30 @@ def main(osd_num, paired_end, assay_suffix, mode, runsheet=None):
                     filled_fields.add('read_length')
                 except (ValueError, TypeError):
                     pass
+            
+            # Normalize strandedness (convert to uppercase)
+            if all_fields.get('strandedness') and all_fields.get('strandedness') != '':
+                original_strandedness = all_fields['strandedness']
+                normalized_strandedness = str(original_strandedness).upper()
+                if original_strandedness != normalized_strandedness:
+                    validation_mismatches.append((sample, 'strandedness', original_strandedness, normalized_strandedness))
+                    all_fields['strandedness'] = normalized_strandedness
+            
+            # Normalize library_selection (only if contains 'ribo' or 'poly', otherwise pass through unchanged)
+            if all_fields.get('library_selection') and all_fields.get('library_selection') != '':
+                original_lib_sel = all_fields['library_selection']
+                lib_sel_lower = str(original_lib_sel).lower()
+                normalized_lib_sel = original_lib_sel  # Default: pass through unchanged
+                
+                if 'ribo' in lib_sel_lower:
+                    normalized_lib_sel = 'ribo-depletion'
+                elif 'poly' in lib_sel_lower:
+                    normalized_lib_sel = 'polyA enrichment'
+                # If no match, normalized_lib_sel == original_lib_sel, so no change is made
+                
+                if original_lib_sel != normalized_lib_sel:
+                    validation_mismatches.append((sample, 'library_selection', original_lib_sel, normalized_lib_sel))
+                    all_fields['library_selection'] = normalized_lib_sel
             
             # Write rows with osd_num and sample fields
             writer.writerow({'osd_num': 'OSD-' + osd_num, 'sample': sample, **metadata, **all_fields})
