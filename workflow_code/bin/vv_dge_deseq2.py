@@ -16,6 +16,7 @@ import re
 
 def safe_str_conversion(df, factor_columns):
     """Convert factor columns to strings to handle None/NaN values."""
+    df = df.copy()  # Avoid SettingWithCopyWarning
     for col in factor_columns:
         if col in df.columns:
             # Replace None, NaN, and 'None' string with 'None' consistently
@@ -1154,7 +1155,7 @@ def check_dge_table_annotation_columns_exist(outdir, runsheet_path, log_path, as
     
     try:
         # Read the DGE table
-        df_dge = pd.read_csv(dge_table_path, keep_default_na=False)
+        df_dge = pd.read_csv(dge_table_path, keep_default_na=False, low_memory=False)
         # Convert all column names to strings to handle numeric columns
         df_dge.columns = df_dge.columns.astype(str)
         
@@ -1302,7 +1303,7 @@ def check_dge_table_sample_columns_exist(outdir, runsheet_path, log_path, assay_
     
     try:
         # Read the DGE table
-        df_dge = pd.read_csv(dge_table_path, keep_default_na=False)
+        df_dge = pd.read_csv(dge_table_path, keep_default_na=False, low_memory=False)
         # Convert all column names to strings to handle numeric columns
         df_dge.columns = df_dge.columns.astype(str)
         
@@ -1444,7 +1445,7 @@ def check_dge_table_sample_columns_constraints(outdir, runsheet_path, log_path, 
     
     try:
         # Read the DGE table
-        df_dge = pd.read_csv(dge_table_path, keep_default_na=False)
+        df_dge = pd.read_csv(dge_table_path, keep_default_na=False, low_memory=False)
         # Convert all column names to strings to handle numeric columns
         df_dge.columns = df_dge.columns.astype(str)
         
@@ -1603,7 +1604,7 @@ def check_dge_table_group_columns_exist(outdir, runsheet_path, log_path, assay_s
         group_names = sorted([paren_style for paren_style in groups.values()])
         
         # Read DGE table and check for expected columns
-        df_dge = pd.read_csv(dge_table_path, keep_default_na=False)
+        df_dge = pd.read_csv(dge_table_path, keep_default_na=False, low_memory=False)
         dge_columns = set(df_dge.columns)
         
         # Find missing columns - for each group, consider it missing only if both formats are missing
@@ -1756,7 +1757,7 @@ def check_dge_table_group_columns_constraints(outdir, runsheet_path, log_path, a
     
     try:
         # Read the DGE table
-        df_dge = pd.read_csv(dge_table_path, keep_default_na=False)
+        df_dge = pd.read_csv(dge_table_path, keep_default_na=False, low_memory=False)
         
         # Function to get base sample name (remove _techrepX if present)
         def get_base_name(sample_name):
@@ -1976,7 +1977,7 @@ def check_dge_table_comparison_statistical_columns_exist(outdir, runsheet_path, 
                 expected_columns.append(f"{prefix}{comparison}")
         
         # Read DGE table and check for expected columns
-        df_dge = pd.read_csv(dge_table_path, keep_default_na=False)
+        df_dge = pd.read_csv(dge_table_path, keep_default_na=False, low_memory=False)
         dge_columns = set(df_dge.columns)
         
         # Find missing columns
@@ -2176,7 +2177,7 @@ def check_dge_table_group_statistical_columns_constraints(outdir, runsheet_path,
         ]
         
         # Read DGE table
-        df_dge = pd.read_csv(dge_table_path, keep_default_na=False)
+        df_dge = pd.read_csv(dge_table_path, keep_default_na=False, low_memory=False)
         
         # Apply constraints
         issues = utils_common_constraints_on_dataframe(df_dge, constraints)
@@ -2253,7 +2254,7 @@ def check_dge_table_fixed_statistical_columns_exist(outdir, log_path, assay_suff
     
     try:
         # Read DGE table and check for expected columns
-        df_dge = pd.read_csv(dge_table_path, keep_default_na=False)
+        df_dge = pd.read_csv(dge_table_path, keep_default_na=False, low_memory=False)
         # Convert all column names to strings to handle numeric columns
         df_dge.columns = df_dge.columns.astype(str)
         
@@ -2325,7 +2326,7 @@ def check_dge_table_fixed_statistical_columns_constraints(outdir, log_path, assa
         ]
         
         # Read DGE table
-        df_dge = pd.read_csv(dge_table_path, keep_default_na=False)
+        df_dge = pd.read_csv(dge_table_path, keep_default_na=False, low_memory=False)
         # Convert all column names to strings to handle numeric columns
         df_dge.columns = df_dge.columns.astype(str)
         
@@ -2394,7 +2395,7 @@ def check_dge_table_log2fc_within_reason(outdir, runsheet_path, log_path, assay_
         return False
 
     try:
-        df_dge = pd.read_csv(dge_table_path, keep_default_na=False)
+        df_dge = pd.read_csv(dge_table_path, keep_default_na=False, low_memory=False)
         
         # Ensure column names are treated as strings if they are used in comparisons
         df_dge.columns = df_dge.columns.astype(str)
