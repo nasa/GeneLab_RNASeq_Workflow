@@ -350,7 +350,7 @@ def check_sample_table_against_runsheet(outdir, runsheet_path, log_path, assay_s
     
     try:
         # Data specific preprocess
-        df_rs = pd.read_csv(runsheet_path, dtype=str)
+        df_rs = pd.read_csv(runsheet_path, dtype=str, keep_default_na=False)
         # Convert all column names to strings to handle numeric columns
         df_rs.columns = df_rs.columns.astype(str)
         
@@ -499,7 +499,7 @@ def check_sample_table_for_correct_group_assignments(outdir, runsheet_path, log_
         df_sample.index = df_sample.index.astype(str)
         
         # Get factor values from runsheet
-        df_rs = pd.read_csv(runsheet_path, dtype=str)
+        df_rs = pd.read_csv(runsheet_path, dtype=str, keep_default_na=False)
         # Convert all column names to strings to handle numeric columns
         df_rs.columns = df_rs.columns.astype(str)
         # Ensure Sample Name is string
@@ -624,7 +624,7 @@ def detect_stratification_factors(outdir, runsheet_path):
     Returns:
         tuple: (factor_name, factor_values) or (None, []) if no stratification detected
     """
-    df = pd.read_csv(runsheet_path, dtype=str)
+    df = pd.read_csv(runsheet_path, dtype=str, keep_default_na=False)
     
     # Get all Factor Value columns
     factor_cols = [col for col in df.columns if col.startswith("Factor Value[")]
@@ -677,7 +677,7 @@ def get_factor_stratified_paths(outdir, runsheet_path, target_factor=""):
                      "dge": os.path.join(outdir, "05-DESeq2_DGE")}}
     
     # Read runsheet to identify values for target factor
-    df = pd.read_csv(runsheet_path, dtype=str)
+    df = pd.read_csv(runsheet_path, dtype=str, keep_default_na=False)
     factor_col = f"Factor Value[{target_factor}]"
     
     if factor_col not in df.columns:
@@ -1109,7 +1109,7 @@ def check_dge_table_annotation_columns_exist(outdir, runsheet_path, log_path, as
     
     # First get sample names from runsheet to identify which columns are samples
     try:
-        df_rs = pd.read_csv(runsheet_path, dtype=str)
+        df_rs = pd.read_csv(runsheet_path, dtype=str, keep_default_na=False)
         # Convert all column names to strings to handle numeric columns
         df_rs.columns = df_rs.columns.astype(str)
         # Ensure Sample Name column is string
@@ -1243,7 +1243,7 @@ def check_dge_table_sample_columns_exist(outdir, runsheet_path, log_path, assay_
     
     # First get sample names from runsheet
     try:
-        df_rs = pd.read_csv(runsheet_path, dtype=str)
+        df_rs = pd.read_csv(runsheet_path, dtype=str, keep_default_na=False)
         # Convert all column names to strings to handle numeric columns
         df_rs.columns = df_rs.columns.astype(str)
         # Ensure Sample Name column is string
@@ -1395,7 +1395,7 @@ def check_dge_table_sample_columns_constraints(outdir, runsheet_path, log_path, 
     
     # First get sample names from runsheet
     try:
-        df_rs = pd.read_csv(runsheet_path, dtype=str)
+        df_rs = pd.read_csv(runsheet_path, dtype=str, keep_default_na=False)
         # Convert all column names to strings to handle numeric columns
         df_rs.columns = df_rs.columns.astype(str)
         # Ensure Sample Name column is string
@@ -1563,7 +1563,7 @@ def check_dge_table_group_columns_exist(outdir, runsheet_path, log_path, assay_s
     
     try:
         # First get expected groups from runsheet
-        df_rs = pd.read_csv(runsheet_path, dtype=str)
+        df_rs = pd.read_csv(runsheet_path, dtype=str, keep_default_na=False)
         # Convert all column names to strings to handle numeric columns
         df_rs.columns = df_rs.columns.astype(str)
         
@@ -1594,7 +1594,7 @@ def check_dge_table_group_columns_exist(outdir, runsheet_path, log_path, assay_s
             
             # Format in two ways: one with dots (for R-style) and one with parentheses and ampersands
             r_style_group = "...".join(safe_list_to_str(factors))
-            paren_style_group = f"({' & '.join(factors)})"
+            paren_style_group = f"({' & '.join(safe_list_to_str(factors))})"
             
             if r_style_group not in groups:
                 groups[r_style_group] = paren_style_group
@@ -1675,7 +1675,7 @@ def check_dge_table_group_columns_constraints(outdir, runsheet_path, log_path, a
     
     # First get sample names from runsheet
     try:
-        df_rs = pd.read_csv(runsheet_path, dtype=str)
+        df_rs = pd.read_csv(runsheet_path, dtype=str, keep_default_na=False)
         # Convert all column names to strings to handle numeric columns
         df_rs.columns = df_rs.columns.astype(str)
         # Ensure Sample Name column is string
@@ -1810,6 +1810,11 @@ def check_dge_table_group_columns_constraints(outdir, runsheet_path, log_path, a
         # Check if the mean columns have no null values and are non-negative
         mean_columns = group_mean_cols
         for col in mean_columns:
+            # Convert to numeric, coercing errors to NaN
+            if df_dge[col].dtype == 'object':
+                df_dge[col] = df_dge[col].replace(['NA', 'None', ''], pd.NA)
+            df_dge[col] = pd.to_numeric(df_dge[col], errors='coerce')
+            
             # Check for nulls
             if df_dge[col].isnull().any():
                 status = "RED"
@@ -1818,7 +1823,14 @@ def check_dge_table_group_columns_constraints(outdir, runsheet_path, log_path, a
                 log_check_result(log_path, component_name, "all", check_name, status, message, details)
                 return False
             
-            # Check for negative values
+            # Check for negative values (ensure numeric type)
+            if not pd.api.types.is_numeric_dtype(df_dge[col]):
+                status = "RED"
+                message = f"Group mean column is not numeric"
+                details = f"Column {col} has dtype {df_dge[col].dtype}"
+                log_check_result(log_path, component_name, "all", check_name, status, message, details)
+                return False
+            
             if (df_dge[col] < 0).any():
                 status = "RED"
                 message = f"Group mean column contains negative values"
@@ -1829,6 +1841,11 @@ def check_dge_table_group_columns_constraints(outdir, runsheet_path, log_path, a
         # Check if the stdev columns have no null values and are non-negative
         stdev_columns = group_stdev_cols
         for col in stdev_columns:
+            # Convert to numeric, coercing errors to NaN
+            if df_dge[col].dtype == 'object':
+                df_dge[col] = df_dge[col].replace(['NA', 'None', ''], pd.NA)
+            df_dge[col] = pd.to_numeric(df_dge[col], errors='coerce')
+            
             # Check for nulls
             if df_dge[col].isnull().any():
                 status = "RED"
@@ -1837,7 +1854,14 @@ def check_dge_table_group_columns_constraints(outdir, runsheet_path, log_path, a
                 log_check_result(log_path, component_name, "all", check_name, status, message, details)
                 return False
             
-            # Check for negative values
+            # Check for negative values (ensure numeric type)
+            if not pd.api.types.is_numeric_dtype(df_dge[col]):
+                status = "RED"
+                message = f"Group standard deviation column is not numeric"
+                details = f"Column {col} has dtype {df_dge[col].dtype}"
+                log_check_result(log_path, component_name, "all", check_name, status, message, details)
+                return False
+            
             if (df_dge[col] < 0).any():
                 status = "RED"
                 message = f"Group standard deviation column contains negative values"
@@ -1900,7 +1924,7 @@ def check_dge_table_comparison_statistical_columns_exist(outdir, runsheet_path, 
     
     try:
         # First get expected groups from runsheet
-        df_rs = pd.read_csv(runsheet_path, dtype=str)
+        df_rs = pd.read_csv(runsheet_path, dtype=str, keep_default_na=False)
         # Convert all column names to strings to handle numeric columns
         df_rs.columns = df_rs.columns.astype(str)
         
@@ -1931,7 +1955,7 @@ def check_dge_table_comparison_statistical_columns_exist(outdir, runsheet_path, 
             
             # Format in two ways: one with dots (for R-style) and one with parentheses and ampersands
             r_style_group = "...".join(safe_list_to_str(factors))
-            paren_style_group = f"({' & '.join(factors)})"
+            paren_style_group = f"({' & '.join(safe_list_to_str(factors))})"
             
             if r_style_group not in groups:
                 groups[r_style_group] = paren_style_group
@@ -2099,7 +2123,7 @@ def check_dge_table_group_statistical_columns_constraints(outdir, runsheet_path,
     
     try:
         # First get expected groups from runsheet
-        df_rs = pd.read_csv(runsheet_path, dtype=str)
+        df_rs = pd.read_csv(runsheet_path, dtype=str, keep_default_na=False)
         # Convert all column names to strings to handle numeric columns
         df_rs.columns = df_rs.columns.astype(str)
         
@@ -2130,7 +2154,7 @@ def check_dge_table_group_statistical_columns_constraints(outdir, runsheet_path,
             
             # Format in two ways: one with dots (for R-style) and one with parentheses and ampersands
             r_style_group = "...".join(safe_list_to_str(factors))
-            paren_style_group = f"({' & '.join(factors)})"
+            paren_style_group = f"({' & '.join(safe_list_to_str(factors))})"
             
             if r_style_group not in groups:
                 groups[r_style_group] = paren_style_group
@@ -2500,7 +2524,20 @@ def check_ercc_presence(outdir, runsheet_path, log_path, assay_suffix="_GLbulkRN
                 break
         
         # If no has_ercc column or it's false, this check is not applicable
-        if not ercc_col or not runsheet_df[ercc_col].iloc[0]:
+        # Check if has_ercc is True (case-insensitive, handling string booleans)
+        has_ercc_value = None
+        if ercc_col:
+            has_ercc_value = str(runsheet_df[ercc_col].iloc[0]).strip().lower()
+            # Check if it's a truthy value (True, true, 1, etc.)
+            if has_ercc_value in ['false', '0', '', 'none', 'nan']:
+                has_ercc_value = False
+            elif has_ercc_value in ['true', '1']:
+                has_ercc_value = True
+            else:
+                # Try to evaluate as boolean
+                has_ercc_value = bool(runsheet_df[ercc_col].iloc[0])
+        
+        if not ercc_col or not has_ercc_value:
             log_check_result(log_path, component, "all", check_name, "GREEN", 
                            "ERCC spike-in check skipped", "No has_ercc=True found in runsheet")
             return True
@@ -2546,8 +2583,9 @@ def check_ercc_presence(outdir, runsheet_path, log_path, assay_suffix="_GLbulkRN
         # Check results and build message
         if ercc_unnorm == 0:
             status = "RED"
-            message = "ERCC spike-ins missing from unnormalized counts despite has_ercc=True"
-            details = f"Runsheet indicates has_ercc={runsheet_df[ercc_col].iloc[0]}, but no ERCC IDs found in unnormalized counts"
+            has_ercc_str = str(runsheet_df[ercc_col].iloc[0])
+            message = f"ERCC spike-ins missing from unnormalized counts despite has_ercc={has_ercc_str}"
+            details = f"Runsheet indicates has_ercc={has_ercc_str}, but no ERCC IDs found in unnormalized counts"
             log_check_result(log_path, component, "all", check_name, status, message, details)
             return False
         
