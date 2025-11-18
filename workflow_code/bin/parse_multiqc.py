@@ -359,7 +359,6 @@ def main(osd_num, paired_end, assay_suffix, mode, runsheet=None):
                         elif 'poly' in lib_sel_lower:
                             normalized_v = 'polyA enrichment'
                         if v != normalized_v:
-                            validation_mismatches.append((sample, 'library_selection', v, normalized_v))
                             metadata[k] = normalized_v
             
             # Validate and fill in missing read_depth and read_length from raw FastQC data
@@ -422,7 +421,6 @@ def main(osd_num, paired_end, assay_suffix, mode, runsheet=None):
                 # If no match, normalized_lib_sel == original_lib_sel, so no change is made
                 
                 if original_lib_sel != normalized_lib_sel:
-                    validation_mismatches.append((sample, 'library_selection', original_lib_sel, normalized_lib_sel))
                     all_fields['library_selection'] = normalized_lib_sel
             
             # Write rows with osd_num and sample fields

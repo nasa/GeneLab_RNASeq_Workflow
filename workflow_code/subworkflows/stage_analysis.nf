@@ -59,7 +59,9 @@ workflow STAGE_ANALYSIS {
         }
 
         // Validate input parameters and runsheet
-        validateParameters()
+        if ( params.validate_params ) {
+            validateParameters()
+        }
 
         PARSE_RUNSHEET( runsheet_path )
         samples = PARSE_RUNSHEET.out.samples
