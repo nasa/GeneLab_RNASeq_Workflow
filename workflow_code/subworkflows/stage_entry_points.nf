@@ -137,7 +137,9 @@ workflow STAGE_ENTRY_TRIMMED_READS {
         }
 
         // Validate input parameters and runsheet
-        validateParameters()
+        if ( params.validate_params ) {
+            validateParameters()
+        }
         
         // If entry point is trimmed_reads and no original runsheet was provided, download trimmed reads from OSDR 
         if ( params.entry_point == "trimmed_reads" && params.runsheet_path == null ) {
@@ -234,7 +236,9 @@ workflow STAGE_ENTRY_BAM_FILES {
         }
 
         // Validate input parameters and runsheet
-        validateParameters()
+        if ( params.validate_params ) {
+            validateParameters()
+        }
         
         // If entry point is bam_files and no original runsheet was provided, download BAM files from OSDR 
         if ( params.entry_point == "bam_files" && params.runsheet_path == null ) {
@@ -324,7 +328,9 @@ workflow STAGE_ENTRY_GENES_RESULTS {
         }
 
         // Validate input parameters and runsheet
-        validateParameters()
+        if ( params.validate_params ) {
+            validateParameters()
+        }
         
         // If entry point is genes_results and no original runsheet was provided, download genes.results files from OSDR 
         if ( params.entry_point == "genes_results" && params.runsheet_path == null ) {
@@ -413,7 +419,9 @@ workflow STAGE_ENTRY_COUNTS_TABLE {
         }
 
         // Validate input parameters and runsheet
-        validateParameters()
+        if ( params.validate_params ) {
+            validateParameters()
+        }
         
         // If params.counts_table_path provided, use it instead of runsheet parsing
         if ( params.counts_table_path ) {
@@ -508,7 +516,9 @@ workflow STAGE_ENTRY_DGE_TABLE {
         }
 
         // Validate input parameters and runsheet
-        validateParameters()
+        if ( params.validate_params ) {
+            validateParameters()
+        }
         
         // If params.dge_table_path provided, use it instead of runsheet parsing
         if ( params.dge_table_path ) {
