@@ -2178,6 +2178,17 @@ def check_dge_table_group_statistical_columns_constraints(outdir, runsheet_path,
         
         # Read DGE table
         df_dge = pd.read_csv(dge_table_path, keep_default_na=False, low_memory=False)
+        # Convert all column names to strings to handle numeric columns
+        df_dge.columns = df_dge.columns.astype(str)
+        
+        # Convert statistical columns to numeric before applying constraints
+        # Replace string "NA" with actual NaN first if needed
+        for col_set, col_constraints in constraints:
+            existing_cols = [col for col in col_set if col in df_dge.columns]
+            for col in existing_cols:
+                if df_dge[col].dtype == 'object':
+                    df_dge[col] = df_dge[col].replace(['NA', 'None', ''], pd.NA)
+                df_dge[col] = pd.to_numeric(df_dge[col], errors='coerce')
         
         # Apply constraints
         issues = utils_common_constraints_on_dataframe(df_dge, constraints)
@@ -2329,6 +2340,15 @@ def check_dge_table_fixed_statistical_columns_constraints(outdir, log_path, assa
         df_dge = pd.read_csv(dge_table_path, keep_default_na=False, low_memory=False)
         # Convert all column names to strings to handle numeric columns
         df_dge.columns = df_dge.columns.astype(str)
+        
+        # Convert statistical columns to numeric before applying constraints
+        # Replace string "NA" with actual NaN first if needed
+        for col_set, col_constraints in constraints:
+            existing_cols = [col for col in col_set if col in df_dge.columns]
+            for col in existing_cols:
+                if df_dge[col].dtype == 'object':
+                    df_dge[col] = df_dge[col].replace(['NA', 'None', ''], pd.NA)
+                df_dge[col] = pd.to_numeric(df_dge[col], errors='coerce')
         
         # Apply constraints
         issues = utils_common_constraints_on_dataframe(df_dge, constraints)

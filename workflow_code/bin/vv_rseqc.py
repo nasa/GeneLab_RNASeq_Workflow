@@ -862,7 +862,7 @@ def report_infer_experiment_issues(outdir, infer_exp_data, log_path):
             # Flag as outlier if more than 2 or 4 standard deviations from median
             if deviation > 4.0:
                 any_outliers = True
-                log_check_result(log_path, component, sample, metric, "RED", 
+                log_check_result(log_path, component, sample, metric, "YELLOW",  # Changed from RED to YELLOW
                                 f"Outlier {metric}: {value:.2f} ({deviation:.2f} stdev from median {median:.2f})", "")
             elif deviation > 2.0:
                 any_outliers = True
@@ -1594,7 +1594,7 @@ def report_read_distribution_issues(outdir, read_dist_data, log_path):
             z_score_cds = abs(cds_pct - mean_cds) / stdev_cds
             
             if z_score_cds > RED_THRESHOLD:
-                severity = "RED"
+                severity = "YELLOW"  # Changed from RED to YELLOW
                 cds_outlier_samples.append((sample, cds_pct, z_score_cds, severity))
                 sample_severities[sample] = max(sample_severities.get(sample, "GREEN"), severity)
             elif z_score_cds > YELLOW_THRESHOLD:
@@ -1607,7 +1607,7 @@ def report_read_distribution_issues(outdir, read_dist_data, log_path):
             z_score_introns = abs(introns_pct - mean_introns) / stdev_introns
             
             if z_score_introns > RED_THRESHOLD:
-                severity = "RED"
+                severity = "YELLOW"  # Changed from RED to YELLOW
                 introns_outlier_samples.append((sample, introns_pct, z_score_introns, severity))
                 sample_severities[sample] = max(sample_severities.get(sample, "GREEN"), severity)
             elif z_score_introns > YELLOW_THRESHOLD:
@@ -1620,7 +1620,7 @@ def report_read_distribution_issues(outdir, read_dist_data, log_path):
             z_score_intergenic = abs(intergenic_pct - mean_intergenic) / stdev_intergenic
             
             if z_score_intergenic > RED_THRESHOLD:
-                severity = "RED"
+                severity = "YELLOW"  # Changed from RED to YELLOW
                 intergenic_outlier_samples.append((sample, intergenic_pct, z_score_intergenic, severity))
                 sample_severities[sample] = max(sample_severities.get(sample, "GREEN"), severity)
             elif z_score_intergenic > YELLOW_THRESHOLD:

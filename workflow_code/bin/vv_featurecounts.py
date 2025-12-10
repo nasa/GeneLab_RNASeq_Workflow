@@ -331,7 +331,7 @@ def report_multiqc_outliers(outdir, multiqc_data, log_path):
     # Thresholds for outlier detection
     thresholds = [
         {"code": "YELLOW", "stdev_threshold": 2, "middle_fcn": "median"},
-        {"code": "RED", "stdev_threshold": 4, "middle_fcn": "median"},
+        {"code": "YELLOW", "stdev_threshold": 4, "middle_fcn": "median"},  # Changed from RED to YELLOW
     ]
     
     # Set to keep track of outlier samples

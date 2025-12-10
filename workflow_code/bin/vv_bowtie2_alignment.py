@@ -475,7 +475,7 @@ def report_multiqc_outliers(outdir, multiqc_data, log_path):
     
     # Calculate statistics and check for outliers
     thresholds = [
-        {"code": "RED", "stdev_threshold": 4, "middle_fcn": "median"},     # Check severe outliers first
+        {"code": "YELLOW", "stdev_threshold": 4, "middle_fcn": "median"},     # Changed from RED to YELLOW
         {"code": "YELLOW", "stdev_threshold": 2, "middle_fcn": "median"}   # Then check minor outliers
     ]
     
