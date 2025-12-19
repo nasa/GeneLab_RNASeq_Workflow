@@ -36,8 +36,6 @@ For entry points other than the default `raw_reads`, include the relevant column
 | trimmed_read2_path | trimmed_reads | string | Path to trimmed reverse reads file (paired-end only) | /my/data/sample_2_trimmed.fastq.gz |
 | bam_path | bam_files | string | Path to aligned BAM file | /my/data/sample_aligned.bam |
 | genes_results_path | genes_results | string | Path to RSEM .genes.results file (`--mode default` only) | /my/data/sample.genes.results |
-| counts_table_path | counts_table | string | Path to raw counts table file | /my/data/RSEM_Unnormalized_Counts.csv|
-| dge_table_path | dge_table | string | Path to DGE table  | /my/data/differential_expression.csv |
 
 ## Optional columns
 
