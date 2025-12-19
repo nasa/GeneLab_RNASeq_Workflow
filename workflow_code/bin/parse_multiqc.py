@@ -226,7 +226,17 @@ def generate_validation_report(fieldnames, populated_fields, mode, assay_suffix,
 
 def main(osd_num, paired_end, assay_suffix, mode, runsheet=None):
 
-    osd_num = osd_num.split('-')[1]
+    # Handle OSD number: if empty/None, skip metadata fetch and use empty string for CSV
+    if not osd_num or osd_num.strip() == '':
+        osd_num = None
+        had_osd_prefix = False
+    else:
+        # Handle OSD number format: if it starts with "OSD-", extract the number part
+        # Otherwise, use it as-is (for custom identifiers like "LEAF_Brapa")
+        had_osd_prefix = osd_num.startswith('OSD-')
+        if had_osd_prefix:
+            osd_num = osd_num.split('-')[1]
+        # If no OSD prefix, use the string as-is
 
     # Create the multiqc_data list with conditionally selected parsers based on mode
     multiqc_data = [
@@ -266,7 +276,8 @@ def main(osd_num, paired_end, assay_suffix, mode, runsheet=None):
     else:
         samples = sorted(samples)  # Fallback to alphabetical
 
-    metadata = get_metadata(osd_num)
+    # Only fetch metadata if osd_num is provided
+    metadata = get_metadata(osd_num) if osd_num else {}
 
     fieldnames = [
         'osd_num', 'sample', 'organism', 'tissue', 'sequencing_instrument', 'library_selection', 'library_layout', 'strandedness', 'read_depth', 'read_length', 'rrna_contamination', 'rin', 'organism_part', 'cell_line', 'cell_type', 'secondary_organism', 'strain', 'animal_source', 'seed_source', 'source_accession', 'mix',
@@ -424,7 +435,10 @@ def main(osd_num, paired_end, assay_suffix, mode, runsheet=None):
                     all_fields['library_selection'] = normalized_lib_sel
             
             # Write rows with osd_num and sample fields
-            writer.writerow({'osd_num': 'OSD-' + osd_num, 'sample': sample, **metadata, **all_fields})
+            # Add OSD- prefix only if original input had it, otherwise use as-is
+            # If osd_num is None/empty, use empty string
+            osd_display = 'OSD-' + osd_num if had_osd_prefix and osd_num else (osd_num if osd_num else '')
+            writer.writerow({'osd_num': osd_display, 'sample': sample, **metadata, **all_fields})
     
     # Generate validation report
     try:
@@ -434,16 +448,23 @@ def main(osd_num, paired_end, assay_suffix, mode, runsheet=None):
 
 
 def get_metadata(osd_num):
-    r = requests.get('https://osdr.nasa.gov/osdr/data/osd/meta/' + osd_num)
     data = {}
+    if not osd_num:
+        return data  # Return empty dict if no osd_num provided
+    try:
+        r = requests.get('https://osdr.nasa.gov/osdr/data/osd/meta/' + osd_num)
+        r.raise_for_status()  # Raise an exception for bad status codes
+        
+        # Source accession
+        comments = r.json()['study']['OSD-' + osd_num]['studies'][0]['comments']
+        source_accession = [c for c in comments if c['name'] == 'Data Source Accession'][0]
 
-    # Source accession
-    comments = r.json()['study']['OSD-' + osd_num]['studies'][0]['comments']
-    source_accession = [c for c in comments if c['name'] == 'Data Source Accession'][0]
-
-    if source_accession and source_accession['value']:
-        data['source_accession'] = source_accession['value']
-
+        if source_accession and source_accession['value']:
+            data['source_accession'] = source_accession['value']
+    except (requests.RequestException, KeyError, IndexError, ValueError, Exception) as e:
+        print(f"WARNING: Error fetching metadata from OSD API: {str(e)}")
+        # Return empty dict if API call fails
+    
     return data
 
 
