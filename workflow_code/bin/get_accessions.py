@@ -37,10 +37,14 @@ def get_glds_to_osd_mapping():
         osd_accession = source.get('Accession', '')
         
         # Extract GLDS accessions from identifiers
-        glds_matches = [
-            x for x in identifiers
-            if isinstance(x, str) and x.startswith("GLDS-")
-        ]
+        # If identifier is a string, use regex to extract GLDS-### patterns
+        # If identifier is already a list item that starts with GLDS-, use it directly
+        glds_matches = []
+        for x in identifiers:
+            if isinstance(x, str):
+                # Use regex to extract GLDS-### patterns from string (handles "GLDS-120     LSDS-33")
+                matches = re.findall(r'GLDS-\d+', x)
+                glds_matches.extend(matches)
         
         if glds_matches and osd_accession.startswith('OSD-'):
             for glds_accession in glds_matches:
@@ -79,10 +83,14 @@ def get_osd_and_glds(accession, api_url):
                         elif not isinstance(identifiers, list):
                             identifiers = []
 
-                        glds_accessions = [
-                            x for x in identifiers
-                            if isinstance(x, str) and x.startswith("GLDS-")
-                        ]
+                        # Extract GLDS accessions from identifiers
+                        # If identifier is a string, use regex to extract GLDS-### patterns
+                        glds_accessions = []
+                        for x in identifiers:
+                            if isinstance(x, str):
+                                # Use regex to extract GLDS-### patterns from string (handles "GLDS-120     LSDS-33")
+                                matches = re.findall(r'GLDS-\d+', x)
+                                glds_accessions.extend(matches)
                         break
             except (requests.exceptions.RequestException, json.JSONDecodeError):
                 pass  # Fall back to empty list
