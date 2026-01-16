@@ -1347,22 +1347,16 @@ def add_raw_multiqc_reports_column(df, glds_prefix, assay_suffix):
     return df
 
 def add_protocol_ref_column(df):
-    """Add Protocol REF column if it doesn't already exist.
+    """Add Protocol REF GeneLab RNAseq data processing protoco; column if it doesn't already exist."""
+    value = "GeneLab RNAseq data processing protocol"
     
-    Args:
-        df: The DataFrame to update
-        
-    Returns:
-        The modified DataFrame
-    """
-    # Check if Protocol REF column already exists
     protocol_col = find_column_case_insensitive(df, "Protocol REF")
     if protocol_col:
-        print(f"Protocol REF column already exists: {protocol_col}. Skipping addition.")
-        column_changes.append(f"Skipped: Protocol REF (already exists as {protocol_col})")
-        return df
+        if df[protocol_col].astype(str).str.contains(value, case=False, na=False).any():
+            print(f"Protocol REF column with data processing protocol value already exists: {protocol_col}. Skipping addition.")
+            column_changes.append(f"Skipped: Protocol REF (data processing protocol already exists as {protocol_col})")
+            return df
     
-    value = "GeneLab RNAseq data processing protocol"
     df[df.columns.size] = value
     df.columns.values[-1] = "Protocol REF"
     column_changes.append(f"Added: Protocol REF (value: {value})")
@@ -1697,9 +1691,6 @@ def main():
         # =====================================================
         print("\n=== PROCESSING RAW DATA SECTION ===")
         
-        # Add Merged Sequence Data File column (raw/merged files before trimming)
-        assay_df = add_merged_sequence_data_column(assay_df, glds_prefix, args.assay_suffix, runsheet_df=runsheet_df)
-        
         # Add read depth from MultiQC report (preserve if exists)
         assay_df = add_read_counts(assay_df, args.outdir, args.glds_accession, args.assay_suffix, runsheet_df)
         
@@ -1709,8 +1700,11 @@ def main():
         # Add Raw MultiQC reports column (preserve if exists)
         assay_df = add_raw_multiqc_reports_column(assay_df, glds_prefix, args.assay_suffix)
         
-        # Add Protocol REF column at the end of the raw section
+        # Add Protocol REF column
         assay_df = add_protocol_ref_column(assay_df)
+        
+        # Add Merged Sequence Data File column (raw/merged files before trimming, if present)
+        assay_df = add_merged_sequence_data_column(assay_df, glds_prefix, args.assay_suffix, runsheet_df=runsheet_df)
         
         # =====================================================
         # SECTION 2: TRIMMED SEQUENCE DATA
