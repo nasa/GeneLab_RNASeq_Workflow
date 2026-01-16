@@ -962,6 +962,19 @@ def add_merged_sequence_data_column(df, glds_prefix, assay_suffix, runsheet_df=N
         "Characteristics[Merged Sequence Data File]"
     ]
     
+    # Check if column already exists
+    existing_col = find_column_case_insensitive(df, column_name)
+    if not existing_col:
+        for alt_name in alternative_names:
+            existing_col = find_column_case_insensitive(df, alt_name)
+            if existing_col:
+                break
+    
+    # Only update if column exists, don't add if missing (optional column)
+    if not existing_col:
+        print("Merged Sequence Data File column not found. Skipping (optional column).")
+        return df
+    
     # Determine if paired-end from runsheet
     is_paired_end = is_paired_end_data(runsheet_df)
     print(f"Data is {'paired-end' if is_paired_end else 'single-end'} based on runsheet")
@@ -1004,8 +1017,12 @@ def add_merged_sequence_data_column(df, glds_prefix, assay_suffix, runsheet_df=N
                 # For single-end data
                 values.append(f"{glds_prefix}{sample}{assay_suffix}_raw.fastq.gz")
     
-    # Add the column to the dataframe with alternative names
-    df = update_column(df, column_name, values, alternative_names)
+    # Update in place
+    print(f"Updating existing Merged Sequence Data File column: {existing_col}")
+    col_index = df.columns.get_loc(existing_col)
+    df = df.drop(columns=[existing_col])
+    df.insert(col_index, column_name, values)
+    column_changes.append(f"Updated: {existing_col} -> {column_name}")
     
     return df
 
@@ -1692,7 +1709,7 @@ def main():
         print("\n=== PROCESSING RAW DATA SECTION ===")
         # Add Merged Sequence Data File column (raw/merged files before trimming, if present)
         assay_df = add_merged_sequence_data_column(assay_df, glds_prefix, args.assay_suffix, runsheet_df=runsheet_df)
-        
+
         # Add read depth from MultiQC report (preserve if exists)
         assay_df = add_read_counts(assay_df, args.outdir, args.glds_accession, args.assay_suffix, runsheet_df)
         
