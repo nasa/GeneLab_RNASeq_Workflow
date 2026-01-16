@@ -942,6 +942,73 @@ def add_unmapped_reads_column(df, glds_prefix, assay_suffix, runsheet_df=None, m
     
     return df
 
+def add_merged_sequence_data_column(df, glds_prefix, assay_suffix, runsheet_df=None):
+    """Add the Merged Sequence Data File column to the dataframe.
+    
+    This is for raw/merged sequence data files (before trimming).
+    Similar to trimmed data column but uses "raw" instead of "trimmed".
+    
+    Args:
+        df: The assay table dataframe
+        glds_prefix: The GLDS prefix to add to filenames
+        assay_suffix: The assay suffix to add to filenames
+        runsheet_df: Optional runsheet dataframe with sample information
+        
+    Returns:
+        The modified dataframe
+    """
+    column_name = "Parameter Value[Merged Sequence Data File]"
+    alternative_names = [
+        "Characteristics[Merged Sequence Data File]"
+    ]
+    
+    # Determine if paired-end from runsheet
+    is_paired_end = is_paired_end_data(runsheet_df)
+    print(f"Data is {'paired-end' if is_paired_end else 'single-end'} based on runsheet")
+    
+    # Find the sample name column in the assay table
+    sample_col = next((col for col in df.columns if 'Sample Name' in col), None)
+    
+    if not sample_col:
+        print("Warning: Could not find Sample Name column in assay table")
+        # If no sample column, just use placeholder values
+        if is_paired_end:
+            values = [f"{glds_prefix}sample{i+1}{assay_suffix}_R1_raw.fastq.gz,{glds_prefix}sample{i+1}{assay_suffix}_R2_raw.fastq.gz" for i in range(len(df))]
+        else:
+            values = [f"{glds_prefix}sample{i+1}{assay_suffix}_raw.fastq.gz" for i in range(len(df))]
+    else:
+        # Get sample names from assay table
+        assay_sample_names = df[sample_col].tolist()
+        
+        # Create a mapping from assay table sample names to runsheet sample names if available
+        sample_name_map = {}
+        if runsheet_df is not None and 'Sample Name' in runsheet_df.columns:
+            # Check for 'Original Sample Name' column to map between assay table and runsheet
+            if 'Original Sample Name' in runsheet_df.columns:
+                for _, row in runsheet_df.iterrows():
+                    orig_name = row['Original Sample Name']
+                    rs_name = row['Sample Name']
+                    if orig_name in assay_sample_names:
+                        sample_name_map[orig_name] = rs_name
+        
+        # Generate file paths using the appropriate sample names
+        values = []
+        for assay_sample in assay_sample_names:
+            # Use mapped name if available, otherwise use the assay table name
+            sample = sample_name_map.get(assay_sample, assay_sample)
+            
+            if is_paired_end:
+                # For paired-end data, create entries with both R1 and R2 files, comma-separated without spaces
+                values.append(f"{glds_prefix}{sample}{assay_suffix}_R1_raw.fastq.gz,{glds_prefix}{sample}{assay_suffix}_R2_raw.fastq.gz")
+            else:
+                # For single-end data
+                values.append(f"{glds_prefix}{sample}{assay_suffix}_raw.fastq.gz")
+    
+    # Add the column to the dataframe with alternative names
+    df = update_column(df, column_name, values, alternative_names)
+    
+    return df
+
 def add_trimmed_data_column(df, glds_prefix, assay_suffix, runsheet_df=None):
     """Add the Trimmed Sequence Data column to the dataframe.
     
@@ -1071,7 +1138,10 @@ def add_trimming_reports_column(df, glds_prefix, assay_suffix, runsheet_df=None)
 def add_trimmed_multiqc_reports_column(df, glds_prefix, assay_suffix):
     """Add the trimmed sequence data MultiQC reports column to the dataframe."""
     column_name = "Parameter Value[Trimmed Sequence Data/MultiQC Reports]"
-    alternative_names = ["Parameter Value[Trimmed Sequence Data Multiqc File]"]
+    alternative_names = [
+        "Parameter Value[Trimmed Sequence Data Multiqc File]",
+        "Parameter Value[Trimmed Sequence Data/MultiQC Report]"
+    ]
     
     # Create the multiqc report filenames - both data zip and html
     multiqc_html = f"{glds_prefix}trimmed_multiqc{assay_suffix}.html"
@@ -1277,9 +1347,25 @@ def add_raw_multiqc_reports_column(df, glds_prefix, assay_suffix):
     return df
 
 def add_protocol_ref_column(df):
+    """Add Protocol REF column if it doesn't already exist.
+    
+    Args:
+        df: The DataFrame to update
+        
+    Returns:
+        The modified DataFrame
+    """
+    # Check if Protocol REF column already exists
+    protocol_col = find_column_case_insensitive(df, "Protocol REF")
+    if protocol_col:
+        print(f"Protocol REF column already exists: {protocol_col}. Skipping addition.")
+        column_changes.append(f"Skipped: Protocol REF (already exists as {protocol_col})")
+        return df
+    
     value = "GeneLab RNAseq data processing protocol"
     df[df.columns.size] = value
     df.columns.values[-1] = "Protocol REF"
+    column_changes.append(f"Added: Protocol REF (value: {value})")
     return df
 
 def add_raw_counts_tables_column(df, glds_prefix, assay_suffix, mode=""):
@@ -1610,6 +1696,9 @@ def main():
         # SECTION 1: RAW DATA
         # =====================================================
         print("\n=== PROCESSING RAW DATA SECTION ===")
+        
+        # Add Merged Sequence Data File column (raw/merged files before trimming)
+        assay_df = add_merged_sequence_data_column(assay_df, glds_prefix, args.assay_suffix, runsheet_df=runsheet_df)
         
         # Add read depth from MultiQC report (preserve if exists)
         assay_df = add_read_counts(assay_df, args.outdir, args.glds_accession, args.assay_suffix, runsheet_df)
