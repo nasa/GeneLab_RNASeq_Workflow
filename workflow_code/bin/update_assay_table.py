@@ -1690,6 +1690,8 @@ def main():
         # SECTION 1: RAW DATA
         # =====================================================
         print("\n=== PROCESSING RAW DATA SECTION ===")
+        # Add Merged Sequence Data File column (raw/merged files before trimming, if present)
+        assay_df = add_merged_sequence_data_column(assay_df, glds_prefix, args.assay_suffix, runsheet_df=runsheet_df)
         
         # Add read depth from MultiQC report (preserve if exists)
         assay_df = add_read_counts(assay_df, args.outdir, args.glds_accession, args.assay_suffix, runsheet_df)
@@ -1702,9 +1704,6 @@ def main():
         
         # Add Protocol REF column
         assay_df = add_protocol_ref_column(assay_df)
-        
-        # Add Merged Sequence Data File column (raw/merged files before trimming, if present)
-        assay_df = add_merged_sequence_data_column(assay_df, glds_prefix, args.assay_suffix, runsheet_df=runsheet_df)
         
         # =====================================================
         # SECTION 2: TRIMMED SEQUENCE DATA
