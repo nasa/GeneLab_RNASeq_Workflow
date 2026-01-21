@@ -757,17 +757,21 @@ def add_read_length(df, outdir, glds_accession, assay_suffix, runsheet_df=None):
             with open(json_path, 'r') as f:
                 multiqc_data = json.load(f)
             
-            # Extract avg_sequence_length from FastQC data
+            # Extract median_sequence_length from FastQC data
             # First, try to extract directly from report_general_stats_data
             if 'report_general_stats_data' in multiqc_data and multiqc_data['report_general_stats_data']:
                 stats_module = multiqc_data['report_general_stats_data'][0]  # Use first module
                 print("Extracting read lengths directly from report_general_stats_data")
                 
                 for sample_name, sample_data in stats_module.items():
-                    # Try avg_sequence_length (FastQC field name)
-                    if 'avg_sequence_length' in sample_data:
+                    # Try median_sequence_length first , fallback to avg_sequence_length
+                    if 'median_sequence_length' in sample_data:
+                        read_length = int(float(sample_data['median_sequence_length']))
+                        print(f"Found median length for {sample_name}: {read_length}")
+                        read_lengths[sample_name] = read_length
+                    elif 'avg_sequence_length' in sample_data:
                         read_length = int(float(sample_data['avg_sequence_length']))
-                        print(f"Found length for {sample_name}: {read_length}")
+                        print(f"Found avg length for {sample_name}: {read_length} (median not available)")
                         read_lengths[sample_name] = read_length
             
             # Fallback to FastQC module specific extraction if needed
@@ -786,9 +790,14 @@ def add_read_length(df, outdir, glds_accession, assay_suffix, runsheet_df=None):
                     
                     # Process each sample to extract read lengths
                     for sample_name, sample_data in fastqc_stats.items():
-                        if 'avg_sequence_length' in sample_data:
+                        # Try median_sequence_length first, fallback to avg_sequence_length
+                        if 'median_sequence_length' in sample_data:
+                            read_length = int(float(sample_data['median_sequence_length']))
+                            print(f"Found median length for {sample_name}: {read_length}")
+                            read_lengths[sample_name] = read_length
+                        elif 'avg_sequence_length' in sample_data:
                             read_length = int(float(sample_data['avg_sequence_length']))
-                            print(f"Found length for {sample_name}: {read_length}")
+                            print(f"Found avg length for {sample_name}: {read_length} (median not available)")
                             read_lengths[sample_name] = read_length
             
             if not read_lengths:
