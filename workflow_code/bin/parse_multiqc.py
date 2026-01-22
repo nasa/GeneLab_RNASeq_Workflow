@@ -209,7 +209,7 @@ def generate_validation_report(fieldnames, populated_fields, mode, assay_suffix,
                 if field == 'read_depth':
                     f.write(f"** {field} (filled from raw_total_sequences_f)\n")
                 elif field == 'read_length':
-                    f.write(f"** {field} (filled from raw_median_sequence_length_f or raw_avg_sequence_length_f)\n")
+                    f.write(f"** {field} (filled from raw_median_sequence_length_f)\n")
                 else:
                     f.write(f"** {field}\n")
             f.write("\n")
@@ -392,39 +392,20 @@ def main(osd_num, paired_end, assay_suffix, mode, runsheet=None):
                 except (ValueError, TypeError):
                     pass
             
-            # If read_length exists, validate it matches raw_median_sequence_length_f (prefer median) or raw_avg_sequence_length_f
+            # If read_length exists, validate it matches raw_median_sequence_length_f
             if all_fields.get('read_length') and all_fields.get('read_length') != '':
-                # Try median first, fallback to average
-                multiqc_read_length = None
                 if all_fields.get('raw_median_sequence_length_f'):
                     try:
-                        multiqc_read_length = int(float(all_fields['raw_median_sequence_length_f']))
-                    except (ValueError, TypeError):
-                        pass
-                elif all_fields.get('raw_avg_sequence_length_f'):
-                    try:
-                        multiqc_read_length = int(float(all_fields['raw_avg_sequence_length_f']))
-                    except (ValueError, TypeError):
-                        pass
-                
-                if multiqc_read_length is not None:
-                    try:
                         assay_read_length = int(float(all_fields['read_length']))
+                        multiqc_read_length = int(float(all_fields['raw_median_sequence_length_f']))
                         if assay_read_length != multiqc_read_length:
                             validation_mismatches.append((sample, 'read_length', assay_read_length, multiqc_read_length))
                     except (ValueError, TypeError):
                         pass
-            # If read_length is empty, fill from raw_median_sequence_length_f or raw_avg_sequence_length_f
+            # If read_length is empty, fill from raw_median_sequence_length_f
             elif all_fields.get('raw_median_sequence_length_f'):
                 try:
                     all_fields['read_length'] = int(float(all_fields['raw_median_sequence_length_f']))
-                    populated_fields.add('read_length')
-                    filled_fields.add('read_length')
-                except (ValueError, TypeError):
-                    pass
-            elif all_fields.get('raw_avg_sequence_length_f'):
-                try:
-                    all_fields['read_length'] = int(float(all_fields['raw_avg_sequence_length_f']))
                     populated_fields.add('read_length')
                     filled_fields.add('read_length')
                 except (ValueError, TypeError):
