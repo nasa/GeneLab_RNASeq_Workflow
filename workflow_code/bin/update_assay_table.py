@@ -1363,15 +1363,8 @@ def add_raw_multiqc_reports_column(df, glds_prefix, assay_suffix):
     return df
 
 def add_protocol_ref_column(df):
-    """Add Protocol REF GeneLab RNAseq data processing protoco; column if it doesn't already exist."""
+    """Add Protocol REF GeneLab RNAseq data processing protocol column"""
     value = "GeneLab RNAseq data processing protocol"
-    
-    protocol_col = find_column_case_insensitive(df, "Protocol REF")
-    if protocol_col:
-        if df[protocol_col].astype(str).str.contains(value, case=False, na=False).any():
-            print(f"Protocol REF column with data processing protocol value already exists: {protocol_col}. Skipping addition.")
-            column_changes.append(f"Skipped: Protocol REF (data processing protocol already exists as {protocol_col})")
-            return df
     
     df[df.columns.size] = value
     df.columns.values[-1] = "Protocol REF"
