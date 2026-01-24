@@ -1016,11 +1016,10 @@ def add_merged_sequence_data_column(df, glds_prefix, assay_suffix, runsheet_df=N
                 # For single-end data
                 values.append(f"{glds_prefix}{sample}{assay_suffix}_raw.fastq.gz")
     
-    # Update in place
+    # Update column (drop and add at end, not preserving position)
     print(f"Updating existing Merged Sequence Data File column: {existing_col}")
-    col_index = df.columns.get_loc(existing_col)
     df = df.drop(columns=[existing_col])
-    df.insert(col_index, column_name, values)
+    df[column_name] = values
     column_changes.append(f"Updated: {existing_col} -> {column_name}")
     
     return df
@@ -1699,14 +1698,14 @@ def main():
         # SECTION 1: RAW DATA
         # =====================================================
         print("\n=== PROCESSING RAW DATA SECTION ===")
-        # Add Merged Sequence Data File column (raw/merged files before trimming, if present)
-        assay_df = add_merged_sequence_data_column(assay_df, glds_prefix, args.assay_suffix, runsheet_df=runsheet_df)
-
         # Add read depth from MultiQC report (preserve if exists)
         assay_df = add_read_counts(assay_df, args.outdir, args.glds_accession, args.assay_suffix, runsheet_df)
         
         # Add read length from MultiQC report (preserve if exists)
         assay_df = add_read_length(assay_df, args.outdir, args.glds_accession, args.assay_suffix, runsheet_df)
+        
+        # Add Merged Sequence Data File column (raw/merged files before trimming, if present)
+        assay_df = add_merged_sequence_data_column(assay_df, glds_prefix, args.assay_suffix, runsheet_df=runsheet_df)
         
         # Add Raw MultiQC reports column (preserve if exists)
         assay_df = add_raw_multiqc_reports_column(assay_df, glds_prefix, args.assay_suffix)
