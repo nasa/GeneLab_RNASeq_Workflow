@@ -41,8 +41,9 @@ process PARSE_ANNOTATIONS_TABLE {
         
         // Convert figshare ndownloader URL to API endpoint
         if (gene_annotations_url != null && gene_annotations_url.contains('figshare.com/ndownloader/files/')) {
-            file_id = (gene_annotations_url =~ /.*\/files\/([0-9]+).*/)[0][1]
+            file_id = (gene_annotations_url =~ /.*\/files\/([a-zA-Z0-9]+).*/)[0][1]
             gene_annotations_url = "https://api.figshare.com/v2/file/download/${file_id}"
+            println "            Converted figshare URL to API endpoint: ${gene_annotations_url}"
         }
         
         reference_version = organisms[organism_key][3]
