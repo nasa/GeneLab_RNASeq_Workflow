@@ -969,10 +969,7 @@ def add_merged_sequence_data_column(df, glds_prefix, assay_suffix, runsheet_df=N
             if existing_col:
                 break
     
-    # Only update if column exists, don't add if missing (optional column)
-    if not existing_col:
-        print("Merged Sequence Data File column not found. Skipping (optional column).")
-        return df
+    # Always add/update this column
     
     # Determine if paired-end from runsheet
     is_paired_end = is_paired_end_data(runsheet_df)
@@ -1016,11 +1013,25 @@ def add_merged_sequence_data_column(df, glds_prefix, assay_suffix, runsheet_df=N
                 # For single-end data
                 values.append(f"{glds_prefix}{sample}{assay_suffix}_raw.fastq.gz")
     
-    # Update column (drop and add at end, not preserving position)
-    print(f"Updating existing Merged Sequence Data File column: {existing_col}")
-    df = df.drop(columns=[existing_col])
-    df[column_name] = values
-    column_changes.append(f"Updated: {existing_col} -> {column_name}")
+    # Remove existing column if present
+    if existing_col:
+        print(f"Updating existing Merged Sequence Data File column: {existing_col}")
+        df = df.drop(columns=[existing_col])
+        column_changes.append(f"Updated: {existing_col} -> {column_name}")
+    else:
+        print("Merged Sequence Data File column not found. Adding new column.")
+        column_changes.append(f"Added: {column_name}")
+
+    # Insert left of MultiQC File Names if present, else append at end
+    insert_position = None
+    for i, col in enumerate(df.columns):
+        if "MultiQC File Names" in col:
+            insert_position = i
+            break
+    if insert_position is None:
+        df[column_name] = values
+    else:
+        df.insert(insert_position, column_name, values)
     
     return df
 
@@ -1365,9 +1376,47 @@ def add_protocol_ref_column(df):
     """Add Protocol REF GeneLab RNAseq data processing protocol column"""
     value = "GeneLab RNAseq data processing protocol"
     
-    df[df.columns.size] = value
-    df.columns.values[-1] = "Protocol REF"
-    column_changes.append(f"Added: Protocol REF (value: {value})")
+    # Insert after MultiQC File Names column
+    insert_position = None
+    for i, col in enumerate(df.columns):
+        if "MultiQC File Names" in col:
+            insert_position = i + 1
+            break
+    if insert_position is None:
+        insert_position = len(df.columns)
+    
+    # Remove any existing Protocol REF columns with the data processing protocol value
+    drop_cols = []
+    drop_indices = []
+    for i, col in enumerate(df.columns):
+        if "protocol ref" in col.lower():
+            col_data = df.iloc[:, i].astype(str)
+            if col_data.str.contains(value, case=False, na=False).any():
+                drop_cols.append(col)
+                drop_indices.append(i)
+    
+    if drop_cols:
+        print(f"Removing existing Protocol REF columns with data processing protocol: {', '.join(drop_cols)}")
+        df = df.drop(columns=drop_cols)
+        column_changes.append(
+            f"Removed: {', '.join(drop_cols)} (will be re-added after MultiQC File Names)"
+        )
+        # Adjust insert position if needed
+        removed_before = sum(1 for idx in drop_indices if idx < insert_position)
+        insert_position -= removed_before
+        if insert_position < 0:
+            insert_position = 0
+    
+    # Insert with temp name, rename "Protocol REF"
+    temp_name = "Protocol REF_DP"
+    while temp_name in df.columns:
+        temp_name = f"{temp_name}_temp"
+    df.insert(insert_position, temp_name, value)
+    cols = list(df.columns)
+    cols[insert_position] = "Protocol REF"
+    df.columns = cols
+    
+    column_changes.append(f"Added: Protocol REF (value: {value}) after MultiQC File Names")
     return df
 
 def add_raw_counts_tables_column(df, glds_prefix, assay_suffix, mode=""):
