@@ -49,11 +49,10 @@ def main():
     except StopIteration:
         sys.exit("Error: ISA archive not found in the file list.")
 
-    # Use REST_URL for download
-    file_info = files.get(isa_file_name)
-    download_url = file_info.get('REST_URL')
+    # Construct the full download URL
+    download_url = files.get(isa_file_name).get('URL')
     if not download_url:
-        sys.exit(f"Error: No REST_URL for ISA archive {isa_file_name}.")
+        sys.exit(f"Error: Download URL for ISA archive {isa_file_name} not found.")
 
     # Make the output directory and file path
     os.makedirs(outdir, exist_ok=True)
