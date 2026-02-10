@@ -149,9 +149,31 @@
           "type": "string",
           "default": "_GLbulkRNAseq",
           "description": "Specifies a string that should be used to label the output file names."
+        },
+        "entry_point": {
+          "type": "string",
+          "default": "raw_reads",
+          "description": "Workflow entry point. Valid options: 'raw_reads', 'trimmed_reads', 'bam_files', 'genes_results', 'counts_table', 'dge_table'",
+          "enum": ["raw_reads", "trimmed_reads", "bam_files", "genes_results", "counts_table", "dge_table"]
+        },
+        "strandedness": {
+          "type": "string",
+          "default": "none",
+          "description": "Sets strandedness used for RSEM quantification when the workflow is started after alignment",
+          "enum": ["forward", "reverse", "none"]
+        },
+        "counts_table_path": {
+          "type": "string",
+          "description": "Path to counts table file. Used with `counts_table` entry point.",
+          "format": "file-path"
+        },
+        "dge_table_path": {
+          "type": "string",
+          "description": "Path to DGE table file. Used with `dge_table` entry point.",
+          "format": "file-path"
         }
       },
-      "required": ["mode", "assay_suffix"]
+      "required": ["mode"]
     },
     "references": {
       "title": "References",

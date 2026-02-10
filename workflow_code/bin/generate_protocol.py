@@ -20,7 +20,7 @@ def parse_args():
                         help='Output directory for the protocol file')
     parser.add_argument('--software_table', required=True,
                         help='Path to YAML file containing software versions')
-    parser.add_argument('--assay_suffix', required=True,
+    parser.add_argument('--assay_suffix', default='',
                         help='Suffix for the assay type')
     parser.add_argument('--paired_end', required=True,
                         help='Boolean indicating paired-end sequencing')

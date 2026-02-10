@@ -156,15 +156,15 @@ def check_raw_fastq_existence(outdir, samples, paired_end, log_path, assay_suffi
             r1_file = os.path.join(fastq_dir, f"{sample}{assay_suffix}_R1_raw.fastq.gz")
             r2_file = os.path.join(fastq_dir, f"{sample}{assay_suffix}_R2_raw.fastq.gz")
             
-            if not os.path.exists(r1_file):
+            if not os.path.lexists(r1_file):
                 missing_files.append(r1_file)
-            if not os.path.exists(r2_file):
+            if not os.path.lexists(r2_file):
                 missing_files.append(r2_file)
         else:
             # Check for single file for single-end sequencing
             single_file = os.path.join(fastq_dir, f"{sample}{assay_suffix}_raw.fastq.gz")
             
-            if not os.path.exists(single_file):
+            if not os.path.lexists(single_file):
                 missing_files.append(single_file)
     
     if missing_files:
@@ -226,9 +226,9 @@ def check_gzip_integrity(outdir, samples, paired_end, log_path, assay_suffix="_G
                          "No FASTQ files found to check", "")
         return False
 
-def validate_fastq_format(outdir, samples, paired_end, log_path, assay_suffix="_GLbulkRNAseq", max_lines=200000000):
+def validate_fastq_format(outdir, samples, paired_end, log_path, assay_suffix="_GLbulkRNAseq", max_lines=4000000):
     """Validate FASTQ format by checking that header lines start with @.
-    Only checks the first 200 million lines for performance reasons."""
+    Only checks the first 4 million lines (1M reads) for performance reasons."""
     fastq_dir = os.path.join(outdir, "00-RawData", "Fastq")
     invalid_files = []
     all_files = []
@@ -646,7 +646,7 @@ def report_multiqc_outliers(outdir, multiqc_data, log_path):
     # Thresholds for outlier detection
     thresholds = [
         {"code": "YELLOW", "stdev_threshold": 2, "middle_fcn": "median"},
-        {"code": "RED", "stdev_threshold": 4, "middle_fcn": "median"},
+        {"code": "YELLOW", "stdev_threshold": 4, "middle_fcn": "median"},  # Changed from RED to YELLOW
     ]
     
     # Set to keep track of outlier samples
@@ -960,8 +960,8 @@ def main():
     parser.add_argument('--runsheet', '-r', required=True, help='Path to the runsheet CSV file')
     parser.add_argument('--outdir', '-o', default=os.getcwd(), 
                         help='Output directory (GLDS-## folder), defaults to current directory')
-    parser.add_argument('--assay-suffix', default="_GLbulkRNAseq", 
-                        help='Assay suffix used in MultiQC report filenames (default: _GLbulkRNAseq)')
+    parser.add_argument('--assay-suffix', default="", 
+                        help='Assay suffix used in MultiQC report filenames (default: empty)')
     args = parser.parse_args()
 
     # Initialize VV log

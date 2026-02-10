@@ -29,13 +29,14 @@ process GENERATE_PROTOCOL {
         def mode = params.mode == 'microbes' ? '--mode microbes' : ''
         def ref_source = reference_source ? "--reference_source ${reference_source}" : ''
         def ref_version = reference_version ? "--reference_version ${reference_version}" : ''
+        def assay_suffix_arg = params.assay_suffix ? "--assay_suffix ${params.assay_suffix}" : ''
 
         """
         generate_protocol.py \
         ${mode} \
         --outdir . \
         --software_table ${software_versions_yaml} \
-        --assay_suffix ${params.assay_suffix} \
+        ${assay_suffix_arg} \
         --paired_end ${ch_meta.paired_end} \
         --has_ercc ${ch_meta.has_ercc} \
         --workflow_version ${workflow.manifest.version} \

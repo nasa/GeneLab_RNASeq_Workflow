@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0](https://github.com/nasa/GeneLab_RNASeq_Workflow/tree/NF_RCP_2.1.0) - 2025-12-09
+
+### Added
+
+- Added support for specifying workflow entry points via the `--entry_point` parameter. Users can now start the workflow from intermediate steps (`raw_reads` (default), `trimmed_reads`, `bam_files`, `genes_results`, `counts_table`, or `dge_table`) instead of always starting from raw reads.
+- Added auto-fill for missing `read_depth` and `read_length` from raw FastQC MultiQC data in `parse_multiqc.py`
+- Added validation in `parse_multiqc.py` to compare existing `read_depth` and `read_length` values with MultiQC data and report mismatches
+- Added `add_read_length()` function in `update_assay_table.py` to auto-fill "Parameter Value[Read Length]" from MultiQC data if missing
+- Added normalization for `strandedness` (uppercase) and `library_selection` (ribo→ribo-depletion, poly→polyA enrichment) in `parse_multiqc.py` and `update_assay_table.py`
+- Added changes report file to `update_assay_table.py`
+
+### Changed
+
+- Limit STAR alignment to a maximum of 10 concurrent jobs by setting `maxForks = 10` in local.config, slurm.config
+- Updated V&V outlier detection: extreme outliers now flagged as YELLOW instead of RED across all V&V modules
+- Updated `parse_multiqc.py` to handle empty or missing OSD numbers
+
+### Fixed
+
+- Fixed unused parameter validation with boolean flag `params.validate_params` 
+- Fixed handling of "None" factor conditions in `vv_dge_deseq2.py`
+- Fixed passing through of ISA archive for runsheet-based runs
+- Stream data in `concat_logs.py` instead of loading log files into memory
+- Fixed modules and scripts that required params.assay_suffix to be a non-empty string
+- Fixed `parse_qc_metrics` validation report: excluded `mix` field for non-ERCC datasets, added auto-fill and validation mismatch reporting for `read_depth` and `read_length`
+- Fixed `get_accessions.py` to handle identifiers that can be either strings or lists in API responses
+
 ## [2.0.2](https://github.com/nasa/GeneLab_RNASeq_Workflow/tree/NF_RCP_2.0.2) - 2025-08-26
 
 ### Added
@@ -29,8 +56,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - .genes.results to ${params.assay_suffix}.genes.results
   - _rRNArm.genes.results to ${params.assay_suffix}_rRNArm.genes.results
   - .isoforms.results to ${params.assay_suffix}.isoforms.results
-  - *.bowtie2.log to *${params.assay_suffix}.bowtie2.log
-  - *_sorted.bam to *${params.assay_suffix}_sorted.bam
+  - .bowtie2.log to ${params.assay_suffix}.bowtie2.log
+  - _sorted.bam to ${params.assay_suffix}_sorted.bam
 
 ### Removed
 

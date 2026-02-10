@@ -44,7 +44,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Extract RNA-Seq assay table from ISA.zip')
     parser.add_argument('--outdir', required=True, help='Directory containing Metadata folder with ISA.zip')
     parser.add_argument('--mode', required=False, default="", help='Processing mode (microbes or empty for default)')
-    parser.add_argument('--assay_suffix', required=True, help='Suffix for output file')
+    parser.add_argument('--assay_suffix', default='', help='Suffix for output file (default: empty)')
     parser.add_argument('--glds_accession', required=True, help='GLDS accession number (e.g. GLDS-123)')
     return parser.parse_args()
 
@@ -524,11 +524,41 @@ def add_read_counts(df, outdir, glds_accession, assay_suffix, runsheet_df=None):
                 stats_module = multiqc_data['report_general_stats_data'][0]  # Use first module
                 print("Extracting read counts directly from report_general_stats_data")
                 
+                # Group samples by base name for paired-end data
+                sample_groups = {}
                 for sample_name, sample_data in stats_module.items():
-                    if 'total_sequences' in sample_data:
-                        read_count = int(sample_data['total_sequences'])
-                        print(f"Found count for {sample_name}: {read_count}")
-                        read_counts[sample_name] = read_count
+                    sample_name_str = str(sample_name)
+                    base_name = sample_name_str
+                    
+                    # Handle paired-end naming patterns
+                    if ' Read 1' in sample_name_str or '_R1' in sample_name_str:
+                        base_name = sample_name_str.replace(' Read 1', '').replace('_R1', '')
+                        if base_name not in sample_groups:
+                            sample_groups[base_name] = {'r1': None, 'r2': None}
+                        sample_groups[base_name]['r1'] = sample_name_str
+                    elif ' Read 2' in sample_name_str or '_R2' in sample_name_str:
+                        base_name = sample_name_str.replace(' Read 2', '').replace('_R2', '')
+                        if base_name not in sample_groups:
+                            sample_groups[base_name] = {'r1': None, 'r2': None}
+                        sample_groups[base_name]['r2'] = sample_name_str
+                    else:
+                        # Single-end or non-paired
+                        if base_name not in sample_groups:
+                            sample_groups[base_name] = {'r1': None, 'r2': None}
+                        sample_groups[base_name]['r1'] = sample_name_str
+                
+                # Calculate read counts (use R1 only - represents read pairs for paired-end)
+                for base_name, reads in sample_groups.items():
+                    r1_count = 0
+                    
+                    if reads['r1'] and reads['r1'] in stats_module:
+                        if 'total_sequences' in stats_module[reads['r1']]:
+                            r1_count = int(stats_module[reads['r1']]['total_sequences'])
+                    
+                    # Use R1 count only (represents read pairs for paired-end, reads for single-end)
+                    if r1_count > 0:
+                        print(f"Found count for {base_name}: {r1_count}")
+                        read_counts[base_name] = r1_count
             
             # Fallback to FastQC module specific extraction if needed
             elif ('report_data_sources' in multiqc_data and 
@@ -544,12 +574,41 @@ def add_read_counts(df, outdir, glds_accession, assay_suffix, runsheet_df=None):
                 if fastqc_index is not None:
                     fastqc_stats = multiqc_data['report_general_stats_data'][fastqc_index]
                     
-                    # Process each sample to extract read counts
+                    # Group samples by base name for paired-end data
+                    sample_groups = {}
                     for sample_name, sample_data in fastqc_stats.items():
-                        if 'total_sequences' in sample_data:
-                            read_count = int(sample_data['total_sequences'])
-                            print(f"Found count for {sample_name}: {read_count}")
-                            read_counts[sample_name] = read_count
+                        sample_name_str = str(sample_name)
+                        base_name = sample_name_str
+                        
+                        # Handle paired-end naming patterns
+                        if ' Read 1' in sample_name_str or '_R1' in sample_name_str:
+                            base_name = sample_name_str.replace(' Read 1', '').replace('_R1', '')
+                            if base_name not in sample_groups:
+                                sample_groups[base_name] = {'r1': None, 'r2': None}
+                            sample_groups[base_name]['r1'] = sample_name_str
+                        elif ' Read 2' in sample_name_str or '_R2' in sample_name_str:
+                            base_name = sample_name_str.replace(' Read 2', '').replace('_R2', '')
+                            if base_name not in sample_groups:
+                                sample_groups[base_name] = {'r1': None, 'r2': None}
+                            sample_groups[base_name]['r2'] = sample_name_str
+                        else:
+                            # Single-end or non-paired
+                            if base_name not in sample_groups:
+                                sample_groups[base_name] = {'r1': None, 'r2': None}
+                            sample_groups[base_name]['r1'] = sample_name_str
+                    
+                    # Calculate read counts (use R1 only - represents read pairs for paired-end)
+                    for base_name, reads in sample_groups.items():
+                        r1_count = 0
+                        
+                        if reads['r1'] and reads['r1'] in fastqc_stats:
+                            if 'total_sequences' in fastqc_stats[reads['r1']]:
+                                r1_count = int(fastqc_stats[reads['r1']]['total_sequences'])
+                        
+                        # Use R1 count only (represents read pairs for paired-end, reads for single-end)
+                        if r1_count > 0:
+                            print(f"Found count for {base_name}: {r1_count}")
+                            read_counts[base_name] = r1_count
             
             if not read_counts:
                 print("WARNING: Could not extract any read counts from MultiQC data")
@@ -593,6 +652,186 @@ def add_read_counts(df, outdir, glds_accession, assay_suffix, runsheet_df=None):
             
             if not found_match:
                 print(f"WARNING: No read count found for sample {assay_sample}")
+                values.append("N/A")
+    
+    # Add the column to the dataframe
+    df = update_column(df, column_name, values, alternative_names)
+    
+    return df
+
+def add_read_length(df, outdir, glds_accession, assay_suffix, runsheet_df=None):
+    """Add the read length column to the dataframe if it doesn't exist.
+    
+    Args:
+        df: The assay table dataframe
+        outdir: The output directory
+        glds_accession: The GLDS accession number
+        assay_suffix: The assay suffix for MultiQC report files
+        runsheet_df: Optional runsheet dataframe with sample information
+        
+    Returns:
+        The modified dataframe
+    """
+    column_name = "Parameter Value[Read Length]"
+    alternative_names = []
+    
+    # Check if column already exists (case-insensitive)
+    existing_col = find_column_case_insensitive(df, column_name)
+    if existing_col:
+        print(f"Column {existing_col} already exists, preserving existing values")
+        return df
+    
+    # If we get here, the column doesn't exist and needs to be added
+    
+    # Determine if paired-end from runsheet
+    is_paired_end = is_paired_end_data(runsheet_df)
+    print(f"Data is {'paired-end' if is_paired_end else 'single-end'} based on runsheet")
+    
+    # Path to raw MultiQC data zip
+    raw_data_dir = os.path.join(outdir, "00-RawData")
+    multiqc_dir = os.path.join(raw_data_dir, "MultiQC_Reports")
+    multiqc_data_zip = os.path.join(multiqc_dir, f"raw_multiqc{assay_suffix}_data.zip")
+    
+    if not os.path.exists(multiqc_data_zip):
+        print(f"WARNING: MultiQC data zip file not found at {multiqc_data_zip}")
+        # If zip not found, just add placeholder values
+        df[column_name] = "N/A"
+        column_changes.append(f"Added: {column_name} (with placeholder values)")
+        return df
+    
+    print(f"Found MultiQC data zip: {multiqc_data_zip}")
+    
+    # Find the sample name column in the assay table
+    sample_col = next((col for col in df.columns if 'Sample Name' in col), None)
+    if not sample_col:
+        print("Warning: Could not find Sample Name column in assay table")
+        # If no sample column, just add placeholder values
+        df[column_name] = "N/A"
+        column_changes.append(f"Added: {column_name} (with placeholder values)")
+        return df
+    
+    # Get sample names from assay table
+    assay_sample_names = df[sample_col].tolist()
+    
+    # Get read lengths from MultiQC data
+    read_lengths = {}
+    
+    # Create a temporary directory to extract files
+    with tempfile.TemporaryDirectory() as temp_dir:
+        try:
+            # Extract the zip file
+            with zipfile.ZipFile(multiqc_data_zip, 'r') as zip_ref:
+                zip_ref.extractall(temp_dir)
+            
+            # Expected path to the JSON file in the extracted data directory
+            expected_dir = f"raw_multiqc{assay_suffix}_data"
+            json_path = os.path.join(temp_dir, expected_dir, "multiqc_data.json")
+            
+            # Check if JSON file exists in the expected location
+            if not os.path.exists(json_path):
+                # Fallback: try to find it elsewhere
+                print(f"JSON not found at expected path: {json_path}, searching elsewhere...")
+                
+                # Try directly in the temp directory
+                direct_path = os.path.join(temp_dir, "multiqc_data.json")
+                if os.path.exists(direct_path):
+                    json_path = direct_path
+                else:
+                    # Search all subdirectories
+                    for root, dirs, files in os.walk(temp_dir):
+                        if "multiqc_data.json" in files:
+                            json_path = os.path.join(root, "multiqc_data.json")
+                            print(f"Found JSON at: {json_path}")
+                            break
+            
+            if not os.path.exists(json_path):
+                print(f"ERROR: Could not find multiqc_data.json in the extracted zip")
+                # Add placeholder values
+                df[column_name] = "N/A"
+                column_changes.append(f"Added: {column_name} (with placeholder values)")
+                return df
+            
+            print(f"Using MultiQC data from: {json_path}")
+            
+            # Parse the MultiQC JSON
+            with open(json_path, 'r') as f:
+                multiqc_data = json.load(f)
+            
+            # Extract median_sequence_length from FastQC data
+            # First, try to extract directly from report_general_stats_data
+            if 'report_general_stats_data' in multiqc_data and multiqc_data['report_general_stats_data']:
+                stats_module = multiqc_data['report_general_stats_data'][0]  # Use first module
+                print("Extracting read lengths directly from report_general_stats_data")
+                
+                for sample_name, sample_data in stats_module.items():
+                    if 'median_sequence_length' in sample_data:
+                        read_length = int(float(sample_data['median_sequence_length']))
+                        print(f"Found median length for {sample_name}: {read_length}")
+                        read_lengths[sample_name] = read_length
+            
+            # Fallback to FastQC module specific extraction if needed
+            elif ('report_data_sources' in multiqc_data and 
+                'FastQC' in multiqc_data['report_data_sources']):
+                
+                # Find the index for FastQC in the general stats data
+                fastqc_index = None
+                for i, module_data in enumerate(multiqc_data.get('report_general_stats_data', [])):
+                    if module_data and any('avg_sequence_length' in sample_data for sample_data in module_data.values()):
+                        fastqc_index = i
+                        break
+                
+                if fastqc_index is not None:
+                    fastqc_stats = multiqc_data['report_general_stats_data'][fastqc_index]
+                    
+                    # Process each sample to extract read lengths
+                    for sample_name, sample_data in fastqc_stats.items():
+                        if 'median_sequence_length' in sample_data:
+                            read_length = int(float(sample_data['median_sequence_length']))
+                            print(f"Found median length for {sample_name}: {read_length}")
+                            read_lengths[sample_name] = read_length
+            
+            if not read_lengths:
+                print("WARNING: Could not extract any read lengths from MultiQC data")
+                
+            # Debug output to show read lengths found
+            print(f"Successfully extracted {len(read_lengths)} read lengths:")
+            for sample_name, length in read_lengths.items():
+                print(f"  - {sample_name}: {length}")
+                
+        except Exception as e:
+            print(f"Error extracting read lengths from MultiQC data: {str(e)}")
+            # If error occurs, add placeholder values
+            df[column_name] = "N/A"
+            column_changes.append(f"Added: {column_name} (with placeholder values)")
+            return df
+    
+    # Debug output to show sample names in assay table
+    print("Sample names in assay table:")
+    for sample_name in assay_sample_names:
+        print(f"  - {sample_name}")
+    
+    # Generate read length values for each sample in the assay table
+    values = []
+    for assay_sample in assay_sample_names:
+        print(f"Looking for read length for sample: {assay_sample}")
+        
+        # Try direct match first
+        if assay_sample in read_lengths:
+            print(f"Direct match found for {assay_sample}")
+            values.append(str(read_lengths[assay_sample]))
+        else:
+            # Try a more flexible match if direct match fails
+            found_match = False
+            for mqc_sample, length in read_lengths.items():
+                # Check if assay sample name is contained in MultiQC sample name or vice versa
+                if assay_sample in mqc_sample or mqc_sample in assay_sample:
+                    values.append(str(length))
+                    found_match = True
+                    print(f"Flexible match found: {assay_sample} -> {mqc_sample} = {length}")
+                    break
+            
+            if not found_match:
+                print(f"WARNING: No read length found for sample {assay_sample}")
                 values.append("N/A")
     
     # Add the column to the dataframe
@@ -699,6 +938,100 @@ def add_unmapped_reads_column(df, glds_prefix, assay_suffix, runsheet_df=None, m
     
     # Add the column to the dataframe
     df = update_column(df, column_name, values, alternative_names)
+    
+    return df
+
+def add_merged_sequence_data_column(df, glds_prefix, assay_suffix, runsheet_df=None):
+    """Add the Merged Sequence Data File column to the dataframe.
+    
+    This is for raw/merged sequence data files (before trimming).
+    Similar to trimmed data column but uses "raw" instead of "trimmed".
+    
+    Args:
+        df: The assay table dataframe
+        glds_prefix: The GLDS prefix to add to filenames
+        assay_suffix: The assay suffix to add to filenames
+        runsheet_df: Optional runsheet dataframe with sample information
+        
+    Returns:
+        The modified dataframe
+    """
+    column_name = "Parameter Value[Merged Sequence Data File]"
+    alternative_names = [
+        "Characteristics[Merged Sequence Data File]"
+    ]
+    
+    # Check if column already exists
+    existing_col = find_column_case_insensitive(df, column_name)
+    if not existing_col:
+        for alt_name in alternative_names:
+            existing_col = find_column_case_insensitive(df, alt_name)
+            if existing_col:
+                break
+    
+    # Always add/update this column
+    
+    # Determine if paired-end from runsheet
+    is_paired_end = is_paired_end_data(runsheet_df)
+    print(f"Data is {'paired-end' if is_paired_end else 'single-end'} based on runsheet")
+    
+    # Find the sample name column in the assay table
+    sample_col = next((col for col in df.columns if 'Sample Name' in col), None)
+    
+    if not sample_col:
+        print("Warning: Could not find Sample Name column in assay table")
+        # If no sample column, just use placeholder values
+        if is_paired_end:
+            values = [f"{glds_prefix}sample{i+1}{assay_suffix}_R1_raw.fastq.gz,{glds_prefix}sample{i+1}{assay_suffix}_R2_raw.fastq.gz" for i in range(len(df))]
+        else:
+            values = [f"{glds_prefix}sample{i+1}{assay_suffix}_raw.fastq.gz" for i in range(len(df))]
+    else:
+        # Get sample names from assay table
+        assay_sample_names = df[sample_col].tolist()
+        
+        # Create a mapping from assay table sample names to runsheet sample names if available
+        sample_name_map = {}
+        if runsheet_df is not None and 'Sample Name' in runsheet_df.columns:
+            # Check for 'Original Sample Name' column to map between assay table and runsheet
+            if 'Original Sample Name' in runsheet_df.columns:
+                for _, row in runsheet_df.iterrows():
+                    orig_name = row['Original Sample Name']
+                    rs_name = row['Sample Name']
+                    if orig_name in assay_sample_names:
+                        sample_name_map[orig_name] = rs_name
+        
+        # Generate file paths using the appropriate sample names
+        values = []
+        for assay_sample in assay_sample_names:
+            # Use mapped name if available, otherwise use the assay table name
+            sample = sample_name_map.get(assay_sample, assay_sample)
+            
+            if is_paired_end:
+                # For paired-end data, create entries with both R1 and R2 files, comma-separated without spaces
+                values.append(f"{glds_prefix}{sample}{assay_suffix}_R1_raw.fastq.gz,{glds_prefix}{sample}{assay_suffix}_R2_raw.fastq.gz")
+            else:
+                # For single-end data
+                values.append(f"{glds_prefix}{sample}{assay_suffix}_raw.fastq.gz")
+    
+    # Remove existing column if present
+    if existing_col:
+        print(f"Updating existing Merged Sequence Data File column: {existing_col}")
+        df = df.drop(columns=[existing_col])
+        column_changes.append(f"Updated: {existing_col} -> {column_name}")
+    else:
+        print("Merged Sequence Data File column not found. Adding new column.")
+        column_changes.append(f"Added: {column_name}")
+
+    # Insert left of MultiQC File Names if present, else append at end
+    insert_position = None
+    for i, col in enumerate(df.columns):
+        if "MultiQC File Names" in col:
+            insert_position = i
+            break
+    if insert_position is None:
+        df[column_name] = values
+    else:
+        df.insert(insert_position, column_name, values)
     
     return df
 
@@ -831,7 +1164,10 @@ def add_trimming_reports_column(df, glds_prefix, assay_suffix, runsheet_df=None)
 def add_trimmed_multiqc_reports_column(df, glds_prefix, assay_suffix):
     """Add the trimmed sequence data MultiQC reports column to the dataframe."""
     column_name = "Parameter Value[Trimmed Sequence Data/MultiQC Reports]"
-    alternative_names = ["Parameter Value[Trimmed Sequence Data Multiqc File]"]
+    alternative_names = [
+        "Parameter Value[Trimmed Sequence Data Multiqc File]",
+        "Parameter Value[Trimmed Sequence Data/MultiQC Report]"
+    ]
     
     # Create the multiqc report filenames - both data zip and html
     multiqc_html = f"{glds_prefix}trimmed_multiqc{assay_suffix}.html"
@@ -1037,9 +1373,50 @@ def add_raw_multiqc_reports_column(df, glds_prefix, assay_suffix):
     return df
 
 def add_protocol_ref_column(df):
+    """Add Protocol REF GeneLab RNAseq data processing protocol column"""
     value = "GeneLab RNAseq data processing protocol"
-    df[df.columns.size] = value
-    df.columns.values[-1] = "Protocol REF"
+    
+    # Insert after MultiQC File Names column
+    insert_position = None
+    for i, col in enumerate(df.columns):
+        if "MultiQC File Names" in col:
+            insert_position = i + 1
+            break
+    if insert_position is None:
+        insert_position = len(df.columns)
+    
+    # Remove any existing Protocol REF columns with the data processing protocol value
+    drop_cols = []
+    drop_indices = []
+    for i, col in enumerate(df.columns):
+        if "protocol ref" in col.lower():
+            col_data = df.iloc[:, i].astype(str)
+            if col_data.str.contains(value, case=False, na=False).any():
+                drop_cols.append(col)
+                drop_indices.append(i)
+    
+    if drop_cols:
+        print(f"Removing existing Protocol REF columns with data processing protocol: {', '.join(drop_cols)}")
+        df = df.drop(columns=drop_cols)
+        column_changes.append(
+            f"Removed: {', '.join(drop_cols)} (will be re-added after MultiQC File Names)"
+        )
+        # Adjust insert position if needed
+        removed_before = sum(1 for idx in drop_indices if idx < insert_position)
+        insert_position -= removed_before
+        if insert_position < 0:
+            insert_position = 0
+    
+    # Insert with temp name, rename "Protocol REF"
+    temp_name = "Protocol REF_DP"
+    while temp_name in df.columns:
+        temp_name = f"{temp_name}_temp"
+    df.insert(insert_position, temp_name, value)
+    cols = list(df.columns)
+    cols[insert_position] = "Protocol REF"
+    df.columns = cols
+    
+    column_changes.append(f"Added: Protocol REF (value: {value}) after MultiQC File Names")
     return df
 
 def add_raw_counts_tables_column(df, glds_prefix, assay_suffix, mode=""):
@@ -1259,6 +1636,63 @@ def clean_comma_space(df):
     print("Removed spaces after commas in all string columns")
     return df
 
+def normalize_assay_table_fields(df):
+    """Normalize strandedness and library_selection fields in the assay table.
+    
+    Args:
+        df: The assay table dataframe
+        
+    Returns:
+        The modified dataframe with normalized fields
+    """
+    # Find strandedness column
+    strandedness_col = find_column_case_insensitive(df, "Parameter Value[Strandedness]")
+    if strandedness_col:
+        print(f"Normalizing strandedness in column: {strandedness_col}")
+        changes_by_value = {}  # Track changes: (original, normalized) -> count
+        
+        for idx, value in df[strandedness_col].items():
+            if pd.notna(value) and str(value).strip() != '':
+                original = str(value).strip()
+                normalized = original.upper()
+                if original != normalized:
+                    df.at[idx, strandedness_col] = normalized
+                    key = (original, normalized)
+                    changes_by_value[key] = changes_by_value.get(key, 0) + 1
+        
+        # Report grouped changes
+        for (original, normalized), count in changes_by_value.items():
+            column_changes.append(f"Normalized: {strandedness_col}: {count} row(s) '{original}' -> '{normalized}'")
+    
+    # Find library selection column
+    lib_sel_col = find_column_case_insensitive(df, "Parameter Value[Library Selection]")
+    if lib_sel_col:
+        print(f"Normalizing library selection in column: {lib_sel_col}")
+        changes_by_value = {}  # Track changes: (original, normalized) -> count
+        
+        for idx, value in df[lib_sel_col].items():
+            if pd.notna(value) and str(value).strip() != '':
+                original = str(value).strip()
+                lib_sel_lower = original.lower()
+                normalized = original  # Default: pass through unchanged
+                
+                if 'ribo' in lib_sel_lower:
+                    normalized = 'ribo-depletion'
+                elif 'poly' in lib_sel_lower:
+                    normalized = 'polyA enrichment'
+                # If no match, normalized == original, so no change is made
+                
+                if original != normalized:
+                    df.at[idx, lib_sel_col] = normalized
+                    key = (original, normalized)
+                    changes_by_value[key] = changes_by_value.get(key, 0) + 1
+        
+        # Report grouped changes
+        for (original, normalized), count in changes_by_value.items():
+            column_changes.append(f"Normalized: {lib_sel_col}: {count} row(s) '{original}' -> '{normalized}'")
+    
+    return df
+
 def clean_column_names(df):
     """Clean column names by removing any .# suffixes pandas adds to duplicates.
     
@@ -1296,6 +1730,9 @@ def main():
     assay_df, assay_filename = extract_and_find_assay(args.outdir, args.glds_accession)
     print(f"Original assay table has {len(assay_df)} rows and {len(assay_df.columns)} columns")
     
+    # Normalize strandedness and library_selection fields
+    assay_df = normalize_assay_table_fields(assay_df)
+    
     # Process and save assay file
     try:
         # Create GLDS prefix for filenames
@@ -1310,14 +1747,19 @@ def main():
         # SECTION 1: RAW DATA
         # =====================================================
         print("\n=== PROCESSING RAW DATA SECTION ===")
-        
         # Add read depth from MultiQC report (preserve if exists)
         assay_df = add_read_counts(assay_df, args.outdir, args.glds_accession, args.assay_suffix, runsheet_df)
+        
+        # Add read length from MultiQC report (preserve if exists)
+        assay_df = add_read_length(assay_df, args.outdir, args.glds_accession, args.assay_suffix, runsheet_df)
+        
+        # Add Merged Sequence Data File column (raw/merged files before trimming, if present)
+        assay_df = add_merged_sequence_data_column(assay_df, glds_prefix, args.assay_suffix, runsheet_df=runsheet_df)
         
         # Add Raw MultiQC reports column (preserve if exists)
         assay_df = add_raw_multiqc_reports_column(assay_df, glds_prefix, args.assay_suffix)
         
-        # Add Protocol REF column at the end of the raw section
+        # Add Protocol REF column
         assay_df = add_protocol_ref_column(assay_df)
         
         # =====================================================
@@ -1414,6 +1856,62 @@ def main():
         # Only save the original filename version
         assay_df.to_csv(orig_filename, sep='\t', index=False)
         print(f"Assay table saved as: {orig_filename}")
+        
+        # Write changes report to file
+        changes_report_file = f"assay_table_changes{args.assay_suffix}.txt"
+        with open(changes_report_file, 'w') as f:
+            f.write(f"Assay Table Changes Report\n")
+            f.write(f"GLDS Accession: {args.glds_accession}\n")
+            f.write(f"Assay Suffix: {args.assay_suffix if args.assay_suffix else '(empty)'}\n")
+            f.write(f"Mode: {args.mode if args.mode else 'default'}\n")
+            f.write(f"\n{'='*50}\n\n")
+            f.write(f"Total column operations: {len(column_changes)}\n")
+            f.write(f"Final assay table: {len(assay_df)} rows, {len(assay_df.columns)} columns\n\n")
+            f.write("Column Changes:\n")
+            f.write("-" * 50 + "\n")
+            if column_changes:
+                # Group changes by action type
+                added = []
+                removed = []
+                updated = []
+                normalized = []
+                
+                for change in column_changes:
+                    if change.startswith("Added:"):
+                        added.append(change.replace("Added: ", ""))
+                    elif change.startswith("Removed:"):
+                        removed.append(change.replace("Removed: ", ""))
+                    elif change.startswith("Updated:"):
+                        updated.append(change.replace("Updated: ", ""))
+                    elif change.startswith("Normalized:"):
+                        normalized.append(change.replace("Normalized: ", ""))
+                
+                if added:
+                    f.write("Added:\n")
+                    for item in added:
+                        f.write(f"- {item}\n")
+                    f.write("\n")
+                
+                if removed:
+                    f.write("Removed:\n")
+                    for item in removed:
+                        f.write(f"- {item}\n")
+                    f.write("\n")
+                
+                if updated:
+                    f.write("Updated:\n")
+                    for item in updated:
+                        f.write(f"- {item}\n")
+                    f.write("\n")
+                
+                if normalized:
+                    f.write("Normalized:\n")
+                    for item in normalized:
+                        f.write(f"- {item}\n")
+                    f.write("\n")
+            else:
+                f.write("No changes made to columns.\n")
+        print(f"Changes report saved as: {changes_report_file}")
         
         # Print summary of changes
         print("\n=== SUMMARY OF CHANGES ===")

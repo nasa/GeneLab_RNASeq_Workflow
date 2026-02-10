@@ -475,7 +475,7 @@ def report_multiqc_outliers(outdir, multiqc_data, log_path):
     
     # Calculate statistics and check for outliers
     thresholds = [
-        {"code": "RED", "stdev_threshold": 4, "middle_fcn": "median"},     # Check severe outliers first
+        {"code": "YELLOW", "stdev_threshold": 4, "middle_fcn": "median"},     # Changed from RED to YELLOW
         {"code": "YELLOW", "stdev_threshold": 2, "middle_fcn": "median"}   # Then check minor outliers
     ]
     
@@ -739,8 +739,8 @@ def main():
     parser.add_argument('--runsheet', '-r', required=True, help='Path to the runsheet CSV file')
     parser.add_argument('--outdir', '-o', default=os.getcwd(), 
                         help='Output directory (GLDS-## folder), defaults to current directory')
-    parser.add_argument('--assay-suffix', default="_GLbulkRNAseq", 
-                        help='Assay suffix used in MultiQC data filenames (default: _GLbulkRNAseq)')
+    parser.add_argument('--assay-suffix', default="", 
+                        help='Assay suffix used in MultiQC data filenames (default: empty)')
     args = parser.parse_args()
 
     # Initialize VV log

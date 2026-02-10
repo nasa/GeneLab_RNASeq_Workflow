@@ -27,11 +27,24 @@ def get_glds_to_osd_mapping():
     studies = data.get('hits', {}).get('hits', [])
     for hit in studies:
         source = hit.get('_source', {})
-        identifiers = source.get('Identifiers', '')
+        identifiers = source.get('Identifiers', [])
+        # Normalize to list to handle single and multiple entries the same way
+        if isinstance(identifiers, str):
+            identifiers = [identifiers]
+        elif not isinstance(identifiers, list):
+            identifiers = []
+        
         osd_accession = source.get('Accession', '')
         
         # Extract GLDS accessions from identifiers
-        glds_matches = re.findall(r'GLDS-\d+', identifiers)
+        # If identifier is a string, use regex to extract GLDS-### patterns
+        # If identifier is already a list item that starts with GLDS-, use it directly
+        glds_matches = []
+        for x in identifiers:
+            if isinstance(x, str):
+                # Use regex to extract GLDS-### patterns from string (handles "GLDS-120     LSDS-33")
+                matches = re.findall(r'GLDS-\d+', x)
+                glds_matches.extend(matches)
         
         if glds_matches and osd_accession.startswith('OSD-'):
             for glds_accession in glds_matches:
@@ -63,8 +76,21 @@ def get_osd_and_glds(accession, api_url):
                 for osd_id, osd_data in data.items():
                     if osd_id == accession:
                         metadata = osd_data.get("metadata", {})
-                        identifiers = metadata.get("identifiers", "")
-                        glds_accessions = re.findall(r'GLDS-\d+', identifiers)
+                        identifiers = metadata.get("identifiers", [])
+                        # Normalize to list to handle single and multiple entries the same way
+                        if isinstance(identifiers, str):
+                            identifiers = [identifiers]
+                        elif not isinstance(identifiers, list):
+                            identifiers = []
+
+                        # Extract GLDS accessions from identifiers
+                        # If identifier is a string, use regex to extract GLDS-### patterns
+                        glds_accessions = []
+                        for x in identifiers:
+                            if isinstance(x, str):
+                                # Use regex to extract GLDS-### patterns from string (handles "GLDS-120     LSDS-33")
+                                matches = re.findall(r'GLDS-\d+', x)
+                                glds_accessions.extend(matches)
                         break
             except (requests.exceptions.RequestException, json.JSONDecodeError):
                 pass  # Fall back to empty list

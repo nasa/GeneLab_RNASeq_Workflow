@@ -26,6 +26,17 @@
 | Factor Value[<name, e.g. Spaceflight>] | string | A set of one or more columns specifying the experimental group the sample belongs to. In the simplest form, a column named 'Factor Value[group]' is sufficient. | Space Flight |
 | Original Sample Name | string | Used to map the sample name that will be used for processing to the original sample name. This is often identical except in cases where the original name includes spaces or weird characters. | Mmus_BAL-TAL_LRTN_BSL_Rep1_B7 |
 
+## Entry Point Columns
+
+For entry points other than the default `raw_reads`, include the relevant columns below to specify the input files:
+
+| Column Name | Entry Point | Type | Description | Example |
+|:------------|:------------|:-----|:------------|:--------|
+| trimmed_read1_path | trimmed_reads | string | Path to trimmed forward reads file | /my/data/sample_1_trimmed.fastq.gz |
+| trimmed_read2_path | trimmed_reads | string | Path to trimmed reverse reads file (paired-end only) | /my/data/sample_2_trimmed.fastq.gz |
+| bam_path | bam_files | string | Path to aligned BAM file | /my/data/sample_aligned.bam |
+| genes_results_path | genes_results | string | Path to RSEM .genes.results file (`--mode default` only) | /my/data/sample.genes.results |
+
 ## Optional columns
 
 | Column Name | Type | Description | Example |

@@ -27,8 +27,20 @@ def get_runsheet_order(runsheet_path):
     return None
 
 
-def generate_validation_report(fieldnames, populated_fields, mode, assay_suffix, paired_end):
+def generate_validation_report(fieldnames, populated_fields, mode, assay_suffix, paired_end, runsheet=None, filled_fields=None, validation_mismatches=None):
     """Generate a validation report showing which columns are missing data"""
+    
+    # Check if this is an ERCC dataset by looking at the runsheet
+    is_ercc_dataset = False
+    try:
+        if runsheet and os.path.exists(runsheet):
+            df = pd.read_csv(runsheet)
+            if 'has_ERCC' in df.columns:
+                # Check if any row has has_ERCC = 1 (assuming it's a boolean column)
+                is_ercc_dataset = df['has_ERCC'].any() if df['has_ERCC'].dtype in ['int64', 'bool'] else False
+    except Exception:
+        # If we can't determine, assume it's not ERCC
+        is_ercc_dataset = False
     
     # Define field categories
     metadata_fields = [
@@ -36,8 +48,12 @@ def generate_validation_report(fieldnames, populated_fields, mode, assay_suffix,
         'library_selection', 'library_layout', 'strandedness', 'read_depth', 
         'read_length', 'rrna_contamination', 'rin', 'organism_part', 'cell_line', 
         'cell_type', 'secondary_organism', 'strain', 'animal_source', 'seed_source', 
-        'source_accession', 'mix'
+        'source_accession'
     ]
+    
+    # Only include 'mix' field if this is an ERCC dataset
+    if is_ercc_dataset:
+        metadata_fields.append('mix')
     
     gene_count_fields = ['gene_detected_gt10', 'gene_total', 'gene_detected_gt10_pct']
     
@@ -185,11 +201,42 @@ def generate_validation_report(fieldnames, populated_fields, mode, assay_suffix,
             for field in missing_rseqc:
                 f.write(f"** {field}\n")
             f.write("\n")
+        
+        # Auto-filled fields section
+        if filled_fields:
+            f.write("Auto-filled fields (from MultiQC data):\n")
+            for field in sorted(filled_fields):
+                if field == 'read_depth':
+                    f.write(f"** {field} (filled from raw_total_sequences_f)\n")
+                elif field == 'read_length':
+                    f.write(f"** {field} (filled from raw_median_sequence_length_f)\n")
+                else:
+                    f.write(f"** {field}\n")
+            f.write("\n")
+        
+        # Validation mismatches section
+        if validation_mismatches:
+            f.write("Validation mismatches (assay table vs MultiQC data):\n")
+            for sample, field, assay_value, multiqc_value in sorted(validation_mismatches):
+                f.write(f"** Sample: {sample}, Field: {field}\n")
+                f.write(f"   Assay table value: {assay_value}\n")
+                f.write(f"   MultiQC value: {multiqc_value}\n")
+            f.write("\n")
 
 
 def main(osd_num, paired_end, assay_suffix, mode, runsheet=None):
 
-    osd_num = osd_num.split('-')[1]
+    # Handle OSD number: if empty/None, skip metadata fetch and use empty string for CSV
+    if not osd_num or osd_num.strip() == '':
+        osd_num = None
+        had_osd_prefix = False
+    else:
+        # Handle OSD number format: if it starts with "OSD-", extract the number part
+        # Otherwise, use it as-is (for custom identifiers like "LEAF_Brapa")
+        had_osd_prefix = osd_num.startswith('OSD-')
+        if had_osd_prefix:
+            osd_num = osd_num.split('-')[1]
+        # If no OSD prefix, use the string as-is
 
     # Create the multiqc_data list with conditionally selected parsers based on mode
     multiqc_data = [
@@ -229,7 +276,8 @@ def main(osd_num, paired_end, assay_suffix, mode, runsheet=None):
     else:
         samples = sorted(samples)  # Fallback to alphabetical
 
-    metadata = get_metadata(osd_num)
+    # Only fetch metadata if osd_num is provided
+    metadata = get_metadata(osd_num) if osd_num else {}
 
     fieldnames = [
         'osd_num', 'sample', 'organism', 'tissue', 'sequencing_instrument', 'library_selection', 'library_layout', 'strandedness', 'read_depth', 'read_length', 'rrna_contamination', 'rin', 'organism_part', 'cell_line', 'cell_type', 'secondary_organism', 'strain', 'animal_source', 'seed_source', 'source_accession', 'mix',
@@ -275,6 +323,10 @@ def main(osd_num, paired_end, assay_suffix, mode, runsheet=None):
     
     # Track which fields have data for validation report
     populated_fields = set()
+    # Track which fields were auto-filled
+    filled_fields = set()
+    # Track validation mismatches (assay table vs MultiQC)
+    validation_mismatches = []
     
     with open(output_filename, mode='w', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -300,32 +352,119 @@ def main(osd_num, paired_end, assay_suffix, mode, runsheet=None):
             populated_fields.add('osd_num')
             populated_fields.add('sample')
             
-            # Track populated metadata fields
+            # Track populated metadata fields and normalize if needed
             for k, v in metadata.items():
                 if v is not None and v != '':
                     populated_fields.add(k)
+                    # Normalize strandedness and library_selection in metadata
+                    if k == 'strandedness':
+                        normalized_v = str(v).upper()
+                        if v != normalized_v:
+                            validation_mismatches.append((sample, 'strandedness', v, normalized_v))
+                            metadata[k] = normalized_v
+                    elif k == 'library_selection':
+                        lib_sel_lower = str(v).lower()
+                        normalized_v = v
+                        if 'ribo' in lib_sel_lower:
+                            normalized_v = 'ribo-depletion'
+                        elif 'poly' in lib_sel_lower:
+                            normalized_v = 'polyA enrichment'
+                        if v != normalized_v:
+                            metadata[k] = normalized_v
+            
+            # Validate and fill in missing read_depth and read_length from raw FastQC data
+            # If read_depth exists, validate it matches raw_total_sequences_f (total sequences = read depth)
+            if all_fields.get('read_depth') and all_fields.get('read_depth') != '':
+                if all_fields.get('raw_total_sequences_f'):
+                    try:
+                        assay_read_depth = int(float(all_fields['read_depth']))
+                        multiqc_read_depth = int(float(all_fields['raw_total_sequences_f']))
+                        if assay_read_depth != multiqc_read_depth:
+                            validation_mismatches.append((sample, 'read_depth', assay_read_depth, multiqc_read_depth))
+                    except (ValueError, TypeError):
+                        pass
+            # If read_depth is empty, fill from raw_total_sequences_f
+            elif all_fields.get('raw_total_sequences_f'):
+                try:
+                    all_fields['read_depth'] = int(float(all_fields['raw_total_sequences_f']))
+                    populated_fields.add('read_depth')
+                    filled_fields.add('read_depth')
+                except (ValueError, TypeError):
+                    pass
+            
+            # If read_length exists, validate it matches raw_median_sequence_length_f
+            if all_fields.get('read_length') and all_fields.get('read_length') != '':
+                if all_fields.get('raw_median_sequence_length_f'):
+                    try:
+                        assay_read_length = int(float(all_fields['read_length']))
+                        multiqc_read_length = int(float(all_fields['raw_median_sequence_length_f']))
+                        if assay_read_length != multiqc_read_length:
+                            validation_mismatches.append((sample, 'read_length', assay_read_length, multiqc_read_length))
+                    except (ValueError, TypeError):
+                        pass
+            # If read_length is empty, fill from raw_median_sequence_length_f
+            elif all_fields.get('raw_median_sequence_length_f'):
+                try:
+                    all_fields['read_length'] = int(float(all_fields['raw_median_sequence_length_f']))
+                    populated_fields.add('read_length')
+                    filled_fields.add('read_length')
+                except (ValueError, TypeError):
+                    pass
+            
+            # Normalize strandedness (convert to uppercase)
+            if all_fields.get('strandedness') and all_fields.get('strandedness') != '':
+                original_strandedness = all_fields['strandedness']
+                normalized_strandedness = str(original_strandedness).upper()
+                if original_strandedness != normalized_strandedness:
+                    validation_mismatches.append((sample, 'strandedness', original_strandedness, normalized_strandedness))
+                    all_fields['strandedness'] = normalized_strandedness
+            
+            # Normalize library_selection (only if contains 'ribo' or 'poly', otherwise pass through unchanged)
+            if all_fields.get('library_selection') and all_fields.get('library_selection') != '':
+                original_lib_sel = all_fields['library_selection']
+                lib_sel_lower = str(original_lib_sel).lower()
+                normalized_lib_sel = original_lib_sel  # Default: pass through unchanged
+                
+                if 'ribo' in lib_sel_lower:
+                    normalized_lib_sel = 'ribo-depletion'
+                elif 'poly' in lib_sel_lower:
+                    normalized_lib_sel = 'polyA enrichment'
+                # If no match, normalized_lib_sel == original_lib_sel, so no change is made
+                
+                if original_lib_sel != normalized_lib_sel:
+                    all_fields['library_selection'] = normalized_lib_sel
             
             # Write rows with osd_num and sample fields
-            writer.writerow({'osd_num': 'OSD-' + osd_num, 'sample': sample, **metadata, **all_fields})
+            # Add OSD- prefix only if original input had it, otherwise use as-is
+            # If osd_num is None/empty, use empty string
+            osd_display = 'OSD-' + osd_num if had_osd_prefix and osd_num else (osd_num if osd_num else '')
+            writer.writerow({'osd_num': osd_display, 'sample': sample, **metadata, **all_fields})
     
     # Generate validation report
     try:
-        generate_validation_report(fieldnames, populated_fields, mode, assay_suffix, paired_end)
+        generate_validation_report(fieldnames, populated_fields, mode, assay_suffix, paired_end, runsheet, filled_fields, validation_mismatches)
     except Exception as e:
         print(f"WARNING: Failed to generate validation report: {str(e)}")
 
 
 def get_metadata(osd_num):
-    r = requests.get('https://osdr.nasa.gov/osdr/data/osd/meta/' + osd_num)
     data = {}
+    if not osd_num:
+        return data  # Return empty dict if no osd_num provided
+    try:
+        r = requests.get('https://osdr.nasa.gov/osdr/data/osd/meta/' + osd_num)
+        r.raise_for_status()  # Raise an exception for bad status codes
+        
+        # Source accession
+        comments = r.json()['study']['OSD-' + osd_num]['studies'][0]['comments']
+        source_accession = [c for c in comments if c['name'] == 'Data Source Accession'][0]
 
-    # Source accession
-    comments = r.json()['study']['OSD-' + osd_num]['studies'][0]['comments']
-    source_accession = [c for c in comments if c['name'] == 'Data Source Accession'][0]
-
-    if source_accession and source_accession['value']:
-        data['source_accession'] = source_accession['value']
-
+        if source_accession and source_accession['value']:
+            data['source_accession'] = source_accession['value']
+    except (requests.RequestException, KeyError, IndexError, ValueError, Exception) as e:
+        print(f"WARNING: Error fetching metadata from OSD API: {str(e)}")
+        # Return empty dict if API call fails
+    
     return data
 
 
@@ -751,7 +890,7 @@ if __name__ == '__main__':
     
     parser.add_argument('--osd-num')
     parser.add_argument('--paired', action='store_true')
-    parser.add_argument('--assay_suffix', default='_GLbulkRNAseq')
+    parser.add_argument('--assay_suffix', default='')
     parser.add_argument('--mode', default='default')
     parser.add_argument('--runsheet', default=None)
     args = parser.parse_args()
