@@ -231,7 +231,7 @@ nextflow run NF_RCP_2.1.0/main.nf \
    --reference_fasta <url/or/path/to/fasta> \ 
    --reference_gtf <url/or/path/to/gtf> 
 ```
-> Note: This approach should be used for organisms not listed in the [GeneLab annotations table](https://github.com/nasa/GeneLab_Data_Processing/blob/master/GeneLab_Reference_Annotations/Pipeline_GL-DPPD-7110_Versions/GL-DPPD-7110-A/GL-DPPD-7110_annotations-A.csv). 
+> Note: This approach should be used for organisms not listed in the [GeneLab annotations table](https://github.com/nasa/GeneLab_Data_Processing/blob/master/GeneLab_Reference_Annotations/Pipeline_GL-DPPD-7110_Versions/GL-DPPD-7110-A/GL-DPPD-7110-A_annotations.csv). 
 
 > Note: The `--reference_source` and `--reference_version` parameters should match the reference source and version number of the reference fasta and gtf files used. 
 
