@@ -14,7 +14,7 @@ process BUILD_RSEM_INDEX {
   output:
     path("${ genome_fasta.baseName }"), emit: index_dir
     //path("${ genome_fasta.baseName }/${ organism_str }.grp") // to ensure check expected file contents exist
-    path("versions.yml"), emit: versions
+    //path("versions.yml"), emit: versions
 
 
   script:
@@ -24,8 +24,8 @@ process BUILD_RSEM_INDEX {
     mkdir  ${ genome_fasta.baseName }
     rsem-prepare-reference --gtf ${ genome_gtf } ${ genome_fasta } ${ genome_fasta.baseName }/${ organism_str }
 
-    echo '"${task.process}":' > versions.yml
-    echo "    rsem: \$(rsem-calculate-expression --version | sed -e 's/Current version: RSEM v//g')" >> versions.yml
+    #echo '"${task.process}":' > versions.yml
+    #echo "    rsem: \$(rsem-calculate-expression --version | sed -e 's/Current version: RSEM v//g')" >> versions.yml
     """
 
 }
