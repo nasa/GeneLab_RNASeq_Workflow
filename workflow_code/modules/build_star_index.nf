@@ -15,7 +15,8 @@ process BUILD_STAR_INDEX {
 
   output:
     path("${ genome_fasta.baseName }_RL-${ max_read_length.toInteger() }"), emit: index_dir
-    path("${ genome_fasta.baseName }_RL-${ max_read_length.toInteger() }/genomeParameters.txt") // Check for completion, only successful builds should generate this file, this is required as the process error is NOT currently used to raised an exception in the python wrapper.
+    //path("${ genome_fasta.baseName }_RL-${ max_read_length.toInteger() }/genomeParameters.txt") // Check for completion, only successful builds should generate this file, this is required as the process error is NOT currently used to raised an exception in the python wrapper.
+    path("versions.yml"), emit: versions
 
   script:
     """
@@ -50,5 +51,8 @@ process BUILD_STAR_INDEX {
     --genomeFastaFiles ${ genome_fasta } \
     --sjdbGTFfile ${ genome_gtf } \
     --sjdbOverhang ${ max_read_length.toInteger() - 1 }
+
+    echo '"${task.process}":' > versions.yml
+    echo "    star: \$(STAR --version | sed 's/STAR_//')" >> versions.yml
     """
 }
