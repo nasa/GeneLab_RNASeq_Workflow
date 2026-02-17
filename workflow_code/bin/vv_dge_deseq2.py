@@ -1809,66 +1809,39 @@ def check_dge_table_group_columns_constraints(outdir, runsheet_path, log_path, a
             return False
         
         # Check if the mean columns have no null values and are non-negative
-        mean_columns = group_mean_cols
-        for col in mean_columns:
-            # Convert to numeric, coercing errors to NaN
+        mean_violations = []
+        for col in group_mean_cols:
             if df_dge[col].dtype == 'object':
                 df_dge[col] = df_dge[col].replace(['NA', 'None', ''], pd.NA)
             df_dge[col] = pd.to_numeric(df_dge[col], errors='coerce')
-            
-            # Check for nulls
             if df_dge[col].isnull().any():
-                status = "RED"
-                message = f"Group mean column contains null values"
-                details = f"Column {col} has {df_dge[col].isnull().sum()} null values"
-                log_check_result(log_path, component_name, "all", check_name, status, message, details)
-                return False
-            
-            # Check for negative values (ensure numeric type)
-            if not pd.api.types.is_numeric_dtype(df_dge[col]):
-                status = "RED"
-                message = f"Group mean column is not numeric"
-                details = f"Column {col} has dtype {df_dge[col].dtype}"
-                log_check_result(log_path, component_name, "all", check_name, status, message, details)
-                return False
-            
-            if (df_dge[col] < 0).any():
-                status = "RED"
-                message = f"Group mean column contains negative values"
-                details = f"Column {col} has {(df_dge[col] < 0).sum()} negative values"
-                log_check_result(log_path, component_name, "all", check_name, status, message, details)
-                return False
+                mean_violations.append(f"{col}: {df_dge[col].isnull().sum()} null values")
+            elif not pd.api.types.is_numeric_dtype(df_dge[col]):
+                mean_violations.append(f"{col}: not numeric (dtype={df_dge[col].dtype})")
+            elif (df_dge[col] < 0).any():
+                mean_violations.append(f"{col}: {(df_dge[col] < 0).sum()} negative values")
         
         # Check if the stdev columns have no null values and are non-negative
-        stdev_columns = group_stdev_cols
-        for col in stdev_columns:
-            # Convert to numeric, coercing errors to NaN
+        stdev_violations = []
+        for col in group_stdev_cols:
             if df_dge[col].dtype == 'object':
                 df_dge[col] = df_dge[col].replace(['NA', 'None', ''], pd.NA)
             df_dge[col] = pd.to_numeric(df_dge[col], errors='coerce')
-            
-            # Check for nulls
             if df_dge[col].isnull().any():
-                status = "RED"
-                message = f"Group standard deviation column contains null values"
-                details = f"Column {col} has {df_dge[col].isnull().sum()} null values"
-                log_check_result(log_path, component_name, "all", check_name, status, message, details)
-                return False
-            
-            # Check for negative values (ensure numeric type)
-            if not pd.api.types.is_numeric_dtype(df_dge[col]):
-                status = "RED"
-                message = f"Group standard deviation column is not numeric"
-                details = f"Column {col} has dtype {df_dge[col].dtype}"
-                log_check_result(log_path, component_name, "all", check_name, status, message, details)
-                return False
-            
-            if (df_dge[col] < 0).any():
-                status = "RED"
-                message = f"Group standard deviation column contains negative values"
-                details = f"Column {col} has {(df_dge[col] < 0).sum()} negative values"
-                log_check_result(log_path, component_name, "all", check_name, status, message, details)
-                return False
+                stdev_violations.append(f"{col}: {df_dge[col].isnull().sum()} null values")
+            elif not pd.api.types.is_numeric_dtype(df_dge[col]):
+                stdev_violations.append(f"{col}: not numeric (dtype={df_dge[col].dtype})")
+            elif (df_dge[col] < 0).any():
+                stdev_violations.append(f"{col}: {(df_dge[col] < 0).sum()} negative values")
+        
+        all_violations = mean_violations + stdev_violations
+        if all_violations:
+            status = "RED"
+            msg_type = "mean" if mean_violations and not stdev_violations else "stdev" if stdev_violations and not mean_violations else "mean and stdev"
+            message = f"Group {msg_type} column(s) contain null or non-numeric or negative values"
+            details = "; ".join(all_violations)
+            log_check_result(log_path, component_name, "all", check_name, status, message, details)
+            return False
         
         status = "GREEN"
         message = "All group summary statistic columns meet constraints"
