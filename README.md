@@ -225,7 +225,7 @@ nextflow run NF_RCP_2.1.0/main.nf \
 ```bash
 nextflow run NF_RCP_2.1.0/main.nf \ 
    -profile singularity \
-   --accession OSD-194 \
+   --runsheet_path </path/to/runsheet> \
    --reference_version 112 \
    --reference_source ensembl \ 
    --reference_fasta <url/or/path/to/fasta> \ 
