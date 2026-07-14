@@ -43,6 +43,8 @@ import glob
 import csv
 import datetime
 
+# VV status: HALT when an expected file/archive is missing; data-quality / parse / content issues use YELLOW.
+
 def parse_runsheet(runsheet_path):
     """
     Parse the runsheet to extract sample information and dataset metadata.
@@ -189,11 +191,11 @@ def check_gene_body_coverage_existence(outdir, samples, log_path):
     multiqc_glob = os.path.join(multiqc_dir, "geneBody_cov_multiqc*_data.zip")
     multiqc_files = glob.glob(multiqc_glob)
     
+    multiqc_zip_missing = not multiqc_files
     if not multiqc_files:
         print(f"WARNING: No gene body coverage MultiQC data found in {multiqc_dir}")
-        log_check_result(log_path, component, "all", "check_genebody_coverage_multiqc", "RED", 
+        log_check_result(log_path, component, "all", "check_genebody_coverage_multiqc", "HALT", 
                          "geneBody coverage MultiQC data not found", f"Searched: {multiqc_glob}")
-        status = "RED"
     else:
         print(f"Found gene body coverage MultiQC data: {os.path.basename(multiqc_files[0])}")
         log_check_result(log_path, component, "all", "check_genebody_coverage_multiqc", "GREEN", 
@@ -201,7 +203,6 @@ def check_gene_body_coverage_existence(outdir, samples, log_path):
     
     # Track missing files
     missing_files = []
-    status = "GREEN"
     
     # Check for individual files for each sample
     for sample in samples:
@@ -233,7 +234,7 @@ def check_gene_body_coverage_existence(outdir, samples, log_path):
         print(f"All gene body coverage files exist for {len(samples)} samples")
         log_check_result(log_path, component, "all", check_name, "GREEN", 
                          "All geneBody coverage files exist")
-        status = "GREEN"
+        status = "HALT" if multiqc_zip_missing else "GREEN"
     
     return status
 
@@ -468,7 +469,7 @@ def get_genebody_coverage_multiqc_stats(outdir, samples, log_path, assay_suffix=
             if ('report_saved_raw_data' not in multiqc_data or 
                 'rseqc_gene_body_cov' not in multiqc_data['report_saved_raw_data']):
                 print("WARNING: No gene body coverage data found in MultiQC report")
-                log_check_result(log_path, "rseqc", "all", "get_genebody_coverage_multiqc_stats", "RED", 
+                log_check_result(log_path, "rseqc", "all", "get_genebody_coverage_multiqc_stats", "YELLOW", 
                                "No gene body coverage data in MultiQC report", "")
                 return None
             
@@ -507,7 +508,7 @@ def get_genebody_coverage_multiqc_stats(outdir, samples, log_path, assay_suffix=
             missing_samples = [s for s in samples if s not in genebody_data]
             
             if missing_samples:
-                log_check_result(log_path, "rseqc", "all", "get_genebody_coverage_stats", "RED", 
+                log_check_result(log_path, "rseqc", "all", "get_genebody_coverage_stats", "HALT", 
                                 f"Missing {len(missing_samples)} samples in MultiQC data", 
                                 "; ".join(missing_samples))
                 return genebody_data
@@ -520,7 +521,7 @@ def get_genebody_coverage_multiqc_stats(outdir, samples, log_path, assay_suffix=
             
         except Exception as e:
             print(f"ERROR: Failed to extract gene body coverage stats: {str(e)}")
-            log_check_result(log_path, "rseqc", "all", "get_genebody_coverage_multiqc_stats", "RED", 
+            log_check_result(log_path, "rseqc", "all", "get_genebody_coverage_multiqc_stats", "YELLOW", 
                            f"Failed to extract gene body coverage stats: {str(e)}", "")
             return None
 
@@ -535,7 +536,7 @@ def report_genebody_coverage_issues(outdir, multiqc_data, log_path):
     """
     if multiqc_data is None:
         print("No gene body coverage data to analyze")
-        return "RED"
+        return "YELLOW"
     
     component = "rseqc"
     check_name = "coverage_metrics"
@@ -677,16 +678,16 @@ def report_genebody_coverage_issues(outdir, multiqc_data, log_path):
             
             # Log issues for this sample
             if issues:
-                status = "RED" if sample in severe_outliers else "YELLOW"
+                status = "YELLOW"
                 log_check_result(log_path, component, sample, check_name, status, 
                                f"Unusual gene body coverage profile", "; ".join(issues))
         
         # Log overall result
         if severe_outliers:
-            log_check_result(log_path, component, "all", check_name, "RED", 
+            log_check_result(log_path, component, "all", check_name, "YELLOW", 
                            f"Major outliers found in {len(severe_outliers)} samples", 
                            "; ".join(severe_outliers))
-            status = "RED"
+            status = "YELLOW"
         elif outliers:
             log_check_result(log_path, component, "all", check_name, "YELLOW", 
                            f"Minor outliers found in {len(outliers)} samples", 
@@ -716,7 +717,7 @@ def get_infer_experiment_multiqc_stats(outdir, samples, log_path, assay_suffix="
     
     if not os.path.exists(multiqc_zip):
         print(f"WARNING: Infer experiment MultiQC data zip file not found: {multiqc_zip}")
-        log_check_result(log_path, component, "all", check_name, "RED", 
+        log_check_result(log_path, component, "all", check_name, "HALT",
                          "Infer experiment MultiQC data not found", multiqc_zip)
         return None
     
@@ -747,7 +748,7 @@ def get_infer_experiment_multiqc_stats(outdir, samples, log_path, assay_suffix="
             # Extract infer experiment data
             if 'report_saved_raw_data' not in multiqc_data or 'multiqc_rseqc_infer_experiment' not in multiqc_data['report_saved_raw_data']:
                 print("WARNING: Infer experiment data not found in MultiQC report")
-                log_check_result(log_path, component, "all", check_name, "RED", 
+                log_check_result(log_path, component, "all", check_name, "YELLOW", 
                                 "Infer experiment data not found in MultiQC report", "")
                 return None
             
@@ -780,7 +781,7 @@ def get_infer_experiment_multiqc_stats(outdir, samples, log_path, assay_suffix="
             
         except Exception as e:
             print(f"ERROR: Failed to parse infer experiment MultiQC data: {str(e)}")
-            log_check_result(log_path, component, "all", check_name, "RED", 
+            log_check_result(log_path, component, "all", check_name, "YELLOW", 
                              f"Failed to parse infer experiment MultiQC data: {str(e)}", "")
             return None
 
@@ -1012,8 +1013,6 @@ def detect_coverage_bin_outliers(outdir, genebody_data, log_path):
             
             for _, severity, message in sample_anomalies[sample]:
                 sample_detail_issues.append(message)
-                if severity == "RED":
-                    sample_severity[sample] = "RED"
             
             # Limit to first 5 issues for brevity if there are many
             if len(sample_detail_issues) > 5:
@@ -1031,10 +1030,7 @@ def detect_coverage_bin_outliers(outdir, genebody_data, log_path):
         
         # Set overall status to the maximum severity level of any individual sample
         status = "YELLOW"
-        if any(severity == "RED" for severity in sample_severity.values()):
-            status = "RED"
-            
-        message = f"{'Major' if status == 'RED' else 'Minor'} coverage anomalies detected in {len(outlier_samples)} samples"
+        message = f"Minor coverage anomalies detected in {len(outlier_samples)} samples"
         log_check_result(log_path, "rseqc", "all", "genebody_coverage_bins", status, message, "; ".join(summary_details))
         return status
     else:
@@ -1070,7 +1066,7 @@ def get_inner_distance_multiqc_stats(outdir, samples, log_path, assay_suffix="_G
     
     if not multiqc_files:
         print(f"ERROR: Inner distance MultiQC data not found: {multiqc_glob}")
-        log_check_result(log_path, component, "all", check_name, "RED", 
+        log_check_result(log_path, component, "all", check_name, "HALT", 
                          "Inner distance MultiQC data not found", 
                          f"Expected: {multiqc_glob}")
         return None
@@ -1089,7 +1085,7 @@ def get_inner_distance_multiqc_stats(outdir, samples, log_path, assay_suffix="_G
             json_path = os.path.join(tmpdirname, f"inner_dist_multiqc{assay_suffix}_data", "multiqc_data.json")
             
             if not os.path.exists(json_path):
-                log_check_result(log_path, component, "all", check_name, "RED", 
+                log_check_result(log_path, component, "all", check_name, "HALT", 
                                 "No multiqc_data.json found in expected location", "")
                 return None
                 
@@ -1132,7 +1128,7 @@ def get_inner_distance_multiqc_stats(outdir, samples, log_path, assay_suffix="_G
                             }
                 else:
                     print(f"ERROR: MultiQC data does not contain expected inner distance plot data")
-                    log_check_result(log_path, component, "all", check_name, "RED", 
+                    log_check_result(log_path, component, "all", check_name, "YELLOW", 
                                 "MultiQC data doesn't contain inner distance plot data", 
                                 "Missing rseqc_inner_distance_plot section in MultiQC data")
                     return None
@@ -1154,13 +1150,13 @@ def get_inner_distance_multiqc_stats(outdir, samples, log_path, assay_suffix="_G
                 
             except Exception as e:
                 print(f"ERROR: Failed to parse inner distance MultiQC data: {str(e)}")
-                log_check_result(log_path, component, "all", check_name, "RED", 
+                log_check_result(log_path, component, "all", check_name, "YELLOW", 
                             "Failed to parse inner distance MultiQC data", 
                             f"Error: {str(e)}")
                 return None
     except Exception as e:
         print(f"ERROR: Failed to extract MultiQC report: {str(e)}")
-        log_check_result(log_path, component, "all", check_name, "RED", 
+        log_check_result(log_path, component, "all", check_name, "YELLOW", 
                       "Failed to extract MultiQC report", 
                       f"Error: {str(e)}")
         return None
@@ -1406,7 +1402,7 @@ def get_read_distribution_multiqc_stats(outdir, samples, log_path, assay_suffix=
     
     if not multiqc_files:
         print(f"ERROR: Read distribution MultiQC data not found: {multiqc_glob}")
-        log_check_result(log_path, component, "all", check_name, "RED", 
+        log_check_result(log_path, component, "all", check_name, "HALT", 
                          "Read distribution MultiQC data not found", 
                          f"Expected: {multiqc_glob}")
         return None
@@ -1425,7 +1421,7 @@ def get_read_distribution_multiqc_stats(outdir, samples, log_path, assay_suffix=
             json_path = os.path.join(tmpdirname, f"read_dist_multiqc{assay_suffix}_data", "multiqc_data.json")
             
             if not os.path.exists(json_path):
-                log_check_result(log_path, component, "all", check_name, "RED", 
+                log_check_result(log_path, component, "all", check_name, "HALT", 
                                 "No multiqc_data.json found in expected location", "")
                 return None
                 
@@ -1440,7 +1436,7 @@ def get_read_distribution_multiqc_stats(outdir, samples, log_path, assay_suffix=
                 
                 if 'report_saved_raw_data' not in multiqc_data or 'multiqc_rseqc_read_distribution' not in multiqc_data['report_saved_raw_data']:
                     print(f"ERROR: Read distribution data not found in MultiQC report")
-                    log_check_result(log_path, component, "all", check_name, "RED", 
+                    log_check_result(log_path, component, "all", check_name, "YELLOW", 
                                     "Read distribution data not found in MultiQC report")
                     return None
                 
@@ -1493,13 +1489,13 @@ def get_read_distribution_multiqc_stats(outdir, samples, log_path, assay_suffix=
                 
             except Exception as e:
                 print(f"ERROR: Failed to parse read distribution MultiQC data: {str(e)}")
-                log_check_result(log_path, component, "all", check_name, "RED", 
+                log_check_result(log_path, component, "all", check_name, "YELLOW", 
                             "Failed to parse read distribution MultiQC data", 
                             f"Error: {str(e)}")
                 return None
     except Exception as e:
         print(f"ERROR: Failed to extract MultiQC report: {str(e)}")
-        log_check_result(log_path, component, "all", check_name, "RED", 
+        log_check_result(log_path, component, "all", check_name, "YELLOW", 
                       "Failed to extract MultiQC report", 
                       f"Error: {str(e)}")
         return None

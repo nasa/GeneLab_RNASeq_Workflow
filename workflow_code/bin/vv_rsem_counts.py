@@ -13,6 +13,7 @@ Check that the expected output directories exist
 
 Section-specific checks:
 - check_rsem_output_existence: Check if all expected RSEM output files exist for each sample
+- check_rRNArm_genes_results_nonempty: Check rRNArm genes.results are not empty when base counts exist
 - check_rsem_multiqc_stats: Extract and validate RSEM metrics from MultiQC
 - report_rsem_outliers: Detect and report outliers in RSEM metrics
 - check_all_samples_in_multiqc: Verify all samples are included in the MultiQC report
@@ -255,6 +256,60 @@ def check_rsem_output_existence(outdir, samples, log_path, assay_suffix="_GLbulk
         return True
 
 
+def check_rRNArm_genes_results_nonempty(outdir, samples, log_path, assay_suffix="_GLbulkRNAseq"):
+    """Fail if rRNArm genes.results exist but are empty while the base genes.results file has data."""
+    rsem_dir = os.path.join(outdir, '03-RSEM_Counts')
+    samples = [str(sample) for sample in samples]
+    failed_samples = []
+
+    for sample in samples:
+        base_file = os.path.join(
+            rsem_dir,
+            f"{sample}/{sample}{assay_suffix}.genes.results"
+        )
+        rrnarm_file = os.path.join(
+            rsem_dir,
+            f"{sample}/{sample}{assay_suffix}_rRNArm.genes.results"
+        )
+
+        if not os.path.exists(base_file) or not os.path.exists(rrnarm_file):
+            continue
+
+        base_size = os.path.getsize(base_file)
+        rrnarm_size = os.path.getsize(rrnarm_file)
+
+        if base_size > 0 and rrnarm_size == 0:
+            failed_samples.append(sample)
+
+    if failed_samples:
+        for sample in failed_samples:
+            log_check_result(
+                log_path,
+                "RSEM_counts",
+                sample,
+                "check_rRNArm_genes_results_nonempty",
+                "RED",
+                "rRNArm genes.results is empty while base genes.results has data",
+                "Likely empty rRNA ID list with REMOVE_RRNA awk passthrough bug"
+            )
+        print(
+            "WARNING: Empty rRNArm genes.results detected for samples with non-empty base counts"
+        )
+        return False
+
+    log_check_result(
+        log_path,
+        "RSEM_counts",
+        "all",
+        "check_rRNArm_genes_results_nonempty",
+        "GREEN",
+        "All rRNArm genes.results files are non-empty when base genes.results has data",
+        ""
+    )
+    print("All rRNArm genes.results files have expected content")
+    return True
+
+
 def parse_rsem(multiqc_data_dir, assay_suffix="_GLbulkRNAseq"):
     """Parse RSEM data from MultiQC data directory."""
     multiqc_data_json = os.path.join(multiqc_data_dir, "multiqc_data.json")
@@ -383,7 +438,7 @@ def get_rsem_multiqc_stats(outdir, samples, log_path, assay_suffix="_GLbulkRNAse
                     "RSEM_counts", 
                     "all", 
                     "get_rsem_multiqc_stats", 
-                    "YELLOW", 
+                    "HALT", 
                     f"Missing {len(missing_samples)} samples in RSEM stats", 
                     ",".join(missing_samples[:20])  # Limit to 20 sample names
                 )
@@ -683,12 +738,11 @@ def check_all_samples_in_multiqc(outdir, samples, log_path, assay_suffix="_GLbul
                     "RSEM_counts", 
                     "all", 
                     "check_all_samples_in_multiqc", 
-                    "YELLOW",  # Changed to YELLOW since we can proceed even with this warning
+                    "HALT",
                     f"Missing {len(missing_samples)} samples in RSEM MultiQC report", 
                     f"Missing: {';'.join(missing_samples[:20])}"  # Limit to 20 sample names
                 )
-                # Return True so we can continue with validation
-                return True
+                return False
             else:
                 print(f"All samples found in RSEM MultiQC report")
                 print(f"Successfully matched {len(matched_samples)} runsheet samples to MultiQC entries")
@@ -871,6 +925,9 @@ def main():
     
     # Check if RSEM output files exist
     check_rsem_output_existence(args.outdir, sample_names, vv_log_path, args.assay_suffix)
+
+    # Check rRNArm genes.results were generated with content
+    check_rRNArm_genes_results_nonempty(args.outdir, sample_names, vv_log_path, args.assay_suffix)
     
     # Check if all samples are in the MultiQC report
     check_all_samples_in_multiqc(args.outdir, sample_names, vv_log_path, args.assay_suffix)

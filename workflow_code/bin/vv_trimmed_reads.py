@@ -361,7 +361,7 @@ def check_samples_multiqc(outdir, samples, paired_end, log_path, assay_suffix="_
     
     if not os.path.exists(multiqc_data_zip):
         print(f"WARNING: MultiQC data zip file not found: {multiqc_data_zip}")
-        log_check_result(log_path, "trimmed_reads", "all", "check_samples_multiqc", "RED", 
+        log_check_result(log_path, "trimmed_reads", "all", "check_samples_multiqc", "HALT", 
                          "MultiQC data zip not found", multiqc_data_zip)
         return False
     
@@ -382,7 +382,7 @@ def check_samples_multiqc(outdir, samples, paired_end, log_path, assay_suffix="_
             
             if not os.path.exists(json_path):
                 print(f"Could not find multiqc_data.json in the expected location")
-                log_check_result(log_path, "trimmed_reads", "all", "check_samples_multiqc", "RED", 
+                log_check_result(log_path, "trimmed_reads", "all", "check_samples_multiqc", "HALT", 
                                "multiqc_data.json not found in zip", "")
                 return False
                 
@@ -421,7 +421,7 @@ def check_samples_multiqc(outdir, samples, paired_end, log_path, assay_suffix="_
                 print(f"WARNING: The following samples are missing from the MultiQC report:")
                 for sample in missing_samples:
                     print(f"  - {sample}")
-                log_check_result(log_path, "trimmed_reads", "all", "check_samples_multiqc", "RED", 
+                log_check_result(log_path, "trimmed_reads", "all", "check_samples_multiqc", "HALT", 
                                 f"Missing {len(missing_samples)} samples in MultiQC report", 
                                 ",".join(missing_samples))
                 return False
@@ -444,7 +444,7 @@ def get_trimmed_multiqc_stats(outdir, samples, paired_end, log_path, assay_suffi
     
     if not os.path.exists(multiqc_data_zip):
         print(f"WARNING: MultiQC data zip file not found: {multiqc_data_zip}")
-        log_check_result(log_path, "trimmed_reads", "all", "get_trimmed_multiqc_stats", "RED", 
+        log_check_result(log_path, "trimmed_reads", "all", "get_trimmed_multiqc_stats", "HALT", 
                          "MultiQC data zip not found", "")
         return False
     
@@ -823,13 +823,13 @@ def check_paired_read_counts(multiqc_data, log_path, paired_end):
     
     if is_paired_in_runsheet and not paired_data_detected:
         print("WARNING: Runsheet specifies paired-end but data appears to be single-end")
-        log_check_result(log_path, "trimmed_reads", "all", "check_paired_read_counts", "RED", 
+        log_check_result(log_path, "trimmed_reads", "all", "check_paired_read_counts", "HALT", 
                         "Paired-end/single-end mismatch", 
                         "Runsheet specifies paired-end but data appears to be single-end")
         return False
     elif not is_paired_in_runsheet and paired_data_detected:
         print("WARNING: Runsheet specifies single-end but data appears to be paired-end")
-        log_check_result(log_path, "trimmed_reads", "all", "check_paired_read_counts", "RED", 
+        log_check_result(log_path, "trimmed_reads", "all", "check_paired_read_counts", "HALT", 
                         "Paired-end/single-end mismatch", 
                         "Runsheet specifies single-end but data appears to be paired-end")
         return False
@@ -958,7 +958,7 @@ def check_trimming_multiqc_samples(outdir, samples, log_path, assay_suffix="_GLb
     
     if not os.path.exists(multiqc_data_zip):
         print(f"WARNING: Trimmed MultiQC data zip file not found: {multiqc_data_zip}")
-        log_check_result(log_path, "trimmed_reads", "all", "check_trimming_multiqc_samples", "RED", 
+        log_check_result(log_path, "trimmed_reads", "all", "check_trimming_multiqc_samples", "HALT", 
                          "Trimmed MultiQC data zip not found", "")
         return False
     
@@ -979,7 +979,7 @@ def check_trimming_multiqc_samples(outdir, samples, log_path, assay_suffix="_GLb
             
             if not os.path.exists(json_path):
                 print(f"WARNING: No multiqc_data.json file found in the expected location")
-                log_check_result(log_path, "trimmed_reads", "all", "check_trimming_multiqc_samples", "RED", 
+                log_check_result(log_path, "trimmed_reads", "all", "check_trimming_multiqc_samples", "HALT", 
                                "multiqc_data.json not found in zip", "")
                 return False
             
@@ -1027,7 +1027,7 @@ def check_trimming_multiqc_samples(outdir, samples, log_path, assay_suffix="_GLb
                 print(f"WARNING: The following samples are missing from the Trimming section in the combined MultiQC report:")
                 for sample in missing_samples:
                     print(f"  - {sample}")
-                log_check_result(log_path, "trimmed_reads", "all", "check_trimming_multiqc_samples", "RED", 
+                log_check_result(log_path, "trimmed_reads", "all", "check_trimming_multiqc_samples", "HALT", 
                                 f"Missing {len(missing_samples)} samples in Trimming section of MultiQC report", 
                                 ",".join(missing_samples))
                 return False
@@ -1051,7 +1051,7 @@ def check_adapters_presence(outdir, samples, paired_end, log_path, threshold=0.0
     
     if not os.path.exists(multiqc_data_zip):
         print(f"WARNING: Trimmed MultiQC data zip file not found: {multiqc_data_zip}")
-        log_check_result(log_path, "trimmed_reads", "all", "check_adapters_presence", "RED", 
+        log_check_result(log_path, "trimmed_reads", "all", "check_adapters_presence", "HALT", 
                          "Trimmed MultiQC data zip not found", "")
         return False
     
@@ -1072,7 +1072,7 @@ def check_adapters_presence(outdir, samples, paired_end, log_path, threshold=0.0
             
             if not os.path.exists(json_path):
                 print(f"WARNING: No multiqc_data.json file found in the expected location")
-                log_check_result(log_path, "trimmed_reads", "all", "check_adapters_presence", "RED", 
+                log_check_result(log_path, "trimmed_reads", "all", "check_adapters_presence", "HALT", 
                                "multiqc_data.json not found in zip", "")
                 return False
             

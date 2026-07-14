@@ -355,7 +355,7 @@ def check_samples_multiqc(outdir, samples, paired_end, log_path, assay_suffix="_
     
     if not os.path.exists(multiqc_data_zip):
         print(f"WARNING: MultiQC data zip file not found: {multiqc_data_zip}")
-        log_check_result(log_path, "raw_reads", "all", "check_samples_multiqc", "RED", 
+        log_check_result(log_path, "raw_reads", "all", "check_samples_multiqc", "HALT", 
                          "MultiQC data zip not found", multiqc_data_zip)
         return False
     
@@ -376,7 +376,7 @@ def check_samples_multiqc(outdir, samples, paired_end, log_path, assay_suffix="_
             
             if not os.path.exists(json_path):
                 print(f"Could not find multiqc_data.json in the expected location")
-                log_check_result(log_path, "raw_reads", "all", "check_samples_multiqc", "RED", 
+                log_check_result(log_path, "raw_reads", "all", "check_samples_multiqc", "HALT", 
                                "multiqc_data.json not found in zip", "")
                 return False
                 
@@ -415,7 +415,7 @@ def check_samples_multiqc(outdir, samples, paired_end, log_path, assay_suffix="_
                 print(f"WARNING: The following samples are missing from the MultiQC report:")
                 for sample in missing_samples:
                     print(f"  - {sample}")
-                log_check_result(log_path, "raw_reads", "all", "check_samples_multiqc", "RED", 
+                log_check_result(log_path, "raw_reads", "all", "check_samples_multiqc", "HALT", 
                                 f"Missing {len(missing_samples)} samples in MultiQC report", 
                                 ",".join(missing_samples))
                 return False
@@ -438,7 +438,7 @@ def get_raw_multiqc_stats(outdir, samples, paired_end, log_path, assay_suffix="_
     
     if not os.path.exists(multiqc_data_zip):
         print(f"WARNING: MultiQC data zip file not found: {multiqc_data_zip}")
-        log_check_result(log_path, "raw_reads", "all", "get_raw_multiqc_stats", "RED", 
+        log_check_result(log_path, "raw_reads", "all", "get_raw_multiqc_stats", "HALT", 
                          "MultiQC data zip not found", "")
         return False
     
@@ -502,7 +502,7 @@ def get_raw_multiqc_stats(outdir, samples, paired_end, log_path, assay_suffix="_
                 print(f"WARNING: {len(missing_samples)} samples missing from MultiQC stats:")
                 for sample in missing_samples[:10]:
                     print(f"  - {sample}")
-                log_check_result(log_path, "raw_reads", "all", "get_raw_multiqc_stats", "RED", 
+                log_check_result(log_path, "raw_reads", "all", "get_raw_multiqc_stats", "HALT", 
                                f"Missing {len(missing_samples)} samples in MultiQC stats", 
                                ",".join(missing_samples[:20]))
                 return clean_data  # Still return data for partial analysis
@@ -732,13 +732,13 @@ def check_paired_read_counts(multiqc_data, log_path, paired_end):
     is_paired_in_runsheet = paired_end[0]  # From runsheet
     if is_paired_in_runsheet and not has_paired_data:
         print("WARNING: Runsheet specifies paired-end but data appears to be single-end")
-        log_check_result(log_path, "raw_reads", "all", "check_paired_read_counts", "RED", 
+        log_check_result(log_path, "raw_reads", "all", "check_paired_read_counts", "HALT", 
                         "Paired-end/single-end mismatch", 
                         "Runsheet specifies paired-end but data appears to be single-end")
         return False
     elif not is_paired_in_runsheet and has_paired_data:
         print("WARNING: Runsheet specifies single-end but data appears to be paired-end")
-        log_check_result(log_path, "raw_reads", "all", "check_paired_read_counts", "RED", 
+        log_check_result(log_path, "raw_reads", "all", "check_paired_read_counts", "HALT", 
                         "Paired-end/single-end mismatch", 
                         "Runsheet specifies single-end but data appears to be paired-end")
         return False

@@ -1297,7 +1297,7 @@ def check_dge_table_sample_columns_exist(outdir, runsheet_path, log_path, assay_
     # Check if the DGE table exists
     if not os.path.exists(dge_table_path):
         message = f"DGE table not found"
-        log_check_result(log_path, component_name, "all", check_name, "RED", 
+        log_check_result(log_path, component_name, "all", check_name, "HALT", 
                         message, f"Expected at: {dge_table_path}")
         return False
     
@@ -1439,7 +1439,7 @@ def check_dge_table_sample_columns_constraints(outdir, runsheet_path, log_path, 
     # Check if the DGE table exists
     if not os.path.exists(dge_table_path):
         message = f"DGE table not found"
-        log_check_result(log_path, component_name, "all", check_name, "RED", 
+        log_check_result(log_path, component_name, "all", check_name, "HALT", 
                         message, f"Expected at: {dge_table_path}")
         return False
     
@@ -1558,7 +1558,7 @@ def check_dge_table_group_columns_exist(outdir, runsheet_path, log_path, assay_s
     # Check if the DGE table exists
     if not os.path.exists(dge_table_path):
         message = f"DGE table not found"
-        log_check_result(log_path, component_name, "all", check_name, "RED", 
+        log_check_result(log_path, component_name, "all", check_name, "HALT", 
                       message, f"Expected at: {dge_table_path}")
         return False
     
@@ -1719,7 +1719,7 @@ def check_dge_table_group_columns_constraints(outdir, runsheet_path, log_path, a
         sample_table_path = os.path.join(outdir, f"SampleTable{check_suffix}{assay_suffix}.csv") 
         
         if not os.path.exists(sample_table_path):
-            log_check_result(log_path, component_name, "all", check_name, "RED", 
+            log_check_result(log_path, component_name, "all", check_name, "HALT", 
                            "Sample table not found", 
                            f"Expected at: {sample_table_path}")
             return False
@@ -1751,7 +1751,7 @@ def check_dge_table_group_columns_constraints(outdir, runsheet_path, log_path, a
     # Check if the DGE table exists
     if not os.path.exists(dge_table_path):
         message = f"DGE table not found"
-        log_check_result(log_path, component_name, "all", check_name, "RED", 
+        log_check_result(log_path, component_name, "all", check_name, "HALT", 
                        message, f"Expected at: {dge_table_path}")
         return False
     
@@ -1892,7 +1892,7 @@ def check_dge_table_comparison_statistical_columns_exist(outdir, runsheet_path, 
     # Check if the DGE table exists
     if not os.path.exists(dge_table_path):
         message = f"DGE table not found"
-        log_check_result(log_path, component_name, "all", check_name, "RED", 
+        log_check_result(log_path, component_name, "all", check_name, "HALT", 
                        message, f"Expected at: {dge_table_path}")
         return False
     
@@ -2091,7 +2091,7 @@ def check_dge_table_group_statistical_columns_constraints(outdir, runsheet_path,
     # Check if the DGE table exists
     if not os.path.exists(dge_table_path):
         message = f"DGE table not found"
-        log_check_result(log_path, component_name, "all", check_name, "RED", 
+        log_check_result(log_path, component_name, "all", check_name, "HALT", 
                        message, f"Expected at: {dge_table_path}")
         return False
     
@@ -2232,7 +2232,7 @@ def check_dge_table_fixed_statistical_columns_exist(outdir, log_path, assay_suff
     # Check if the DGE table exists
     if not os.path.exists(dge_table_path):
         message = f"DGE table not found"
-        log_check_result(log_path, component_name, "all", check_name, "RED", 
+        log_check_result(log_path, component_name, "all", check_name, "HALT", 
                        message, f"Expected at: {dge_table_path}")
         return False
     
@@ -2298,7 +2298,7 @@ def check_dge_table_fixed_statistical_columns_constraints(outdir, log_path, assa
     # Check if the DGE table exists
     if not os.path.exists(dge_table_path):
         message = f"DGE table not found"
-        log_check_result(log_path, component_name, "all", check_name, "RED", 
+        log_check_result(log_path, component_name, "all", check_name, "HALT", 
                        message, f"Expected at: {dge_table_path}")
         return False
     
@@ -2383,7 +2383,7 @@ def check_dge_table_log2fc_within_reason(outdir, runsheet_path, log_path, assay_
     dge_table_path = os.path.join(outdir, f"differential_expression{check_suffix}{assay_suffix}.csv")
     if not os.path.exists(dge_table_path):
         message = f"DGE table not found"
-        log_check_result(log_path, component_name, "all", check_name, "RED", 
+        log_check_result(log_path, component_name, "all", check_name, "HALT", 
                       message, f"Expected at: {dge_table_path}")
         return False
 
