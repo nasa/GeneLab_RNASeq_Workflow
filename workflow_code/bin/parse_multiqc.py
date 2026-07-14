@@ -52,16 +52,16 @@ def fastqc_max_sequence_length(seq_len_value):
     except (ValueError, TypeError):
         return None
 
-def resolve_multiqc_read_length(all_fields, prefix='raw'):
-    """Resolve read length from FastQC max sequence length."""
+def resolve_multiqc_read_length(max_f=None, max_r=None):
+    """Resolve read length from FastQC max sequence length (f/r)."""
     max_lengths = []
-    for suffix in ('_f', '_r'):
-        key = f'{prefix}_max_sequence_length{suffix}'
-        if all_fields.get(key) not in (None, ''):
-            try:
-                max_lengths.append(int(float(all_fields[key])))
-            except (ValueError, TypeError):
-                pass
+    for value in (max_f, max_r):
+        if value in (None, ''):
+            continue
+        try:
+            max_lengths.append(int(float(value)))
+        except (ValueError, TypeError):
+            pass
     return max(max_lengths) if max_lengths else None
 
 def lookup_raw_fastqc_sample(base_name, end, raw_fastqc, mqc_sample=None):
@@ -341,7 +341,7 @@ def generate_validation_report(fieldnames, populated_fields, mode, assay_suffix,
                 if field == 'read_depth':
                     f.write(f"** {field} (filled from raw_total_sequences_f)\n")
                 elif field == 'read_length':
-                    f.write(f"** {field} (filled from raw_max_sequence_length_f/r)\n")
+                    f.write(f"** {field} (filled from FastQC Sequence length max)\n")
                 else:
                     f.write(f"** {field}\n")
             f.write("\n")
@@ -422,9 +422,9 @@ def main(osd_num, paired_end, assay_suffix, mode, runsheet=None):
         'gene_detected_gt10', 'gene_total', 'gene_detected_gt10_pct',
 
         # FastQC (raw)
-        'raw_total_sequences_f', 'raw_avg_sequence_length_f', 'raw_median_sequence_length_f', 'raw_max_sequence_length_f', 'raw_quality_score_mean_f', 'raw_quality_score_median_f', 'raw_percent_duplicates_f',
+        'raw_total_sequences_f', 'raw_avg_sequence_length_f', 'raw_median_sequence_length_f', 'raw_quality_score_mean_f', 'raw_quality_score_median_f', 'raw_percent_duplicates_f',
         'raw_percent_gc_f', 'raw_gc_min_1pct_f', 'raw_gc_max_1pct_f', 'raw_gc_auc_25pct_f', 'raw_gc_auc_50pct_f', 'raw_gc_auc_75pct_f', 'raw_n_content_sum_f',
-        'raw_total_sequences_r', 'raw_avg_sequence_length_r', 'raw_median_sequence_length_r', 'raw_max_sequence_length_r', 'raw_quality_score_mean_r', 'raw_quality_score_median_r', 'raw_percent_duplicates_r',
+        'raw_total_sequences_r', 'raw_avg_sequence_length_r', 'raw_median_sequence_length_r', 'raw_quality_score_mean_r', 'raw_quality_score_median_r', 'raw_percent_duplicates_r',
         'raw_percent_gc_r', 'raw_gc_min_1pct_r', 'raw_gc_max_1pct_r', 'raw_gc_auc_25pct_r', 'raw_gc_auc_50pct_r', 'raw_gc_auc_75pct_r', 'raw_n_content_sum_r',
 
         # FastQC (trimmed)
@@ -471,6 +471,9 @@ def main(osd_num, paired_end, assay_suffix, mode, runsheet=None):
         for sample in samples:
             # Collect all fields for this sample
             all_fields = {}
+            # Internal only (not written to qc_metrics): FastQC Sequence length max for read_length
+            raw_max_f = None
+            raw_max_r = None
             for data_source in multiqc_data:
                 source_data = None
                 if sample in data_source:
@@ -482,15 +485,15 @@ def main(osd_num, paired_end, assay_suffix, mode, runsheet=None):
                             break
                 if source_data:
                     for k, v in source_data.items():
+                        if k == 'raw_max_sequence_length_f' and v not in (None, ''):
+                            raw_max_f = v
+                        elif k == 'raw_max_sequence_length_r' and v not in (None, ''):
+                            raw_max_r = v
                         # Only keep fields that are in the fieldnames list
-                        if k in fieldnames_set:
+                        elif k in fieldnames_set:
                             all_fields[k] = v
                             if v is not None and v != '':  # Track populated fields
                                 populated_fields.add(k)
-                        else:
-                            # Optionally add debug output to see which fields are being skipped
-                            # print(f"Skipping field not in fieldnames: {k}")
-                            pass
             
             # Track fields that are always populated
             populated_fields.add('osd_num')
@@ -536,7 +539,7 @@ def main(osd_num, paired_end, assay_suffix, mode, runsheet=None):
                 except (ValueError, TypeError):
                     pass
             
-            multiqc_read_length = resolve_multiqc_read_length(all_fields)
+            multiqc_read_length = resolve_multiqc_read_length(raw_max_f, raw_max_r)
             # If read_length exists, validate against FastQC max length
             if all_fields.get('read_length') and all_fields.get('read_length') != '':
                 if multiqc_read_length is not None:
