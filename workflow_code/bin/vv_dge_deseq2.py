@@ -2389,17 +2389,20 @@ def check_dge_table_log2fc_within_reason(outdir, runsheet_path, log_path, assay_
 
     try:
         df_dge = pd.read_csv(dge_table_path, keep_default_na=False, low_memory=False)
-        
-        # Ensure column names are treated as strings if they are used in comparisons
         df_dge.columns = df_dge.columns.astype(str)
-        
+
+        # keep_default_na=False leaves "NA" as strings; coerce stats cols before arithmetic
+        for col in df_dge.columns:
+            if col.startswith(("Group.Mean_", "Group.Stdev_", "Log2fc_")):
+                df_dge[col] = pd.to_numeric(df_dge[col], errors="coerce")
+
         group_mean_cols = [col for col in df_dge.columns if col.startswith("Group.Mean_")]
         if not group_mean_cols:
             log_check_result(log_path, component_name, "all", check_name, "RED",
                             "No Group.Mean columns found in DGE table",
                             "")
             return False
-        df_dge["Group.Mean_SUM"] = df_dge[group_mean_cols].sum(axis=1)
+        df_dge["Group.Mean_SUM"] = df_dge[group_mean_cols].sum(axis=1, min_count=1)
         df_dge = df_dge[df_dge["Group.Mean_SUM"] > SMALL_COUNTS_THRESHOLD]
 
         log2fc_columns = [col for col in df_dge.columns if col.startswith("Log2fc_")]
@@ -2410,18 +2413,17 @@ def check_dge_table_log2fc_within_reason(outdir, runsheet_path, log_path, assay_
             return False
 
         comparisons = [col[len("Log2fc_"):] for col in log2fc_columns]
-        all_suspect_signs = {}
         wrong_sign_gene_ids = set()
         for comparison in comparisons:
             query_column = f"Log2fc_{comparison}"
             try:
                 group1_name = comparison.split(")v(")[0] + ")"
                 group2_name = "(" + comparison.split(")v(")[1]
-            except:
+            except Exception:
                 try:
                     group1_name = comparison.split("v")[0]
                     group2_name = comparison.split("v")[1]
-                except:
+                except Exception:
                     continue
             group1_mean_col = f"Group.Mean_{group1_name}"
             group2_mean_col = f"Group.Mean_{group2_name}"
@@ -2429,7 +2431,7 @@ def check_dge_table_log2fc_within_reason(outdir, runsheet_path, log_path, assay_
                 continue
             safe_denom = df_dge[group2_mean_col].replace(0, np.nan)
             abs_mean_diffs = abs((df_dge[group1_mean_col] - df_dge[group2_mean_col]) / safe_denom) * 100
-            mask = (abs_mean_diffs > THRESHOLD_PERCENT_MEANS_DIFFERENCE) & (~abs_mean_diffs.isna())
+            mask = (abs_mean_diffs > THRESHOLD_PERCENT_MEANS_DIFFERENCE) & (~abs_mean_diffs.isna()) & df_dge[query_column].notna()
             if mask.sum() > 0:
                 positive_sign_expected = (df_dge[group1_mean_col] - df_dge[group2_mean_col])[mask] > 0
                 actual_sign_positive = df_dge[query_column][mask] > 0
@@ -2440,7 +2442,6 @@ def check_dge_table_log2fc_within_reason(outdir, runsheet_path, log_path, assay_
                     wrong_sign_gene_ids.update(df_dge[mask][wrong_sign_mask][gene_id_col])
         stdev_flagged = []
         if wrong_sign_gene_ids:
-            # Prepare DataFrame for CSV output
             flagged_df = df_dge[df_dge[df_dge.columns[0]].isin(wrong_sign_gene_ids)].copy()
             group_stdev_cols = [col for col in df_dge.columns if col.startswith('Group.Stdev_')]
             def extract_group(col):
@@ -2449,13 +2450,14 @@ def check_dge_table_log2fc_within_reason(outdir, runsheet_path, log_path, assay_
             mean_map = {extract_group(col): col for col in group_mean_cols if extract_group(col)}
             stdev_map = {extract_group(col): col for col in group_stdev_cols if extract_group(col)}
             groups = set(mean_map) & set(stdev_map)
-            for idx, row in flagged_df.iterrows():
+            for _, row in flagged_df.iterrows():
                 for group in groups:
                     mean_col = mean_map[group]
                     stdev_col = stdev_map[group]
-                    if pd.notnull(row[mean_col]) and row[mean_col] != 0 and pd.notnull(row[stdev_col]):
-                        ratio = row[stdev_col] / row[mean_col]
-                        if ratio > 1:
+                    mean_val = row[mean_col]
+                    stdev_val = row[stdev_col]
+                    if pd.notna(mean_val) and mean_val != 0 and pd.notna(stdev_val):
+                        if stdev_val / mean_val > 1:
                             stdev_flagged.append(row[flagged_df.columns[0]])
                             break
             for group in groups:
