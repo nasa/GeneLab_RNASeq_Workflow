@@ -144,7 +144,7 @@ Staging:
             Source name identifier from the sample table.
           Example: SLS-2_TMS_GC_G10
 
-        - ISA Field Name: Has Tech Reps
+        - ISA Field Name: Parameter Value[Has Technical Reps]
           ISA Table Source: Assay
           Runsheet Column Name: Has Tech Reps
           Optional: true
