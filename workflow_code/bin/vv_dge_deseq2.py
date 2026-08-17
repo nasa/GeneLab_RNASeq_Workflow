@@ -27,6 +27,27 @@ def safe_list_to_str(data_list):
     """Convert list elements to strings, handle None/NaN values."""
     return [str(item) if item is not None and not pd.isna(item) else 'None' for item in data_list]
 
+# Cap details length so VV_log.csv doesn't break csv parsing
+_VV_DETAILS_MAX_CHARS = 20000
+_VV_DETAILS_MAX_ITEMS = 8
+
+
+def format_limited_list(items, max_items=_VV_DETAILS_MAX_ITEMS, sep=", "):
+    """Join list items, show only the first max_items."""
+    items = list(items)
+    if len(items) <= max_items:
+        return sep.join(str(x) for x in items)
+    head = sep.join(str(x) for x in items[:max_items])
+    return f"{head}{sep}... and {len(items) - max_items} more"
+
+
+def cap_details(details, max_chars=_VV_DETAILS_MAX_CHARS):
+    """Truncate details string if too long."""
+    details = "" if details is None else str(details)
+    if len(details) <= max_chars:
+        return details
+    return f"{details[:max_chars]}... [truncated, {len(details)} chars total]"
+
 #############################################################################
 # Differential Gene Expression (DGE) Validation Checks
 #############################################################################
@@ -183,7 +204,7 @@ def log_check_result(log_path, component, sample_id, check_name, status, message
     check_name = escape_field(check_name)
     status = escape_field(status)
     message = escape_field(message)
-    details = escape_field(details, True)
+    details = escape_field(cap_details(details), True)
     
     with open(log_path, 'a') as f:
         f.write(f"{component},{sample_id},{check_name},{status},{flag_code},{message},{details}\n")
@@ -748,19 +769,20 @@ def print_summary(check_results, vv_log_path, overall_status="GREEN"):
     print("\n" + "="*80)
     print("VERIFICATION AND VALIDATION SUMMARY")
     print("="*80)
+
+    status_counts = {
+        "GREEN": 0,
+        "YELLOW": 0,
+        "RED": 0
+    }
     
     # Read and process the VV log
     try:
+        # Allow large fields (default limit is 128KB)
+        csv.field_size_limit(max(csv.field_size_limit(), 10_000_000))
         with open(vv_log_path, 'r') as f:
             reader = csv.DictReader(f)
             log_entries = list(reader)
-            
-        # Count statuses by component and check
-        status_counts = {
-            "GREEN": 0,
-            "YELLOW": 0,
-            "RED": 0
-        }
         
         component_status = {}
         check_status = {}
@@ -939,7 +961,7 @@ def check_contrasts_table_headers(outdir, runsheet_path, log_path, assay_suffix=
             status = "GREEN"
             message = "Contrasts table headers match expected comparisons"
             
-            details = f"Found {len(expected_comparisons)} expected comparisons. Expected comparisons: {'; '.join(expected_comparisons)}. Actual comparisons: {'; '.join(actual_comparisons)}. All expected comparisons were found in the contrasts table."
+            details = f"Found {len(expected_comparisons)} expected comparisons. Expected comparisons: {format_limited_list(expected_comparisons)}. Actual comparisons: {format_limited_list(actual_comparisons)}. All expected comparisons were found in the contrasts table."
             
             log_check_result(log_path, component_name, "all", check_name, status, message, details)
             return True
@@ -950,7 +972,9 @@ def check_contrasts_table_headers(outdir, runsheet_path, log_path, assay_suffix=
             print(f"  - Missing: {differences}")
             print(f"  - Extra: {differences}")
             
-            details = f"Differences found between expected and actual comparisons. Expected comparisons: {'; '.join(expected_comparisons)}. Actual comparisons: {'; '.join(actual_comparisons)}. Missing comparisons: {'; '.join(differences) if differences else 'None'}. Extra comparisons: {'; '.join(differences) if differences else 'None'}."
+            missing = sorted(set(expected_comparisons) - set(actual_comparisons))
+            extra = sorted(set(actual_comparisons) - set(expected_comparisons))
+            details = f"Differences found between expected and actual comparisons. Expected comparisons: {format_limited_list(expected_comparisons)}. Actual comparisons: {format_limited_list(actual_comparisons)}. Missing comparisons: {format_limited_list(missing) if missing else 'None'}. Extra comparisons: {format_limited_list(extra) if extra else 'None'}."
             
             log_check_result(log_path, component_name, "all", check_name, "RED", 
                              "Contrasts table headers do not match expected comparisons", details)
@@ -1065,7 +1089,7 @@ def check_contrasts_table_rows(outdir, log_path, assay_suffix="_GLbulkRNAseq",
         
         if not bad_columns:
             print(f"Contrasts table rows match expected formatting")
-            details = f"All {len(df_contrasts.columns)} comparisons have correct formatting. " + "; ".join(column_details)
+            details = f"All {len(df_contrasts.columns)} comparisons have correct formatting. " + format_limited_list(column_details, sep="; ")
             log_check_result(log_path, component_name, "all", check_name, "GREEN", 
                            "Contrasts table rows match expected formatting", details)
             return True
@@ -1081,7 +1105,7 @@ def check_contrasts_table_rows(outdir, log_path, assay_suffix="_GLbulkRNAseq",
                     f"Actual values: {'; '.join(str(x) for x in info['actual'])}"
                 )
             
-            details = f"{len(bad_columns)} of {len(df_contrasts.columns)} columns have formatting issues: " + "; ".join(error_details) + "; All column details: " + "; ".join(column_details)
+            details = f"{len(bad_columns)} of {len(df_contrasts.columns)} columns have formatting issues: " + format_limited_list(error_details, sep="; ") + "; All column details: " + format_limited_list(column_details, sep="; ")
         
         log_check_result(log_path, component_name, "all", check_name, "RED", 
                         "Contrasts table rows do not match expected formatting", details)
@@ -1747,7 +1771,10 @@ def check_dge_table_group_columns_constraints(outdir, runsheet_path, log_path, a
             if df_dge[col].dtype == 'object':
                 df_dge[col] = df_dge[col].replace(['NA', 'None', ''], pd.NA)
             df_dge[col] = pd.to_numeric(df_dge[col], errors='coerce')
-            if df_dge[col].isnull().any():
+            if df_dge[col].isnull().all():
+                # Still RED; often n=1 groups where R sd returns NA
+                stdev_violations.append(f"{col}: entirely NA (often n=1 groups)")
+            elif df_dge[col].isnull().any():
                 stdev_violations.append(f"{col}: {df_dge[col].isnull().sum()} null values")
             elif not pd.api.types.is_numeric_dtype(df_dge[col]):
                 stdev_violations.append(f"{col}: not numeric (dtype={df_dge[col].dtype})")
@@ -1880,7 +1907,7 @@ def check_dge_table_comparison_statistical_columns_exist(outdir, runsheet_path, 
             status = "GREEN"
             message = "All comparison statistical columns present in DGE table"
             log_check_result(log_path, component_name, "all", check_name, status, message, 
-                            f"Found all statistical columns with prefixes: {'; '.join(COMPARISON_PREFIXES)} for {len(expected_comparisons)} comparisons: {'; '.join(expected_comparisons)}")
+                            f"Found all statistical columns with prefixes: {'; '.join(COMPARISON_PREFIXES)} for {len(expected_comparisons)} comparisons: {format_limited_list(expected_comparisons)}")
             return True
         else:
             status = "RED"
