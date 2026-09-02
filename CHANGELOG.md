@@ -20,7 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Limit STAR alignment to a maximum of 10 concurrent jobs by setting `maxForks = 10` in local.config, slurm.config
 - Updated V&V outlier detection: extreme outliers now flagged as YELLOW instead of RED across all V&V modules
+- Updated V&V flag severity: missing expected outputs/MultiQC archives/samples and PE/SE mismatches now flagged as HALT
 - Updated `parse_multiqc.py` to handle empty or missing OSD numbers
+- Updated `generate_protocol.py` workflow documentation link to point to the `GeneLab_RNASeq_Workflow` repository
+- Annotation table Figshare share URLs are now converted to Figshare API URLs
 
 ### Fixed
 
@@ -31,6 +34,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed modules and scripts that required params.assay_suffix to be a non-empty string
 - Fixed `parse_qc_metrics` validation report: excluded `mix` field for non-ERCC datasets, added auto-fill and validation mismatch reporting for `read_depth` and `read_length`
 - Fixed `get_accessions.py` to handle identifiers that can be either strings or lists in API responses
+- Fixed microbes workflow output file publishing: added Bowtie log and unmapped reads fastq, removed NumNonZeroGenes
+- Fixed README Approach 4 example command to use `--runsheet_path` as expected instead of `--accession`
+- Fixed STAR and RSEM index build modules `storeDir` caching: removed unnecessary redundant completion-check output paths
+- Fixed `fetch_isa.py` to get file list from `/files/` endpoint and no longer use wildcards to point to ISA zip file
+- Fixed `parse_multiqc.py` to clean `Sample Name` values and align ISA sample names with runsheet processing names
+- Fixed `update_assay_table.py` per-sample file paths: spaces-to-underscores on assay `Sample Name`
+- Fixed `vv_dge_deseq2.py` red-flag group std dev check to report all affected groups with null std dev instead of returning on the first
+- Fixed `vv_dge_deseq2.py` technical replicates handling
+- Fixed `REMOVE_RRNA` to copy unfiltered `genes.results` when the rRNA ID list is empty
 
 ## [2.0.2](https://github.com/nasa/GeneLab_RNASeq_Workflow/tree/NF_RCP_2.0.2) - 2025-08-26
 

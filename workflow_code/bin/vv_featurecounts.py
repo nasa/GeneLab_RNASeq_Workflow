@@ -177,7 +177,7 @@ def get_featurecounts_multiqc_stats(outdir, samples, log_path, assay_suffix="_GL
     
     if not os.path.exists(multiqc_zip):
         print(f"WARNING: MultiQC data zip file not found: {multiqc_zip}")
-        log_check_result(log_path, "featurecounts", "all", "get_featurecounts_multiqc_stats", "RED", 
+        log_check_result(log_path, "featurecounts", "all", "get_featurecounts_multiqc_stats", "HALT", 
                          "MultiQC data not found", "")
         return False
     
@@ -198,7 +198,7 @@ def get_featurecounts_multiqc_stats(outdir, samples, log_path, assay_suffix="_GL
             
             if not os.path.exists(json_path):
                 print(f"WARNING: No multiqc_data.json file found in the expected location")
-                log_check_result(log_path, "featurecounts", "all", "get_featurecounts_multiqc_stats", "RED", 
+                log_check_result(log_path, "featurecounts", "all", "get_featurecounts_multiqc_stats", "HALT", 
                                "multiqc_data.json not found in zip", "")
                 return False
             
@@ -251,7 +251,7 @@ def get_featurecounts_multiqc_stats(outdir, samples, log_path, assay_suffix="_GL
                 print(f"WARNING: {len(missing_samples)} samples missing from featureCounts stats:")
                 for sample in missing_samples:
                     print(f"  - {sample}")
-                log_check_result(log_path, "featurecounts", "all", "get_featurecounts_multiqc_stats", "RED", 
+                log_check_result(log_path, "featurecounts", "all", "get_featurecounts_multiqc_stats", "HALT", 
                                f"Missing {len(missing_samples)} samples in featureCounts stats", 
                                ",".join(missing_samples[:20]))
                 return fc_data
@@ -417,13 +417,13 @@ def check_rrna_removal(outdir, log_path, assay_suffix="_GLbulkRNAseq"):
     # Check if both files exist
     if not os.path.exists(regular_counts_file):
         print(f"WARNING: Regular FeatureCounts file not found: {regular_counts_file}")
-        log_check_result(log_path, "featurecounts", "all", "check_rrna_removal", "RED", 
+        log_check_result(log_path, "featurecounts", "all", "check_rrna_removal", "HALT", 
                         "Regular FeatureCounts file not found", "")
         return False
         
     if not os.path.exists(rrna_removed_file):
         print(f"WARNING: rRNA-removed FeatureCounts file not found: {rrna_removed_file}")
-        log_check_result(log_path, "featurecounts", "all", "check_rrna_removal", "RED", 
+        log_check_result(log_path, "featurecounts", "all", "check_rrna_removal", "HALT", 
                         "rRNA-removed FeatureCounts file not found", "")
         return False
     

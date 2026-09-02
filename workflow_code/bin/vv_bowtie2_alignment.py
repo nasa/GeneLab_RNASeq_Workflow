@@ -267,7 +267,7 @@ def check_raw_fastqc_existence(outdir, samples, paired_end, log_path):
         print(f"WARNING: The following FastQC output files are missing:")
         for file in missing_files:
             print(f"  - {file}")
-        log_check_result(log_path, "raw_reads", "all", "check_raw_fastqc_existence", "RED", 
+        log_check_result(log_path, "raw_reads", "all", "check_raw_fastqc_existence", "HALT", 
                          f"Missing {len(missing_files)} FastQC output files", ",".join(missing_files))
         return False
     
@@ -297,7 +297,7 @@ def check_samples_multiqc(outdir, samples, paired_end, log_path, assay_suffix="_
             json_path = os.path.join(temp_dir, f"align_multiqc{assay_suffix}_data", "multiqc_data.json")
             
             if not os.path.exists(json_path):
-                log_check_result(log_path, "alignment", "all", "check_samples_multiqc", "RED", 
+                log_check_result(log_path, "alignment", "all", "check_samples_multiqc", "HALT", 
                                "multiqc_data.json not found in zip", "")
                 return False
             
@@ -340,7 +340,7 @@ def check_samples_multiqc(outdir, samples, paired_end, log_path, assay_suffix="_
             has_paired_data = has_paired_data or has_paired_files
             
             if is_paired_in_runsheet and not has_paired_data:
-                log_check_result(log_path, "alignment", "all", "check_samples_multiqc", "RED", 
+                log_check_result(log_path, "alignment", "all", "check_samples_multiqc", "HALT", 
                                "Paired-end/single-end mismatch", 
                                "Runsheet specifies paired-end but data appears to be single-end")
                 return False
@@ -354,7 +354,7 @@ def check_samples_multiqc(outdir, samples, paired_end, log_path, assay_suffix="_
                     missing_samples.append(sample_str)
             
             if missing_samples:
-                log_check_result(log_path, "alignment", "all", "check_samples_multiqc", "RED", 
+                log_check_result(log_path, "alignment", "all", "check_samples_multiqc", "HALT", 
                                f"Missing {len(missing_samples)} samples in MultiQC data", 
                                "; ".join(missing_samples))
                 return False
@@ -377,7 +377,7 @@ def get_bowtie2_multiqc_stats(outdir, samples, paired_end, log_path, assay_suffi
     
     if not os.path.exists(multiqc_zip):
         print(f"WARNING: MultiQC data not found at: {multiqc_zip}")
-        log_check_result(log_path, "alignment", "all", "get_bowtie2_multiqc_stats", "RED", 
+        log_check_result(log_path, "alignment", "all", "get_bowtie2_multiqc_stats", "HALT", 
                         "MultiQC data not found", multiqc_zip)
         return None
     
@@ -393,7 +393,7 @@ def get_bowtie2_multiqc_stats(outdir, samples, paired_end, log_path, assay_suffi
             
             if not os.path.exists(json_path):
                 print(f"WARNING: No multiqc_data.json file found in the expected location")
-                log_check_result(log_path, "alignment", "all", "get_bowtie2_multiqc_stats", "RED", 
+                log_check_result(log_path, "alignment", "all", "get_bowtie2_multiqc_stats", "HALT", 
                                "multiqc_data.json not found in zip", "")
                 return None
                 

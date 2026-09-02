@@ -22,8 +22,8 @@ def main():
     if not args.osd.startswith('OSD-'):
         sys.exit(f"OSD accession ({args.osd}) was not provided in the correct format. It must start with 'OSD-'")
 
-    # Build the JSON URL to get file information for a file with ISA in the name and a .zip extension
-    json_url = f"https://visualization.osdr.nasa.gov/biodata/api/v2/dataset/{args.osd}/files/*ISA*.zip"
+    # List all study files
+    json_url = f"https://visualization.osdr.nasa.gov/biodata/api/v2/dataset/{args.osd}/files/"
 
     # Fetch the JSON data
     response = requests.get(json_url)

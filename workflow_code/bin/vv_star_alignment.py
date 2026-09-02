@@ -435,7 +435,7 @@ def get_star_multiqc_stats(outdir, samples, log_path, assay_suffix="_GLbulkRNAse
                     "STAR_alignment", 
                     "all", 
                     "get_star_multiqc_stats", 
-                    "YELLOW", 
+                    "HALT", 
                     f"Missing {len(missing_samples)} samples in STAR stats", 
                     ",".join(missing_samples[:20])  # Limit to 20 sample names
                 )

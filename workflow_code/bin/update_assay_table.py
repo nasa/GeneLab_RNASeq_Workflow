@@ -72,6 +72,126 @@ def find_column_case_insensitive(df, column_name):
     # If no match found
     return None
 
+def sample_key(sample):
+    """Normalize sample identifiers for dict lookups and string comparisons."""
+    if sample is None or (isinstance(sample, float) and pd.isna(sample)):
+        return ""
+    return str(sample).strip()
+
+def processing_sample_name(assay_sample):
+    """Return the processing sample name used in pipeline output filenames."""
+    assay_sample = sample_key(assay_sample)
+    if not assay_sample:
+        return assay_sample
+    return assay_sample.replace(' ', '_')
+
+def coerce_sample_name_columns(df):
+    """Cast Sample Name (and related) columns to strings so numeric IDs work."""
+    for col in df.columns:
+        if col in ('Sample Name', 'Original Sample Name') or 'Sample Name' in col:
+            df[col] = df[col].apply(sample_key)
+    return df
+
+def stats_module_get(stats_module, key):
+    """Fetch sample stats regardless of int/str key type in MultiQC JSON."""
+    if key in stats_module:
+        return stats_module[key]
+    key_norm = sample_key(key)
+    for module_key, module_value in stats_module.items():
+        if sample_key(module_key) == key_norm:
+            return module_value
+    return None
+
+def mqc_base_sample_name(sample_name_str):
+    """Strip paired-end / raw suffixes from a MultiQC sample name."""
+    for suffix in (' Read 1', ' Read 2', '_R1_raw', '_R2_raw', '_R1', '_R2'):
+        if suffix in sample_name_str:
+            return sample_name_str.split(suffix)[0].strip('_')
+    return sample_name_str
+
+def mqc_read_end(sample_name_str):
+    """Return 'r1' or 'r2' for paired-end MultiQC sample names."""
+    if ' Read 2' in sample_name_str or '_R2' in sample_name_str:
+        return 'r2'
+    if ' Read 1' in sample_name_str or '_R1' in sample_name_str:
+        return 'r1'
+    return 'r1'
+
+def extract_grouped_mqc_metric(stats_module, metric_key):
+    """Group PE MultiQC stats by base sample name; return R1 metric values."""
+    metrics = {}
+    sample_groups = {}
+
+    for sample_name in stats_module:
+        sample_name_str = sample_key(sample_name)
+        base_name = mqc_base_sample_name(sample_name_str)
+        end = mqc_read_end(sample_name_str)
+
+        sample_groups.setdefault(base_name, {'r1': None, 'r2': None})
+        if end == 'r2':
+            sample_groups[base_name]['r2'] = sample_name
+        else:
+            sample_groups[base_name]['r1'] = sample_name
+
+    for base_name, reads in sample_groups.items():
+        r1_key = reads['r1']
+        if r1_key is None:
+            continue
+        sample_data = stats_module_get(stats_module, r1_key)
+        if not sample_data or metric_key not in sample_data:
+            continue
+        raw = sample_data[metric_key]
+        if metric_key == 'total_sequences':
+            metrics[sample_key(base_name)] = int(raw)
+        else:
+            metrics[sample_key(base_name)] = int(float(raw))
+
+    return metrics
+
+def fastqc_max_sequence_length(seq_len_value):
+    """Parse FastQC Sequence length field (e.g. '35-76' or '90') into max read length."""
+    if seq_len_value is None or (isinstance(seq_len_value, float) and pd.isna(seq_len_value)):
+        return None
+    seq_len_str = str(seq_len_value).strip()
+    if not seq_len_str:
+        return None
+    if '-' in seq_len_str:
+        try:
+            return int(float(seq_len_str.split('-')[-1]))
+        except (ValueError, TypeError):
+            return None
+    try:
+        return int(float(seq_len_str))
+    except (ValueError, TypeError):
+        return None
+
+def extract_max_read_lengths_from_fastqc(multiqc_data):
+    """Extract per-sample max read length from saved FastQC Sequence length fields."""
+    raw_fastqc = multiqc_data.get('report_saved_raw_data', {}).get('multiqc_fastqc', {})
+    if not raw_fastqc:
+        return {}
+
+    sample_maxes = {}
+    for sample_name, sample_data in raw_fastqc.items():
+        max_len = fastqc_max_sequence_length(sample_data.get('Sequence length'))
+        if max_len is None:
+            continue
+        base_name = sample_key(mqc_base_sample_name(sample_key(sample_name)))
+        sample_maxes[base_name] = max(sample_maxes.get(base_name, 0), max_len)
+
+    return sample_maxes
+
+def lookup_sample_metric(assay_sample, metrics):
+    """Look up a per-sample MultiQC metric by exact (normalized) sample name."""
+    key = sample_key(assay_sample)
+    if key in metrics:
+        return metrics[key]
+    # Also try processing name (spaces → underscores) for exact match only
+    proc = processing_sample_name(assay_sample)
+    if proc and proc in metrics:
+        return metrics[proc]
+    return None
+
 def find_matching_columns(df, column_name):
     """Find columns that match the functional purpose of the column_name.
     
@@ -244,7 +364,7 @@ def find_runsheet(outdir, glds_accession):
         print(f"Found runsheet: {runsheet_file}")
         runsheet_df = pd.read_csv(runsheet_file)
         print(f"Runsheet has {len(runsheet_df)} rows and {len(runsheet_df.columns)} columns")
-        return runsheet_df
+        return coerce_sample_name_columns(runsheet_df)
     except Exception as e:
         print(f"Error reading runsheet: {e}")
         return None
@@ -418,8 +538,8 @@ def extract_and_find_assay(outdir, glds_accession):
             sys.exit(1)
         
         print(f"Using RNA-Seq assay file: {assay_path}")
-        # Return both the dataframe and the filename
-        return pd.read_csv(assay_path, sep='\t'), matched_file
+        assay_df = pd.read_csv(assay_path, sep='\t')
+        return coerce_sample_name_columns(assay_df), matched_file
 
 def add_read_counts(df, outdir, glds_accession, assay_suffix, runsheet_df=None):
     """Add the read depth column to the dataframe if it doesn't exist.
@@ -523,42 +643,7 @@ def add_read_counts(df, outdir, glds_accession, assay_suffix, runsheet_df=None):
             if 'report_general_stats_data' in multiqc_data and multiqc_data['report_general_stats_data']:
                 stats_module = multiqc_data['report_general_stats_data'][0]  # Use first module
                 print("Extracting read counts directly from report_general_stats_data")
-                
-                # Group samples by base name for paired-end data
-                sample_groups = {}
-                for sample_name, sample_data in stats_module.items():
-                    sample_name_str = str(sample_name)
-                    base_name = sample_name_str
-                    
-                    # Handle paired-end naming patterns
-                    if ' Read 1' in sample_name_str or '_R1' in sample_name_str:
-                        base_name = sample_name_str.replace(' Read 1', '').replace('_R1', '')
-                        if base_name not in sample_groups:
-                            sample_groups[base_name] = {'r1': None, 'r2': None}
-                        sample_groups[base_name]['r1'] = sample_name_str
-                    elif ' Read 2' in sample_name_str or '_R2' in sample_name_str:
-                        base_name = sample_name_str.replace(' Read 2', '').replace('_R2', '')
-                        if base_name not in sample_groups:
-                            sample_groups[base_name] = {'r1': None, 'r2': None}
-                        sample_groups[base_name]['r2'] = sample_name_str
-                    else:
-                        # Single-end or non-paired
-                        if base_name not in sample_groups:
-                            sample_groups[base_name] = {'r1': None, 'r2': None}
-                        sample_groups[base_name]['r1'] = sample_name_str
-                
-                # Calculate read counts (use R1 only - represents read pairs for paired-end)
-                for base_name, reads in sample_groups.items():
-                    r1_count = 0
-                    
-                    if reads['r1'] and reads['r1'] in stats_module:
-                        if 'total_sequences' in stats_module[reads['r1']]:
-                            r1_count = int(stats_module[reads['r1']]['total_sequences'])
-                    
-                    # Use R1 count only (represents read pairs for paired-end, reads for single-end)
-                    if r1_count > 0:
-                        print(f"Found count for {base_name}: {r1_count}")
-                        read_counts[base_name] = r1_count
+                read_counts = extract_grouped_mqc_metric(stats_module, 'total_sequences')
             
             # Fallback to FastQC module specific extraction if needed
             elif ('report_data_sources' in multiqc_data and 
@@ -573,50 +658,14 @@ def add_read_counts(df, outdir, glds_accession, assay_suffix, runsheet_df=None):
                 
                 if fastqc_index is not None:
                     fastqc_stats = multiqc_data['report_general_stats_data'][fastqc_index]
-                    
-                    # Group samples by base name for paired-end data
-                    sample_groups = {}
-                    for sample_name, sample_data in fastqc_stats.items():
-                        sample_name_str = str(sample_name)
-                        base_name = sample_name_str
-                        
-                        # Handle paired-end naming patterns
-                        if ' Read 1' in sample_name_str or '_R1' in sample_name_str:
-                            base_name = sample_name_str.replace(' Read 1', '').replace('_R1', '')
-                            if base_name not in sample_groups:
-                                sample_groups[base_name] = {'r1': None, 'r2': None}
-                            sample_groups[base_name]['r1'] = sample_name_str
-                        elif ' Read 2' in sample_name_str or '_R2' in sample_name_str:
-                            base_name = sample_name_str.replace(' Read 2', '').replace('_R2', '')
-                            if base_name not in sample_groups:
-                                sample_groups[base_name] = {'r1': None, 'r2': None}
-                            sample_groups[base_name]['r2'] = sample_name_str
-                        else:
-                            # Single-end or non-paired
-                            if base_name not in sample_groups:
-                                sample_groups[base_name] = {'r1': None, 'r2': None}
-                            sample_groups[base_name]['r1'] = sample_name_str
-                    
-                    # Calculate read counts (use R1 only - represents read pairs for paired-end)
-                    for base_name, reads in sample_groups.items():
-                        r1_count = 0
-                        
-                        if reads['r1'] and reads['r1'] in fastqc_stats:
-                            if 'total_sequences' in fastqc_stats[reads['r1']]:
-                                r1_count = int(fastqc_stats[reads['r1']]['total_sequences'])
-                        
-                        # Use R1 count only (represents read pairs for paired-end, reads for single-end)
-                        if r1_count > 0:
-                            print(f"Found count for {base_name}: {r1_count}")
-                            read_counts[base_name] = r1_count
+                    print("Extracting read counts from FastQC general stats module")
+                    read_counts = extract_grouped_mqc_metric(fastqc_stats, 'total_sequences')
             
             if not read_counts:
                 print("WARNING: Could not extract any read counts from MultiQC data")
-                
-            # Debug output to show read counts found
-            print(f"Successfully extracted {len(read_counts)} read counts:")
-            for sample_name, count in read_counts.items():
-                print(f"  - {sample_name}: {count}")
+            else:
+                for sample_name, count in read_counts.items():
+                    print(f"Found count for {sample_name}: {count}")
                 
         except Exception as e:
             print(f"Error extracting read counts from MultiQC data: {str(e)}")
@@ -634,25 +683,13 @@ def add_read_counts(df, outdir, glds_accession, assay_suffix, runsheet_df=None):
     values = []
     for assay_sample in assay_sample_names:
         print(f"Looking for read count for sample: {assay_sample}")
-        
-        # Try direct match first
-        if assay_sample in read_counts:
-            print(f"Direct match found for {assay_sample}")
-            values.append(str(read_counts[assay_sample]))
+        count = lookup_sample_metric(assay_sample, read_counts)
+        if count is not None:
+            print(f"Match found for {assay_sample}: {count}")
+            values.append(str(count))
         else:
-            # Try a more flexible match if direct match fails
-            found_match = False
-            for mqc_sample, count in read_counts.items():
-                # Check if assay sample name is contained in MultiQC sample name or vice versa
-                if assay_sample in mqc_sample or mqc_sample in assay_sample:
-                    values.append(str(count))
-                    found_match = True
-                    print(f"Flexible match found: {assay_sample} -> {mqc_sample} = {count}")
-                    break
-            
-            if not found_match:
-                print(f"WARNING: No read count found for sample {assay_sample}")
-                values.append("N/A")
+            print(f"WARNING: No read count found for sample {assay_sample}")
+            values.append("N/A")
     
     # Add the column to the dataframe
     df = update_column(df, column_name, values, alternative_names)
@@ -757,46 +794,13 @@ def add_read_length(df, outdir, glds_accession, assay_suffix, runsheet_df=None):
             with open(json_path, 'r') as f:
                 multiqc_data = json.load(f)
             
-            # Extract median_sequence_length from FastQC data
-            # First, try to extract directly from report_general_stats_data
-            if 'report_general_stats_data' in multiqc_data and multiqc_data['report_general_stats_data']:
-                stats_module = multiqc_data['report_general_stats_data'][0]  # Use first module
-                print("Extracting read lengths directly from report_general_stats_data")
-                
-                for sample_name, sample_data in stats_module.items():
-                    if 'median_sequence_length' in sample_data:
-                        read_length = int(float(sample_data['median_sequence_length']))
-                        print(f"Found median length for {sample_name}: {read_length}")
-                        read_lengths[sample_name] = read_length
-            
-            # Fallback to FastQC module specific extraction if needed
-            elif ('report_data_sources' in multiqc_data and 
-                'FastQC' in multiqc_data['report_data_sources']):
-                
-                # Find the index for FastQC in the general stats data
-                fastqc_index = None
-                for i, module_data in enumerate(multiqc_data.get('report_general_stats_data', [])):
-                    if module_data and any('avg_sequence_length' in sample_data for sample_data in module_data.values()):
-                        fastqc_index = i
-                        break
-                
-                if fastqc_index is not None:
-                    fastqc_stats = multiqc_data['report_general_stats_data'][fastqc_index]
-                    
-                    # Process each sample to extract read lengths
-                    for sample_name, sample_data in fastqc_stats.items():
-                        if 'median_sequence_length' in sample_data:
-                            read_length = int(float(sample_data['median_sequence_length']))
-                            print(f"Found median length for {sample_name}: {read_length}")
-                            read_lengths[sample_name] = read_length
-            
-            if not read_lengths:
-                print("WARNING: Could not extract any read lengths from MultiQC data")
-                
-            # Debug output to show read lengths found
-            print(f"Successfully extracted {len(read_lengths)} read lengths:")
-            for sample_name, length in read_lengths.items():
-                print(f"  - {sample_name}: {length}")
+            read_lengths = extract_max_read_lengths_from_fastqc(multiqc_data)
+            if read_lengths:
+                print("Using FastQC Sequence length (max) for read lengths")
+                for sample_name, length in read_lengths.items():
+                    print(f"Found read length for {sample_name}: {length}")
+            else:
+                print("WARNING: Could not extract max read lengths from FastQC Sequence length fields")
                 
         except Exception as e:
             print(f"Error extracting read lengths from MultiQC data: {str(e)}")
@@ -814,25 +818,13 @@ def add_read_length(df, outdir, glds_accession, assay_suffix, runsheet_df=None):
     values = []
     for assay_sample in assay_sample_names:
         print(f"Looking for read length for sample: {assay_sample}")
-        
-        # Try direct match first
-        if assay_sample in read_lengths:
-            print(f"Direct match found for {assay_sample}")
-            values.append(str(read_lengths[assay_sample]))
+        length = lookup_sample_metric(assay_sample, read_lengths)
+        if length is not None:
+            print(f"Match found for {assay_sample}: {length}")
+            values.append(str(length))
         else:
-            # Try a more flexible match if direct match fails
-            found_match = False
-            for mqc_sample, length in read_lengths.items():
-                # Check if assay sample name is contained in MultiQC sample name or vice versa
-                if assay_sample in mqc_sample or mqc_sample in assay_sample:
-                    values.append(str(length))
-                    found_match = True
-                    print(f"Flexible match found: {assay_sample} -> {mqc_sample} = {length}")
-                    break
-            
-            if not found_match:
-                print(f"WARNING: No read length found for sample {assay_sample}")
-                values.append("N/A")
+            print(f"WARNING: No read length found for sample {assay_sample}")
+            values.append("N/A")
     
     # Add the column to the dataframe
     df = update_column(df, column_name, values, alternative_names)
@@ -902,22 +894,9 @@ def add_unmapped_reads_column(df, glds_prefix, assay_suffix, runsheet_df=None, m
         # Get sample names from assay table
         assay_sample_names = df[sample_col].tolist()
         
-        # Create a mapping from assay table sample names to runsheet sample names if available
-        sample_name_map = {}
-        if runsheet_df is not None and 'Sample Name' in runsheet_df.columns:
-            # Check for 'Original Sample Name' column to map between assay table and runsheet
-            if 'Original Sample Name' in runsheet_df.columns:
-                for _, row in runsheet_df.iterrows():
-                    orig_name = row['Original Sample Name']
-                    rs_name = row['Sample Name']
-                    if orig_name in assay_sample_names:
-                        sample_name_map[orig_name] = rs_name
-        
-        # Generate file paths using the appropriate sample names
         values = []
         for assay_sample in assay_sample_names:
-            # Use mapped name if available, otherwise use the assay table name
-            sample = sample_name_map.get(assay_sample, assay_sample)
+            sample = processing_sample_name(assay_sample)
             
             if mode == "microbes":
                 # Microbes mode (Bowtie2)
@@ -989,22 +968,9 @@ def add_merged_sequence_data_column(df, glds_prefix, assay_suffix, runsheet_df=N
         # Get sample names from assay table
         assay_sample_names = df[sample_col].tolist()
         
-        # Create a mapping from assay table sample names to runsheet sample names if available
-        sample_name_map = {}
-        if runsheet_df is not None and 'Sample Name' in runsheet_df.columns:
-            # Check for 'Original Sample Name' column to map between assay table and runsheet
-            if 'Original Sample Name' in runsheet_df.columns:
-                for _, row in runsheet_df.iterrows():
-                    orig_name = row['Original Sample Name']
-                    rs_name = row['Sample Name']
-                    if orig_name in assay_sample_names:
-                        sample_name_map[orig_name] = rs_name
-        
-        # Generate file paths using the appropriate sample names
         values = []
         for assay_sample in assay_sample_names:
-            # Use mapped name if available, otherwise use the assay table name
-            sample = sample_name_map.get(assay_sample, assay_sample)
+            sample = processing_sample_name(assay_sample)
             
             if is_paired_end:
                 # For paired-end data, create entries with both R1 and R2 files, comma-separated without spaces
@@ -1070,22 +1036,9 @@ def add_trimmed_data_column(df, glds_prefix, assay_suffix, runsheet_df=None):
         # Get sample names from assay table
         assay_sample_names = df[sample_col].tolist()
         
-        # Create a mapping from assay table sample names to runsheet sample names if available
-        sample_name_map = {}
-        if runsheet_df is not None and 'Sample Name' in runsheet_df.columns:
-            # Check for 'Original Sample Name' column to map between assay table and runsheet
-            if 'Original Sample Name' in runsheet_df.columns:
-                for _, row in runsheet_df.iterrows():
-                    orig_name = row['Original Sample Name']
-                    rs_name = row['Sample Name']
-                    if orig_name in assay_sample_names:
-                        sample_name_map[orig_name] = rs_name
-        
-        # Generate file paths using the appropriate sample names
         values = []
         for assay_sample in assay_sample_names:
-            # Use mapped name if available, otherwise use the assay table name
-            sample = sample_name_map.get(assay_sample, assay_sample)
+            sample = processing_sample_name(assay_sample)
             
             if is_paired_end:
                 # For paired-end data, create entries with both R1 and R2 files, comma-separated without spaces
@@ -1132,22 +1085,9 @@ def add_trimming_reports_column(df, glds_prefix, assay_suffix, runsheet_df=None)
         # Get sample names from assay table
         assay_sample_names = df[sample_col].tolist()
         
-        # Create a mapping from assay table sample names to runsheet sample names if available
-        sample_name_map = {}
-        if runsheet_df is not None and 'Sample Name' in runsheet_df.columns:
-            # Check for 'Original Sample Name' column to map between assay table and runsheet
-            if 'Original Sample Name' in runsheet_df.columns:
-                for _, row in runsheet_df.iterrows():
-                    orig_name = row['Original Sample Name']
-                    rs_name = row['Sample Name']
-                    if orig_name in assay_sample_names:
-                        sample_name_map[orig_name] = rs_name
-        
-        # Generate file paths using the appropriate sample names
         values = []
         for assay_sample in assay_sample_names:
-            # Use mapped name if available, otherwise use the assay table name
-            sample = sample_name_map.get(assay_sample, assay_sample)
+            sample = processing_sample_name(assay_sample)
             
             if is_paired_end:
                 # For paired-end data, create report entries for both R1 and R2 files
@@ -1254,18 +1194,6 @@ def add_raw_counts_data_column(df, glds_prefix, assay_suffix, mode=""):
         # Get sample names from assay table
         assay_sample_names = df[sample_col].tolist()
         
-        # Create a mapping from assay table sample names to runsheet sample names if available
-        sample_name_map = {}
-        runsheet_df = None  # Define outside the if to avoid UnboundLocalError
-        if 'runsheet_df' in locals() and runsheet_df is not None and 'Sample Name' in runsheet_df.columns:
-            # Check for 'Original Sample Name' column to map between assay table and runsheet
-            if 'Original Sample Name' in runsheet_df.columns:
-                for _, row in runsheet_df.iterrows():
-                    orig_name = row['Original Sample Name']
-                    rs_name = row['Sample Name']
-                    if orig_name in assay_sample_names:
-                        sample_name_map[orig_name] = rs_name
-        
         values = []
         if mode == "microbes":
             # Microbes mode (FeatureCounts) - same for all samples
@@ -1280,8 +1208,7 @@ def add_raw_counts_data_column(df, glds_prefix, assay_suffix, mode=""):
         else:
             # Default mode (RSEM) - sample-specific files
             for assay_sample in assay_sample_names:
-                # Use mapped name if available, otherwise use the assay table name
-                sample = sample_name_map.get(assay_sample, assay_sample)
+                sample = processing_sample_name(assay_sample)
                 
                 # For RSEM, each sample has genes and isoforms result files
                 rsem_files = [
@@ -1518,22 +1445,9 @@ def add_aligned_sequence_data_column(df, glds_prefix, assay_suffix, runsheet_df=
         # Get sample names from assay table
         assay_sample_names = df[sample_col].tolist()
         
-        # Create a mapping from assay table sample names to runsheet sample names if available
-        sample_name_map = {}
-        if runsheet_df is not None and 'Sample Name' in runsheet_df.columns:
-            # Check for 'Original Sample Name' column to map between assay table and runsheet
-            if 'Original Sample Name' in runsheet_df.columns:
-                for _, row in runsheet_df.iterrows():
-                    orig_name = row['Original Sample Name']
-                    rs_name = row['Sample Name']
-                    if orig_name in assay_sample_names:
-                        sample_name_map[orig_name] = rs_name
-        
-        # Generate file paths using the appropriate sample names
         values = []
         for assay_sample in assay_sample_names:
-            # Use mapped name if available, otherwise use the assay table name
-            sample = sample_name_map.get(assay_sample, assay_sample)
+            sample = processing_sample_name(assay_sample)
             
             if mode == "microbes":
                 # Microbes mode (Bowtie2)
@@ -1577,22 +1491,9 @@ def add_alignment_logs_column(df, glds_prefix, assay_suffix, runsheet_df=None, m
         # Get sample names from assay table
         assay_sample_names = df[sample_col].tolist()
         
-        # Create a mapping from assay table sample names to runsheet sample names if available
-        sample_name_map = {}
-        if runsheet_df is not None and 'Sample Name' in runsheet_df.columns:
-            # Check for 'Original Sample Name' column to map between assay table and runsheet
-            if 'Original Sample Name' in runsheet_df.columns:
-                for _, row in runsheet_df.iterrows():
-                    orig_name = row['Original Sample Name']
-                    rs_name = row['Sample Name']
-                    if orig_name in assay_sample_names:
-                        sample_name_map[orig_name] = rs_name
-        
-        # Generate file paths using the appropriate sample names
         values = []
         for assay_sample in assay_sample_names:
-            # Use mapped name if available, otherwise use the assay table name
-            sample = sample_name_map.get(assay_sample, assay_sample)
+            sample = processing_sample_name(assay_sample)
             
             if mode == "microbes":
                 # Microbes mode (Bowtie2)
