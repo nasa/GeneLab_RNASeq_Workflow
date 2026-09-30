@@ -14,17 +14,8 @@ process PARSE_ANNOTATIONS_TABLE {
     val(reference_version), emit: reference_version
   
   exec:
-    def colorCodes = [
-        c_line: "┅" * 70,
-        c_back_bright_red: "\u001b[41;1m",
-        c_bright_green: "\u001b[32;1m",
-        c_blue: "\033[0;34m",
-        c_yellow: "\u001b[33;1m",
-        c_reset: "\033[0m"
-    ]
-    
     def organisms = [:]
-    println "${colorCodes.c_yellow}Fetching table from ${annotations_csv_url_string}${colorCodes.c_reset}"
+    println "Fetching table from ${annotations_csv_url_string}"
     
     // Check if input is a URL or a local file path
     if (annotations_csv_url_string.startsWith('http://') || annotations_csv_url_string.startsWith('https://')) {
@@ -49,17 +40,17 @@ process PARSE_ANNOTATIONS_TABLE {
         gene_annotations_url = organisms[organism_key][10]
         reference_version = organisms[organism_key][3]
         reference_source = organisms[organism_key][4]
-        println "${colorCodes.c_blue}Annotation table values parsed for '${organism_key}':${colorCodes.c_bright_green}"
+        println "Annotation table values parsed for '${organism_key}':"
         println "            Reference Fasta URL: ${fasta_url}"
         println "            Reference GTF URL: ${gtf_url}" 
         println "            Gene Annotations URL: ${gene_annotations_url}"
-        println "            Reference Source: ${reference_source}${colorCodes.c_reset}"
+        println "            Reference Source: ${reference_source}"
         if (reference_source.toLowerCase().contains('ensembl')) {
-            println "${colorCodes.c_bright_green}            Reference Version: ${reference_version}${colorCodes.c_reset}"
+            println "            Reference Version: ${reference_version}"
         }
     } else {
-        println "${colorCodes.c_back_bright_red}WARNING: Organism '${organism_key}' not found in annotations table.${colorCodes.c_reset}"
-        println "${colorCodes.c_yellow}Returning null values for all outputs.${colorCodes.c_reset}"
+        println "WARNING: Organism '${organism_key}' not found in annotations table."
+        println "Returning null values for all outputs."
         fasta_url = null
         gtf_url = null
         gene_annotations_url = null

@@ -1,6 +1,11 @@
 process FEATURECOUNTS {
 
+  publishDir "${ publishdir }",
+    pattern: "FeatureCounts*",
+    mode: params.publish_dir_mode
+
   input:
+    val(publishdir)
     val(meta)
     tuple path(genomeFasta), path(genomeGtf)
     val(gtf_features)
@@ -34,9 +39,9 @@ process FEATURECOUNTS {
       -o "FeatureCounts${params.assay_suffix}.tsv" \\
       \$bam_list
 
-    # Remove '_sorted.bam' or '.bam' from sample/column names in the featurecounts output files
-    sed -i -E "2s/(_sorted)?\\.bam//g" FeatureCounts${params.assay_suffix}.tsv
-    sed -i -E "1s/(_sorted)?\\.bam//g" FeatureCounts${params.assay_suffix}.tsv.summary
+    # Clean up sample/column names: remove .bam extensions and assay_suffix
+    sed -i -E "2s/(_sorted)?\\.bam//g; 2s/${params.assay_suffix}//g" FeatureCounts${params.assay_suffix}.tsv
+    sed -i -E "1s/(_sorted)?\\.bam//g; 1s/${params.assay_suffix}//g" FeatureCounts${params.assay_suffix}.tsv.summary
 
     echo '"${task.process}":' > versions.yml
     echo "    subread: \$(featureCounts -v 2>&1 | awk '{print \$2}' | sed 's/^v//' | tr -d '\n')" >> versions.yml

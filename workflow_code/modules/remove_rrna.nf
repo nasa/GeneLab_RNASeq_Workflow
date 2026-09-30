@@ -12,30 +12,35 @@ process REMOVE_RRNA {
      *   rRNA count summary file.
      */
 
+    publishDir "${ publishdir }/${ meta.id }",
+        pattern: "${meta.id}${params.assay_suffix}_rRNArm.genes.results",
+        mode: params.publish_dir_mode
+
     input:
+        val(publishdir)
         path rrna_ids_file
-        path genes_results_file
+        tuple val(meta), path("${meta.id}${ params.assay_suffix }.genes.results")
 
     output:
-        path("*_rRNArm.genes.results"), emit: genes_results_rrnarm
-        path("*_rRNA_counts.txt"), emit: rrnarm_summary
+        path("${meta.id}${params.assay_suffix}_rRNArm.genes.results"), emit: genes_results_rrnarm
+        path("${meta.id}${params.assay_suffix}_rRNA_counts.txt"), emit: rrnarm_summary
 
     script:
         """
-        # Extract sample ID from filename
-        sample_id=\$(basename ${genes_results_file} .genes.results)
+        # Extract sample ID from meta variable
+        sample_id="${meta.id}"
 
         # Define output file names
-        filtered_file="\${sample_id}_rRNArm.genes.results"
-        counts_file="\${sample_id}_rRNA_counts.txt"
+        filtered_file="\${sample_id}${params.assay_suffix}_rRNArm.genes.results"
+        counts_file="\${sample_id}${params.assay_suffix}_rRNA_counts.txt"
 
         echo "Processing: \${sample_id}"
 
         # Filter rRNA entries
-        awk 'NR==FNR {ids[\$1]=1; next} !(\$1 in ids)' ${rrna_ids_file} ${genes_results_file} > \${filtered_file}
+        awk 'NR==FNR {ids[\$1]=1; next} !(\$1 in ids)' ${rrna_ids_file} "${meta.id}${ params.assay_suffix }.genes.results" > \${filtered_file}
 
         # Count rRNA entries
-        rRNA_count=\$(awk 'NR==FNR {ids[\$1]=1; next} \$1 in ids' ${rrna_ids_file} ${genes_results_file} | wc -l)
+        rRNA_count=\$(awk 'NR==FNR {ids[\$1]=1; next} \$1 in ids' ${rrna_ids_file} "${meta.id}${ params.assay_suffix }.genes.results" | wc -l)
         echo "\${sample_id}: \${rRNA_count} rRNA entries removed." > \${counts_file}
         """
 }

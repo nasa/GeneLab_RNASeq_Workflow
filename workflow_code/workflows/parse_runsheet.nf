@@ -1,11 +1,3 @@
-def colorCodes = [
-    c_line: "┅" * 70,
-    c_back_bright_red: "\u001b[41;1m",
-    c_bright_green: "\u001b[32;1m",
-    c_blue: "\033[0;34m",
-    c_yellow: "\u001b[33;1m",
-    c_reset: "\033[0m"
-]
 // Adapted from Function: https://github.com/nf-core/rnaseq/blob/master/modules/local/process/samplesheet_check.nf
 // Function to get list of [ meta, [ fastq_1_path, fastq_2_path ] ]
 def get_runsheet_paths(LinkedHashMap row) {
@@ -128,20 +120,20 @@ workflow PARSE_RUNSHEET {
             .count()
             .subscribe { count ->
                 if (count > 1) {
-                    log.error "${colorCodes.c_back_bright_red}ERROR: Inconsistent metadata across samples. Please check the runsheet.${colorCodes.c_reset}"
+                    log.error "ERROR: Inconsistent metadata across samples. Please check the runsheet."
                     exit 1
                 } else {
-                    println "${colorCodes.c_bright_green}Metadata consistency check passed.${colorCodes.c_reset}"
+                    println "Metadata consistency check passed."
                 }
             }
 
         // Print autodetected processing metadata for the first sample
         ch_samples.take(1) | view { meta, reads -> 
-            """${colorCodes.c_blue}Autodetected Processing Metadata:${colorCodes.c_bright_green}
+            """Autodetected Processing Metadata:
             Has ERCC: ${meta.has_ercc}
             Paired End: ${meta.paired_end}
             Organism: ${meta.organism_sci}
-            Gene ID Type: ${meta.gene_id_type}${colorCodes.c_reset}"""
+            Gene ID Type: ${meta.gene_id_type}"""
         }
         // Check that all read file paths are unique
         ch_samples
@@ -152,9 +144,9 @@ workflow PARSE_RUNSHEET {
                 def unique_count = all_reads.toSet().size()
                 
                 if (unique_count != total_count) {
-                    throw new RuntimeException("${colorCodes.c_back_bright_red}ERROR: Duplicate read file paths detected. Please check the runsheet.${colorCodes.c_reset}")
+                    throw new RuntimeException("ERROR: Duplicate read file paths detected. Please check the runsheet.")
                 } else {
-                    println "${colorCodes.c_bright_green}All ${unique_count} read file paths are unique.${colorCodes.c_reset}"
+                    println "All ${unique_count} read file paths are unique."
                 }
             }
 

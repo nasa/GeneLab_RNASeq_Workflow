@@ -131,9 +131,9 @@ def check_directory_structure(outdir):
     
     return True
 
-def initialize_vv_log(outdir):
+def initialize_vv_log():
     """Initialize or append to the VV_log.csv file."""
-    vv_log_path = os.path.join(outdir, "VV_log.csv")
+    vv_log_path = "VV_log.csv"
     
     if not os.path.exists(vv_log_path):
         with open(vv_log_path, 'w') as f:
@@ -553,8 +553,9 @@ def check_sample_table_for_correct_group_assignments(outdir, runsheet_path, log_
             lambda x: "...".join(x), axis="columns"
         ).apply(r_style_make_names)
         
-        # Check if conditions match
-        mismatched_rows = expected_conditions_based_on_runsheet != df_sample_filtered["condition"]
+        # Check if conditions match, both series should have the same index for comparison
+        sample_conditions = df_sample_filtered["condition"].reindex(expected_conditions_based_on_runsheet.index)
+        mismatched_rows = expected_conditions_based_on_runsheet != sample_conditions
         
         if not any(mismatched_rows):
             # Group samples by condition for reporting
@@ -1767,63 +1768,30 @@ def check_dge_table_group_columns_constraints(outdir, runsheet_path, log_path, a
             "Group.Mean_", "Group.Stdev_"
         ]
         
-        # We need to extract actual column patterns directly from the DGE file
-        # to handle whatever format is being used
         group_mean_cols = [col for col in df_dge.columns if col.startswith("Group.Mean_")]
+        group_stdev_cols = [col for col in df_dge.columns if col.startswith("Group.Stdev_")]
+        
         if not group_mean_cols:
             log_check_result(log_path, component_name, "all", check_name, "RED", 
                            "No Group.Mean_ columns found in DGE table", 
                            f"Expected columns not found")
             return False
         
-        # Now extract the group part from these actual column names to build our expectations
-        groups = []
-        for col in group_mean_cols:
-            # Extract the part between parentheses, including the parentheses
-            match = re.search(r'(\(.+?\))', col)
-            if match:
-                group = match.group(1)
-                groups.append(group)
+        # Check that every Group.Mean_ has a corresponding Group.Stdev_
+        missing_stdev_cols = []
+        for mean_col in group_mean_cols:
+            expected_stdev_col = mean_col.replace("Group.Mean_", "Group.Stdev_")
+            if expected_stdev_col not in df_dge.columns:
+                missing_stdev_cols.append(expected_stdev_col)
         
-        if not groups:
-            # Fallback: try to derive group names from conditions in a way that matches actual columns
-            groups = []
-            for condition in unique_conditions:
-                # Convert dots to ampersands in a way that maintains existing structure
-                if "..." in condition:
-                    # Handle R-style dotted format
-                    parts = condition.split("...")
-                    group_name = f"({' & '.join(parts)})"
-                else:
-                    # Handle already-clean format
-                    parts = condition.replace(".", " ").split()
-                    if len(parts) > 1:
-                        # For multi-word conditions, format as "A B & C" 
-                        # This is a guess at the format being used
-                        last_part = parts[-1]
-                        first_parts = " ".join(parts[:-1])
-                        group_name = f"({first_parts} & {last_part})"
-                    else:
-                        # Single word condition
-                        group_name = f"({condition})"
-                groups.append(group_name)
-
-        expected_columns = []
-        for prefix in expected_group_prefixes:
-            for group in groups:
-                expected_columns.append(f"{prefix}{group}")
-        
-        # Check if all expected columns are present
-        missing_columns = [col for col in expected_columns if col not in df_dge.columns]
-        
-        if missing_columns:
+        if missing_stdev_cols:
             log_check_result(log_path, component_name, "all", check_name, "RED", 
-                           "Group summary statistics columns missing", 
-                           f"Missing columns: {', '.join(missing_columns)}")
+                           "Missing Group.Stdev_ columns for existing Group.Mean_ columns", 
+                           f"Missing: {', '.join(missing_stdev_cols)}")
             return False
         
         # Check if the mean columns have no null values and are non-negative
-        mean_columns = [col for col in expected_columns if col.startswith("Group.Mean_")]
+        mean_columns = group_mean_cols
         for col in mean_columns:
             # Check for nulls
             if df_dge[col].isnull().any():
@@ -1842,7 +1810,7 @@ def check_dge_table_group_columns_constraints(outdir, runsheet_path, log_path, a
                 return False
         
         # Check if the stdev columns have no null values and are non-negative
-        stdev_columns = [col for col in expected_columns if col.startswith("Group.Stdev_")]
+        stdev_columns = group_stdev_cols
         for col in stdev_columns:
             # Check for nulls
             if df_dge[col].isnull().any():
@@ -1862,7 +1830,7 @@ def check_dge_table_group_columns_constraints(outdir, runsheet_path, log_path, a
         
         status = "GREEN"
         message = "All group summary statistic columns meet constraints"
-        details = f"Group mean and standard deviation columns for {len(groups)} groups have no null or negative values"
+        details = f"Group mean and standard deviation columns for {len(group_mean_cols)} groups have no null or negative values"
         log_check_result(log_path, component_name, "all", check_name, status, message, details)
         return True
         
@@ -2468,7 +2436,7 @@ def check_dge_table_log2fc_within_reason(outdir, runsheet_path, log_path, assay_
             except Exception as e:
                 print(f"[vv_dge_deseq2.py] ERROR writing log2fc_flag_characterization.csv: {e}")
             stdev_mean_ratio_gt1_count = len(set(stdev_flagged))
-            details = f"Found {len(wrong_sign_gene_ids)} genes with at least {SMALL_COUNTS_THRESHOLD} counts with a suspicious Log2FC sign. Of these genes, {stdev_mean_ratio_gt1_count} had a group std dev to mean ratio value above 1."
+            details = f"Found {len(wrong_sign_gene_ids)} genes with at least {SMALL_COUNTS_THRESHOLD} counts where the Log2fc sign is inconsistent with the relative group mean expression values in the corresponding Group.Mean_ columns. Of these genes, {stdev_mean_ratio_gt1_count} had a group std dev to mean ratio value above 1."
             log_check_result(log_path, component_name, "all", check_name, "YELLOW", "Log2fc signs do not match expected direction based on group means", details)
             return False
         else:
@@ -2607,7 +2575,7 @@ def main():
     args = parser.parse_args()
     
     # Initialize the VV log
-    vv_log_path = initialize_vv_log(args.outdir)
+    vv_log_path = initialize_vv_log()
     
     # Get stratified paths if needed
     stratified_paths = get_factor_stratified_paths(args.outdir, args.runsheet, args.stratify_by)

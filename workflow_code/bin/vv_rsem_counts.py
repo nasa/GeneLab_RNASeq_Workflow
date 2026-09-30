@@ -80,9 +80,9 @@ def check_directory_structure(outdir):
     return True
 
 
-def initialize_vv_log(outdir):
+def initialize_vv_log():
     """Initialize or append to the VV_log.csv file."""
-    vv_log_path = os.path.join(outdir, "VV_log.csv")
+    vv_log_path = "VV_log.csv"
     
     # Check if file exists
     if not os.path.exists(vv_log_path):
@@ -148,11 +148,12 @@ def check_rsem_output_existence(outdir, samples, log_path, assay_suffix="_GLbulk
     
     # Expected file patterns for each sample in sample-specific subdirectories
     expected_patterns = [
-        "{sample}/{sample}.genes.results",
-        "{sample}/{sample}.isoforms.results",
-        "{sample}/{sample}.stat/{sample}.cnt",
-        "{sample}/{sample}.stat/{sample}.model",
-        "{sample}/{sample}.stat/{sample}.theta"
+        "{sample}/{sample}{assay_suffix}.genes.results",
+        "{sample}/{sample}{assay_suffix}.isoforms.results",
+        "{sample}/{sample}{assay_suffix}_rRNArm.genes.results",
+        "{sample}/{sample}{assay_suffix}.stat/{sample}{assay_suffix}.cnt",
+        "{sample}/{sample}{assay_suffix}.stat/{sample}{assay_suffix}.model",
+        "{sample}/{sample}{assay_suffix}.stat/{sample}{assay_suffix}.theta"
     ]
     
     # Dataset-level files (directly in the RSEM directory)
@@ -173,7 +174,7 @@ def check_rsem_output_existence(outdir, samples, log_path, assay_suffix="_GLbulk
     for sample in samples:
         missing_files = []
         for pattern in expected_patterns:
-            file_path = os.path.join(rsem_dir, pattern.format(sample=sample))
+            file_path = os.path.join(rsem_dir, pattern.format(sample=sample, assay_suffix=assay_suffix))
             if not os.path.exists(file_path):
                 missing_files.append(os.path.basename(file_path))
         
@@ -832,7 +833,7 @@ def main():
     args = parser.parse_args()
 
     # Initialize VV log
-    vv_log_path = initialize_vv_log(args.outdir)
+    vv_log_path = initialize_vv_log()
     
     # Check directory structure
     check_directory_structure(args.outdir)

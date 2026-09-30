@@ -11,12 +11,19 @@ params:
   output_filename_label: "" # label for output file names
   output_filename_suffix: "" # suffix for output file names
   runsheet_path: NULL # path to the runsheet file
+  annotation_file_path: NULL # path to the annotation file
   input_counts: NULL # directory containing RSEM gene results OR FeatureCounts table for microbes mode
   gene_id_type: "" # denotes the name of the identifier column (e.g. ENSEMBL, TAIR)
   microbes: FALSE # set this to TRUE to use Bowtie 2 input
   DEBUG_MODE_LIMIT_GENES: FALSE # debugging option to limit the number of genes
   DEBUG_MODE_ADD_DUMMY_COUNTS: FALSE # debugging option to add dummy counts
   parallel_config: NULL # parallel configuration string (e.g. "MulticoreParam(workers = params$cpus)")
+  dge_filter_method: "sum_threshold" # Method for filtering genes: 'sum_threshold', 'sample_percent', 'min_samples', 'count_per_sample'
+  dge_filter_sum_threshold: 10 # Minimum total count sum across all samples
+  dge_filter_sample_percent_threshold: 90 # Maximum % of gene's total counts allowed in limited samples
+  dge_filter_sample_percent_max_samples: 1 # Number of top samples to check for concentration
+  dge_filter_min_samples_threshold: 1 # Minimum samples where gene must be expressed
+  dge_filter_count_per_sample_threshold: 1 # Multiplier for sample-scaled threshold
 ---
 
 ## Substeps {.tabset}
@@ -160,7 +167,7 @@ if (params$microbes) {
 
     # Reorder files based on sample names
     reordering <- sapply(samples, function(x) {
-        grep(paste0("^", x, "\\.genes.results$"), clean_filenames, value = FALSE)
+        grep(paste0("^", x, params$output_filename_suffix, "\\.genes.results$"), clean_filenames, value = FALSE)
     })
 
     files <- files[reordering]
@@ -365,10 +372,67 @@ if ("Source.Name" %in% colnames(compare_csv) && "Has.Tech.Reps" %in% colnames(co
 summary(dds)
 ```
 
-```{r filter-genes-by-normalized-counts}
-##### Filter out genes with counts of less than 10 in all samples #####
-keep <- rowSums(counts(dds)) > 10
-print(sprintf("DEBUG: %s: Removed %d genes for having dataset wide count sum less than 10. (%f%% of all genes)", Sys.time(), sum(!keep), sum(!keep)/length(keep)*100))
+```{r filter-genes-by-raw-counts}
+##### Filter genes based on selected method and parameters #####
+counts_matrix <- counts(dds)
+gene_count <- nrow(counts_matrix)
+sample_count <- ncol(counts_matrix)
+
+print(sprintf("DEBUG: %s: Starting gene filtering with method '%s'", Sys.time(), params$dge_filter_method))
+print(sprintf("DEBUG: %s: Initial gene count: %d", Sys.time(), gene_count))
+
+# Parameter validation and warnings
+# Create local variables to handle edge cases
+sum_threshold <- params$dge_filter_sum_threshold
+percent_threshold <- params$dge_filter_sample_percent_threshold
+max_samples <- params$dge_filter_sample_percent_max_samples
+min_samples <- params$dge_filter_min_samples_threshold
+count_per_sample <- params$dge_filter_count_per_sample_threshold
+
+if (params$dge_filter_method == "sum_threshold") {
+    # Remove genes with total counts up to threshold
+    keep <- rowSums(counts_matrix) > sum_threshold
+    print(sprintf("DEBUG: %s: Using sum_threshold method with threshold %g", Sys.time(), sum_threshold))
+    
+} else if (params$dge_filter_method == "sample_percent") {
+    # Remove genes if >X% of total counts are concentrated in ≤Y samples
+    if (max_samples == 0) {
+        keep <- rowSums(counts_matrix) > 0
+        print(sprintf("DEBUG: %s: sample_percent with max_samples=0, keeping all genes with non-zero counts", Sys.time()))
+    } else {
+        sorted_matrix <- t(apply(counts_matrix, 1, function(x) sort(x, decreasing = TRUE)))
+        max_samples_to_check <- min(max_samples, sample_count)
+        top_samples_sums <- rowSums(sorted_matrix[, 1:max_samples_to_check, drop = FALSE])
+        total_counts <- rowSums(counts_matrix)
+        percent_in_top <- ifelse(total_counts > 0, (top_samples_sums / total_counts) * 100, 0)
+        keep <- total_counts > 0 & percent_in_top <= percent_threshold
+        print(sprintf("DEBUG: %s: Using sample_percent method - removing genes with >%d%% counts in top %d samples", 
+                      Sys.time(), percent_threshold, max_samples))
+    }
+    
+} else if (params$dge_filter_method == "min_samples") {
+    # Remove genes not expressed in at least X samples
+    keep <- rowSums(counts_matrix > 0) >= min_samples
+    print(sprintf("DEBUG: %s: Using min_samples method with minimum %d samples", Sys.time(), min_samples))
+    
+} else if (params$dge_filter_method == "count_per_sample") {
+    # Remove genes with total counts below X*sample_count
+    threshold <- count_per_sample * sample_count
+    keep <- rowSums(counts_matrix) >= threshold
+    print(sprintf("DEBUG: %s: Using count_per_sample method with threshold %f (multiplier %f * %d samples)", 
+                  Sys.time(), threshold, count_per_sample, sample_count))
+    
+} else {
+    # Exit if unknown method
+    stop(sprintf("Unknown filter method '%s'. Must be one of: sum_threshold, sample_percent, min_samples, count_per_sample", 
+                params$dge_filter_method))
+}
+
+genes_removed <- sum(!keep)
+percent_removed <- (genes_removed / gene_count) * 100
+print(sprintf("DEBUG: %s: Removed %d genes using %s method. (%f%% of all genes)", 
+              Sys.time(), genes_removed, params$dge_filter_method, percent_removed))
+
 dds <- dds[keep,]
 summary(dds)
 dim(dds)
@@ -490,9 +554,60 @@ for (i in seq_along(group_ids)) {
 output_table <- cbind(output_table, group_stats)
 ```
 
+```{r, load-annotation-table-and-join}
+### Read in annotation table and join with DGE results ###
+
+annotation_file_path <- params$annotation_file_path
+
+if (!is.null(annotation_file_path) && annotation_file_path != "" && annotation_file_path != "null") {
+    # Download or read annotation file
+    tryCatch({
+        if (startsWith(annotation_file_path, "http")) {
+            # Download with user-agent
+            local_file <- "gene_annotations.tsv"
+            print(sprintf("DEBUG: %s: Downloading annotation file from %s", Sys.time(), annotation_file_path))
+            download.file(url = annotation_file_path, 
+                         destfile = local_file, 
+                         method = "libcurl", 
+                         headers = c("User-Agent" = "Mozilla/5.0"))
+            annot <- read.table(local_file, sep = "\t", header = TRUE, quote = "", comment.char = "")
+        } else {
+            # Local file
+            print(sprintf("DEBUG: %s: Reading annotation file from %s", Sys.time(), annotation_file_path))
+            annot <- read.table(annotation_file_path, sep = "\t", header = TRUE, quote = "", comment.char = "")
+        }
+        
+        print(sprintf("DEBUG: %s: Joining DGE table with annotations using column: %s", 
+                     Sys.time(), params$gene_id_type))
+        
+        # Join annotations with DGE table
+        output_table <- annot %>%
+            merge(output_table,
+                by = params$gene_id_type,
+                all.y = TRUE 
+            ) %>%
+            select(all_of(params$gene_id_type), everything())  # Make sure main gene ID is first column
+            
+        print(sprintf("DEBUG: %s: Successfully joined %d genes with annotations", 
+                     Sys.time(), nrow(output_table)))
+        
+    }, error = function(e) {
+        warning(paste("Could not load or join annotation file:", e$message))
+        print(sprintf("DEBUG: %s: Annotation joining failed, proceeding without annotations", Sys.time()))
+    })
+} else {
+    print(sprintf("DEBUG: %s: No annotation file provided, proceeding without annotations", Sys.time()))
+}
+```
+
 ```{r output-dge-related-files}
 # note: the paste0 here is ensure no string file name prefixes still create their directories
 # e.g. dge_output/
+write.csv(
+    sampleTable,
+    file = file.path(params$output_directory, 
+                     paste0("SampleTable", params$output_filename_label, params$output_filename_suffix, ".csv"))
+)
 write.csv(
     contrasts,
     file = file.path(params$output_directory, 
@@ -502,13 +617,9 @@ write.csv(
     output_table,
     row.names = FALSE,
     file = file.path(params$output_directory, 
-                     paste0("differential_expression_no_annotations", params$output_filename_label, params$output_filename_suffix, ".csv"))
+                     paste0("differential_expression", params$output_filename_label, params$output_filename_suffix, ".csv"))
 )
-write.csv(
-    sampleTable,
-    file = file.path(params$output_directory, 
-                     paste0("SampleTable", params$output_filename_label, params$output_filename_suffix, ".csv"))
-)
+
 # Create summary file based on output_table
 output <- capture.output(summary(output_table))
 # Write summary file

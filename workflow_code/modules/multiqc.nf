@@ -1,7 +1,11 @@
 process MULTIQC {
     // tag("Dataset-wide")
+    publishDir "${ publishdir }",
+        pattern:  "*.{html,zip}" ,
+        mode: params.publish_dir_mode
     
     input:
+    val(publishdir)
     path(sample_names)
     path("mqc_in/*") // any number of multiqc compatible files
     path(multiqc_config)
@@ -18,12 +22,13 @@ process MULTIQC {
     script:
     def config_arg = multiqc_config.name != "NO_FILE" ? "--config ${ multiqc_config }" : ""
     """
-    multiqc \\
-        --force \\
-        --interactive \\
-        -o . \\
-        -n ${ mqc_label }multiqc${ params.assay_suffix } \\
-        ${ config_arg } \\
+    multiqc \
+        --force \
+        --interactive \
+        -o . \
+        -n ${ mqc_label }multiqc${ params.assay_suffix } \
+        ${ config_arg } \
+        --cl-config "extra_fn_clean_exts: [{type: remove, pattern: '${params.assay_suffix}'}]" \
         .
     
     # Clean paths and create zip

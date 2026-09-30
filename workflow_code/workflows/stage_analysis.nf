@@ -63,7 +63,7 @@ workflow STAGE_ANALYSIS {
         runsheet_path = PARSE_RUNSHEET.out.runsheet
 
         // Stage the full or truncated raw reads
-        STAGE_RAW_READS( samples )
+        STAGE_RAW_READS( ch_outdir, samples )
         raw_reads = STAGE_RAW_READS.out.raw_reads
         samples_txt = STAGE_RAW_READS.out.samples_txt
 

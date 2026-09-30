@@ -3,7 +3,12 @@ process FASTQC {
   // FastQC performed on reads
   tag "Sample: ${ meta.id }"
 
+  publishDir "${ publishdir }",
+      pattern:  "*.{html,zip}" ,
+      mode: params.publish_dir_mode
+
   input:
+    val(publishdir)
     tuple val(meta), path(reads)
 
   output:
