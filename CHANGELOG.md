@@ -98,7 +98,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - matplotlib 3.10.0
   - numpy 2.2.1
   - scipy 1.15.1
-- Updated [Ensembl Reference Files](../../../GeneLab_Reference_Annotations/Pipeline_GL-DPPD-7110_Versions/GL-DPPD-7110-A/GL-DPPD-7110-A_annotations.csv) now use: 
+- Updated [Ensembl Reference Files](https://github.com/nasa/GeneLab_Data_Processing/blob/master/GeneLab_Reference_Annotations/Pipeline_GL-DPPD-7110_Versions/GL-DPPD-7110-A/GL-DPPD-7110-A_annotations.csv) now use: 
   - Animals: Ensembl release 112
   - Plants: Ensembl plants release 59
   - Bacteria: Ensembl bacteria release 59

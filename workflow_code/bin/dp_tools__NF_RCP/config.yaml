@@ -99,6 +99,7 @@ Staging:
         # GLDS URL Mapping means the names are searched against the GLDS filelisting json for urls
         # an exception will be raised if one and only one url is not mapped to each filename
         - ISA Field Name: 
+            - Parameter Value[Merged Sequence Data]
             - Parameter Value[Merged Sequence Data File]
             - Characteristics[Merged Sequence Data File]
             - Raw Data File
