@@ -2,7 +2,7 @@
 
 ## Description
 
-* The Runsheet is a csv file that contains the metadata required for processing bulk RNA sequence datasets through GeneLab's RNAseq consensus processing pipeline (RCP).
+The Runsheet is a csv file that contains the metadata required for processing bulk RNA sequence datasets through GeneLab's RNAseq consensus processing pipeline (RCP).
 
 
 ## Examples

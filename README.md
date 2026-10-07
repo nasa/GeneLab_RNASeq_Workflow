@@ -1,6 +1,6 @@
 # GeneLab RNAseq Consensus Processing Workflow
 
-> GeneLab, part of [NASA's Open Science Data Repository (OSDR)](https://www.nasa.gov/osdr), has wrapped each step of the RNASeq consensus processing pipeline ([RCP](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNASeq)), starting with version F, into a Nextflow workflow with validation and verification of output files built in after each step. This repository contains the Nextflow workflow code (NF_RCP) along with instructions for installation and usage starting with NF_RCP version 2.0.2. For previous versions, refer to the table in the GeneLab_Data_Processing repository [workflow documentation](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNASeq/Workflow_Documentation) which lists (and links to) each RCP version and the corresponding workflow code. Exact workflow run info and RCP version used to process specific datasets that have been released are available in the \*nextflow_processing_info.txt file on the [Open Science Data Repository (OSDR)](https://osdr.nasa.gov/bio/repo/), which can be found under 'Files' -> 'GeneLab Processed RNA-Seq Files' -> 'Supplemental Materials'.
+> GeneLab, part of [NASA's Open Science Data Repository (OSDR)](https://www.nasa.gov/osdr), has wrapped each step of the RNASeq consensus processing pipeline ([RCP](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq)), starting with version F, into a Nextflow workflow with validation and verification of output files built in after each step. This repository contains the Nextflow workflow code (NF_RCP) along with instructions for installation and usage starting with NF_RCP version 2.0.2. For previous versions, refer to the table in the GeneLab_Data_Processing repository [workflow documentation](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Workflow_Documentation) which lists (and links to) each RCP version and the corresponding workflow code. Exact workflow run info and RCP version used to process specific datasets that have been released are available in the \*nextflow_processing_info.txt file on the [Open Science Data Repository (OSDR)](https://osdr.nasa.gov/bio/repo/), which can be found under 'Files' -> 'GeneLab Processed RNA-Seq Files' -> 'Supplemental Materials'.
 
 ## General Workflow Information
 
@@ -8,7 +8,7 @@
 
 The current GeneLab RNAseq consensus processing pipelines (RCP) for eukaryotic organisms ([GL-DPPD-7101-G](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Pipeline_GL-DPPD-7101_Versions/GL-DPPD-7101-G.md)) and prokaryotic organisms ([GL-DPPD-7115](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Pipeline_GL-DPPD-7115_Versions/GL-DPPD-7115.md)) are implemented as a single [Nextflow](https://nextflow.io/) DSL2 workflow that utilizes [Singularity](https://docs.sylabs.io/guides/3.10/user-guide/introduction.html) to run all tools in containers. This workflow (NF_RCP) is run using the command line interface (CLI) of any unix-based system. While knowledge of creating workflows in Nextflow is not required to run the workflow as is, [the Nextflow documentation](https://nextflow.io/docs/latest/index.html) is a useful resource for users who want to modify and/or extend this workflow. See the [NF_RCP Workflow & Subworkflows](#nf_rcp-workflow--subworkflows) section below for more details on the NF_RCP workflow, including installation and execution information.
 
-For datasets that include ERCC spike-ins, ERCC analysis is implemented as a separate, manual step using a [jupyter](https://jupyter.org) notebook running in a [conda](https://conda-forge.org/docs/) environment. See the [ERCC Analysis Workflow](#ercc-analysis-workflow) section below for more information on how to utilize the ERCC Analysis jupyter notebook.
+For datasets that include ERCC spike-ins, ERCC analysis is implemented as a separate, manual step using a [Jupyter](https://jupyter.org) Notebook running in a [conda](https://conda-forge.org/docs/) environment. See the [ERCC Analysis Workflow](#ercc-analysis-workflow) section below for more information on how to utilize the ERCC Analysis Jupyter Notebook.
 
 <br>
 
@@ -23,7 +23,8 @@ The table below details the default maximum resource allocations for individual 
 | `default` | Eukaryotic organisms  | 16                | 72 GB          |
 | `microbes`| Prokaryotic organisms | 8                 | 16 GB          |
 
-> **Note:** These per-process resource allocations are defaults. They can be adjusted by modifying `cpus` and `memory`  directives in the configuration files: [`local.config`](workflow_code/conf/local.config) (local execution) and [`slurm.config`](workflow_code/conf/slurm.config) (SLURM clusters).
+> [!NOTE]
+> These per-process resource allocations are defaults. They can be adjusted by modifying `cpus` and `memory`  directives in the configuration files: [`local.config`](workflow_code/conf/local.config) (local execution) and [`slurm.config`](workflow_code/conf/slurm.config) (SLURM clusters).
 
 > **Click links below to show/hide workflow diagrams**
 
@@ -95,13 +96,14 @@ Below is a description of each subworkflow and the additional output files gener
 
 ---
 
-### 1. Install Nextflow and Singularity 
+### 1. Install Nextflow and Singularity
 
 #### 1a. Install Nextflow
 
 Nextflow can be installed either through [Anaconda](https://anaconda.org/bioconda/nextflow) or as documented on the [Nextflow documentation page](https://www.nextflow.io/docs/latest/getstarted.html).
 
-> Note: If you want to install Anaconda, we recommend installing a Miniforge version appropriate for your system, as documented on the [conda-forge website](https://conda-forge.org/download/), where you can find basic binaries for most systems. More detailed miniforge documentation is available in the [miniforge github repository](https://github.com/conda-forge/miniforge).
+> [!Note] 
+> If you want to install Anaconda, we recommend installing a Miniforge version appropriate for your system, as documented on the [conda-forge website](https://conda-forge.org/download/), where you can find basic binaries for most systems. More detailed miniforge documentation is available in the [miniforge github repository](https://github.com/conda-forge/miniforge).
 > 
 > Once conda is installed on your system, you can install the latest version of Nextflow by running the following commands:
 > 
@@ -118,9 +120,10 @@ Singularity is a container platform that allows usage of containerized software.
 
 We recommend installing Singularity on a system wide level as per the associated [documentation](https://docs.sylabs.io/guides/3.10/admin-guide/admin_quickstart.html).
 
-> Note: Singularity is also available through [Anaconda](https://anaconda.org/conda-forge/singularity).
-
-> Note: Alternatively, Docker can be used in place of Singularity. See the [Docker CE installation documentation](https://docs.docker.com/engine/install/).
+> [!Note]
+> Singularity is also available through [Anaconda](https://anaconda.org/conda-forge/singularity).
+>
+> Alternatively, Docker can be used in place of Singularity. See the [Docker CE installation documentation](https://docs.docker.com/engine/install/).
 
 <br>
 
@@ -146,7 +149,8 @@ unzip NF_RCP_2.1.0.zip
 Although Nextflow can fetch Singularity images from a url, doing so may cause issues as detailed [here](https://github.com/nextflow-io/nextflow/issues/1210).
 
 To avoid this issue, run the following command to fetch the Singularity images prior to running the NF_RCP workflow:
-> Note: This command should be run in the location containing the `NF_RCP_2.1.0` directory that was downloaded in [step 2](#2-download-the-workflow-files) above. Depending on your network speed, fetching the images will take ~20 minutes. Approximately 8GB of RAM is needed to download and build the Singularity images.
+> [!Note] 
+> This command should be run in the location containing the `NF_RCP_2.1.0` directory that was downloaded in [step 2](#2-download-the-workflow-files) above. Depending on your network speed, fetching the images will take ~20 minutes. Approximately 8GB of RAM is needed to download and build the Singularity images.
 
 ```bash
 bash NF_RCP_2.1.0/bin/prepull_singularity.sh NF_RCP_2.1.0/config/by_docker_image.config
@@ -170,11 +174,12 @@ While in the location containing the `NF_RCP_2.1.0` directory that was downloade
 Both workflows automatically load reference files and organism-specific gene annotation files from the [GeneLab annotations table](https://github.com/nasa/GeneLab_Data_Processing/blob/master/GeneLab_Reference_Annotations/Pipeline_GL-DPPD-7110_Versions/GL-DPPD-7110-A/GL-DPPD-7110-A_annotations.csv). For organisms not listed in the table or to use alternative reference files, additional workflow parameters can be specified.
 
  Below are four examples of how to run the NF_RCP workflow:
-> Note: Nextflow commands use both single hyphen arguments (e.g. -help) that denote general nextflow arguments and double hyphen arguments (e.g. --reference_version) that denote workflow specific parameters.  Take care to use the proper number of hyphens for each argument.
-
-> Note: To use Docker instead of Singularity, use `-profile docker` in the Nextflow run command. Nextflow will automatically pull images as needed.
-
-> Note: The `-resume` parameter can be used to resume a previously interrupted workflow from where it left off (see [Nextflow documentation](https://www.nextflow.io/docs/latest/getstarted.html#modify-and-resume)) or to restart the workflow from a specific point by changing relevant parameters, which will re-execute that process and all downstream affected processes.
+> [!Note]
+> Nextflow commands use both single hyphen arguments (e.g. -help) that denote general nextflow arguments and double hyphen arguments (e.g. --reference_version) that denote workflow specific parameters.  Take care to use the proper number of hyphens for each argument.
+>
+> To use Docker instead of Singularity, use `-profile docker` in the Nextflow run command. Nextflow will automatically pull images as needed.
+>
+> The `-resume` parameter can be used to resume a previously interrupted workflow from where it left off (see [Nextflow documentation](https://www.nextflow.io/docs/latest/getstarted.html#modify-and-resume)) or to restart the workflow from a specific point by changing relevant parameters, which will re-execute that process and all downstream affected processes.
 
 <br>
 
@@ -186,7 +191,8 @@ nextflow run NF_RCP_2.1.0/main.nf \
    --accession OSD-194 
 ```
 
-> Note: For prokaryotic RNAseq datasets, add the parameter `--mode microbes` to run the workflow using the prokaryotic pipeline ([GL-DPPD-7115](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Pipeline_GL-DPPD-7115_Versions/GL-DPPD-7115.md)). The default value of this parameter is `default`, which will use the eukaryotic pipeline ([GL-DPPD-7101-G](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Pipeline_GL-DPPD-7101_Versions/GL-DPPD-7101-G.md)).
+> [!Note] 
+> For prokaryotic RNAseq datasets, add the parameter `--mode microbes` to run the workflow using the prokaryotic pipeline ([GL-DPPD-7115](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Pipeline_GL-DPPD-7115_Versions/GL-DPPD-7115.md)). The default value of this parameter is `default`, which will use the eukaryotic pipeline ([GL-DPPD-7101-G](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Pipeline_GL-DPPD-7101_Versions/GL-DPPD-7101-G.md)).
 
 <br>
 
@@ -202,9 +208,10 @@ nextflow run NF_RCP_2.1.0/main.nf \
    --reference_gtf <url/or/path/to/gtf>
 ```
 
-> Note: The `--reference_source` and `--reference_version` parameters should match the reference source and version number of the reference fasta and gtf files used. 
-
-> Note: For gene annotations in the differential expression output table, see the optional `--gene_annotations_file` parameter described in the [Optional Parameters](#optional-parameters) section.
+> [!NOTE]
+> The `--reference_source` and `--reference_version` parameters should match the reference source and version number of the reference fasta and gtf files used. 
+> 
+> For gene annotations in the differential expression output table, see the optional `--gene_annotations_file` parameter described in the [Optional Parameters](#optional-parameters) section.
 
 <br>
 
@@ -216,7 +223,8 @@ nextflow run NF_RCP_2.1.0/main.nf \
    --runsheet_path </path/to/runsheet> 
 ```
 
-> Note: Specifications for creating a runsheet manually are described [here](examples/runsheet/README.md).
+> [!NOTE] 
+> Specifications for creating a runsheet manually are described [here](examples/runsheet/README.md).
 
 <br>
 
@@ -224,18 +232,19 @@ nextflow run NF_RCP_2.1.0/main.nf \
 
 ```bash
 nextflow run NF_RCP_2.1.0/main.nf \ 
-   -profile singularity \
+   -profile singularity,local \
    --runsheet_path </path/to/runsheet> \
    --reference_version 112 \
    --reference_source ensembl \ 
    --reference_fasta <url/or/path/to/fasta> \ 
    --reference_gtf <url/or/path/to/gtf> 
 ```
-> Note: This approach should be used for organisms not listed in the [GeneLab annotations table](https://github.com/nasa/GeneLab_Data_Processing/blob/master/GeneLab_Reference_Annotations/Pipeline_GL-DPPD-7110_Versions/GL-DPPD-7110/GL-DPPD-7110_annotations.csv). 
-
-> Note: The `--reference_source` and `--reference_version` parameters should match the reference source and version number of the reference fasta and gtf files used. 
-
-> Note: For gene annotations in the differential expression output table, see the optional `--gene_annotations_file` parameter described in the [Optional Parameters](#optional-parameters) section.
+> [!NOTE]  
+> This approach should be used for organisms not listed in the [GeneLab annotations table](https://github.com/nasa/GeneLab_Data_Processing/blob/master/GeneLab_Reference_Annotations/Pipeline_GL-DPPD-7110_Versions/GL-DPPD-7110-A/GL-DPPD-7110-A_annotations.csv). Specifications for creating a runsheet manually are described [here](examples/runsheet/README.md).
+> 
+> The `--reference_source` and `--reference_version` parameters should match the reference source and version number of the reference fasta and gtf files used. 
+> 
+> For gene annotations in the differential expression output table, see the optional `--gene_annotations_file` parameter described in the [Optional Parameters](#optional-parameters) section.
 
 <br>
 
@@ -245,7 +254,8 @@ nextflow run NF_RCP_2.1.0/main.nf \
 * `NF_RCP_2.1.0/main.nf` - Instructs Nextflow to run the NF_RCP workflow 
 
 * `-profile` - Specifies the configuration profile(s) to load, `singularity` instructs Nextflow to setup and use singularity for all software called in the workflow; use `local` for local execution ([local.config](workflow_code/conf/local.config)) or `slurm` for SLURM cluster execution ([slurm.config](workflow_code/conf/slurm.config))
-  > Note: The output directory will be named `GLDS-#` when using a OSD or GLDS accession as input, or `results` when running the workflow with only a runsheet as input.
+  > [!NOTE] 
+  > The output directory will be named `GLDS-#` when using a OSD or GLDS accession as input, or `results` when running the workflow with only a runsheet as input.
 
 <br>
 
@@ -327,7 +337,8 @@ nextflow run NF_RCP_2.1.0/main.nf \
 * `--derived_store_path` - specifies the directory to store the tool-specific indices created during processing (type: string, default: "./DerivedReferences")
 
 * `--mode` - specifies which pipeline to use: set to `default` to run GL-DPPD-7101-G pipeline or set to `microbes` for the GL-DPPD-7115 prokaryotic pipeline (type: string, default: "default")
-  > Note: This allows the workflow to process either eukaryotic (default) or prokaryotic RNAseq data using the appropriate pipeline.
+  > [!Note] 
+  > This allows the workflow to process either eukaryotic (default) or prokaryotic RNAseq data using the appropriate pipeline.
 
 * **DGE Filtering Parameters** - Options for filtering genes prior to DGE analysis:
 
@@ -380,7 +391,8 @@ See `nextflow run -h` and [Nextflow's CLI run command documentation](https://nex
 ### 5. Additional Output Files
 
 The outputs from the Analysis Staging and V&V Pipeline Subworkflows are described below:
-> Note: The outputs from the RNAseq Consensus Pipeline Subworkflow are documented in the [GL-DPPD-7101-G](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Pipeline_GL-DPPD-7101_Versions/GL-DPPD-7101-G.md) processing protocol.
+> [!Note] 
+> The outputs from the RNAseq Consensus Pipeline Subworkflow are documented in the [GL-DPPD-7101-G](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Pipeline_GL-DPPD-7101_Versions/GL-DPPD-7101-G.md) and [GL-DPPD-7115](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Pipeline_GL-DPPD-7115_Versions/GL-DPPD-7115.md) processing protocols.
 
 **Analysis Staging Subworkflow**
 
@@ -454,19 +466,19 @@ conda env create -f NF_RCP_2.1.0/envs/ercc_analysis.yml
 
 ### 2. Launch Jupyter environment
 
-Create an  working folder for the ERCC Analysis in the main analysis directory created in [Step 4](#4-run-the-workflow) above and copy the jupyter notebook file into it (downloaded in [Step 2](#2-download-the-workflow-files)) and start a local jupyter notebook server.
+Create an  working folder for the ERCC Analysis in the main analysis directory created in [Step 4](#4-run-the-workflow) above and copy the Jupyter notebook file into it (downloaded in [Step 2](#2-download-the-workflow-files)) and start a local Jupyter notebook server.
 
 ```bash
 # create working directory
 mkdir ERCC_Analysis
 
-# copy jupyter notebook from workflow_code folder to new working directory
+# copy Jupyter Notebook from workflow_code folder to new working directory
 cp NF_RCP_2.1.0/bin/combined_ercc_analysis.ipynb ERCC_Analysis
 
 # activate the ercc_analysis environment
 conda activate ercc_analysis
 
-# start jupyter notebook:
+# start Jupyter Notebook:
 jupyter notebook
 ```
 The `jupyter notebook` command will open a page in the default web browser showing a file listing of the folder it was launched from. If the web page does not open automatically, navigate to [http://localhost:8888/tree](http://localhost:8888/tree).

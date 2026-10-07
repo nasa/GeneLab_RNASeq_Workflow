@@ -9,7 +9,8 @@ sample and assay are pulled from the ISA.zip file. QC metrics include
 [gene count metrics](#gene-count-metrics), and [RSeQC metrics](#rseqc-metrics) are pulled from the 
 MultiQC reports generated during processing.
 
-> **NOTE:** Eukaryotic and prokaryotic data use different tools for alignment and gene counting, so 
+> [!NOTE]
+> Eukaryotic and prokaryotic data use different tools for alignment and gene counting, so 
 the metrics reported will differ for those data types. Similarly, paired-end data will include 
 metrics for the reverse read, while single-end data will not. All data columns will be present in 
 the output files regardless of data type. Any fields that are not relevant for a particular data 
@@ -54,7 +55,8 @@ List selected metadata fields for each sample
 ### Read QC metrics
 *Source: Raw and Trimmed MultiQC*   
 QC metrics describing the read quality.
-> *NOTE:* the same fields are extracted for both raw and trimmed reads, the prefixes "raw_" and 
+> [!NOTE] 
+> the same fields are extracted for both raw and trimmed reads, the prefixes "raw_" and 
 "trimmed_" indicate the source of the metric. Similarly, the same fields are also extracted for both 
 forward and reverse reads with the suffixes "_f" and "_r" denoting the read type. The table below 
 lists each metric only once.
