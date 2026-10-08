@@ -102,7 +102,7 @@ Below is a description of each subworkflow and the additional output files gener
 
 Nextflow can be installed either through [Anaconda](https://anaconda.org/bioconda/nextflow) or as documented on the [Nextflow documentation page](https://www.nextflow.io/docs/latest/getstarted.html).
 
-> [!Note] 
+> [!NOTE] 
 > If you want to install Anaconda, we recommend installing a Miniforge version appropriate for your system, as documented on the [conda-forge website](https://conda-forge.org/download/), where you can find basic binaries for most systems. More detailed miniforge documentation is available in the [miniforge github repository](https://github.com/conda-forge/miniforge).
 > 
 > Once conda is installed on your system, you can install the latest version of Nextflow by running the following commands:
@@ -120,7 +120,7 @@ Singularity is a container platform that allows usage of containerized software.
 
 We recommend installing Singularity on a system wide level as per the associated [documentation](https://docs.sylabs.io/guides/3.10/admin-guide/admin_quickstart.html).
 
-> [!Note]
+> [!NOTE]
 > Singularity is also available through [Anaconda](https://anaconda.org/conda-forge/singularity).
 >
 > Alternatively, Docker can be used in place of Singularity. See the [Docker CE installation documentation](https://docs.docker.com/engine/install/).
@@ -149,7 +149,7 @@ unzip NF_RCP_2.1.0.zip
 Although Nextflow can fetch Singularity images from a url, doing so may cause issues as detailed [here](https://github.com/nextflow-io/nextflow/issues/1210).
 
 To avoid this issue, run the following command to fetch the Singularity images prior to running the NF_RCP workflow:
-> [!Note] 
+> [!NOTE] 
 > This command should be run in the location containing the `NF_RCP_2.1.0` directory that was downloaded in [step 2](#2-download-the-workflow-files) above. Depending on your network speed, fetching the images will take ~20 minutes. Approximately 8GB of RAM is needed to download and build the Singularity images.
 
 ```bash
@@ -174,7 +174,7 @@ While in the location containing the `NF_RCP_2.1.0` directory that was downloade
 Both workflows automatically load reference files and organism-specific gene annotation files from the [GeneLab annotations table](https://github.com/nasa/GeneLab_Data_Processing/blob/master/GeneLab_Reference_Annotations/Pipeline_GL-DPPD-7110_Versions/GL-DPPD-7110-A/GL-DPPD-7110-A_annotations.csv). For organisms not listed in the table or to use alternative reference files, additional workflow parameters can be specified.
 
  Below are four examples of how to run the NF_RCP workflow:
-> [!Note]
+> [!NOTE]
 > Nextflow commands use both single hyphen arguments (e.g. -help) that denote general nextflow arguments and double hyphen arguments (e.g. --reference_version) that denote workflow specific parameters.  Take care to use the proper number of hyphens for each argument.
 >
 > To use Docker instead of Singularity, use `-profile docker` in the Nextflow run command. Nextflow will automatically pull images as needed.
@@ -191,7 +191,7 @@ nextflow run NF_RCP_2.1.0/main.nf \
    --accession OSD-194 
 ```
 
-> [!Note] 
+> [!NOTE] 
 > For prokaryotic RNAseq datasets, add the parameter `--mode microbes` to run the workflow using the prokaryotic pipeline ([GL-DPPD-7115](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Pipeline_GL-DPPD-7115_Versions/GL-DPPD-7115.md)). The default value of this parameter is `default`, which will use the eukaryotic pipeline ([GL-DPPD-7101-G](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Pipeline_GL-DPPD-7101_Versions/GL-DPPD-7101-G.md)).
 
 <br>
@@ -224,7 +224,7 @@ nextflow run NF_RCP_2.1.0/main.nf \
 ```
 
 > [!NOTE] 
-> Specifications for creating a runsheet manually are described [here](examples/runsheet/README.md).
+> Specifications for creating a runsheet manually are described in the [runsheet README](examples/runsheet/README.md).
 
 <br>
 
@@ -240,7 +240,7 @@ nextflow run NF_RCP_2.1.0/main.nf \
    --reference_gtf <url/or/path/to/gtf> 
 ```
 > [!NOTE]  
-> This approach should be used for organisms not listed in the [GeneLab annotations table](https://github.com/nasa/GeneLab_Data_Processing/blob/master/GeneLab_Reference_Annotations/Pipeline_GL-DPPD-7110_Versions/GL-DPPD-7110-A/GL-DPPD-7110-A_annotations.csv). Specifications for creating a runsheet manually are described [here](examples/runsheet/README.md).
+> This approach should be used for organisms not listed in the [GeneLab annotations table](https://github.com/nasa/GeneLab_Data_Processing/blob/master/GeneLab_Reference_Annotations/Pipeline_GL-DPPD-7110_Versions/GL-DPPD-7110-A/GL-DPPD-7110-A_annotations.csv). Specifications for creating a runsheet manually are described in the [runsheet README](examples/runsheet/README.md).
 > 
 > The `--reference_source` and `--reference_version` parameters should match the reference source and version number of the reference fasta and gtf files used. 
 > 
@@ -301,24 +301,6 @@ nextflow run NF_RCP_2.1.0/main.nf \
 
 #### Optional Parameters:
 
-* `--entry_point` - Specifies the workflow entry point to start from (default: `raw_reads`). Available options:
-  - `raw_reads` - Start from raw read files (`.fastq.gz`) (default)
-  - `trimmed_reads` - Start from trimmed read files (`.fastq.gz`). Raw read quality-checking and trimming are skipped
-  - `bam_files` - Start from BAM files (`.bam`) (requires `--strandedness` parameter). For `--mode default`, expects STAR-aligned transcriptome BAM files. For `--mode microbes`, expects Bowtie2-aligned BAM files
-  - `genes_results` - Start from RSEM gene expression files (`.genes.results`) (`--mode default` only)
-  - `counts_table` - Start from a raw counts table (`.csv`)
-  - `dge_table` - Start from a DGE output table. Adds gene annotation columns to the input table or replaces them if they already exist (`.csv`)
-
-> Note: For `bam_files` entry point, the `--strandedness` parameter is required.
-
-> Note: For runsheet-based runs, see the [runsheet README](examples/runsheet/README.md) for input file specifications.
-
-* `--strandedness` - Specifies the strandedness of RNA-seq data (`none`, `forward`, or `reverse`; default: `none`). Only required when using `bam_files` entry point
-
-* `--counts_table_path` - Specifies a path to a raw counts table file (`.csv`). Used with `counts_table` entry point
-
-* `--dge_table_path` - Specifies a path to a DGE table file (`.csv`). Used with `dge_table` entry point
-
 * `--gene_annotations_file` - Specifies the URL or path to a gene annotation file that adds additional gene annotation columns to the differential expression output table. This can be:
 
   - The file listed in the `genelab_annots_link` column of the [GeneLab annotations table](https://github.com/nasa/GeneLab_Data_Processing/blob/master/GeneLab_Reference_Annotations/Pipeline_GL-DPPD-7110_Versions/GL-DPPD-7110-A/GL-DPPD-7110-A_annotations.csv)
@@ -337,7 +319,7 @@ nextflow run NF_RCP_2.1.0/main.nf \
 * `--derived_store_path` - specifies the directory to store the tool-specific indices created during processing (type: string, default: "./DerivedReferences")
 
 * `--mode` - specifies which pipeline to use: set to `default` to run GL-DPPD-7101-G pipeline or set to `microbes` for the GL-DPPD-7115 prokaryotic pipeline (type: string, default: "default")
-  > [!Note] 
+  > [!NOTE] 
   > This allows the workflow to process either eukaryotic (default) or prokaryotic RNAseq data using the appropriate pipeline.
 
 * **DGE Filtering Parameters** - Options for filtering genes prior to DGE analysis:
@@ -359,19 +341,23 @@ nextflow run NF_RCP_2.1.0/main.nf \
   * `--dge_filter_count_per_sample_threshold` - Multiplier for sample-scaled count threshold (type: number, default: 1)
 
 * **Entry Point Parameters** - Options for starting the workflow from different processing steps:
-  >**Note:** When using `--accession` and running the workflow from an intermediate entry point, the workflow downloads the input files from [OSDR](https://osdr.nasa.gov/bio/repo/) and generates the runsheet containing the required metadata. When using both `--accession` and `--runsheet_path` together, the workflow will validate that the runsheet contains the expected input file columns. See `examples/runsheet/README.md` for runsheet format details.
-* `--entry_point` - specifies the workflow entry point (type: string, default: "raw_reads"). Valid options:
-  - `raw_reads`: Start from raw FASTQ files (default)
-  - `trimmed_reads`: Start from trimmed FASTQ 
-  - `bam_files`: Start from aligned BAM files
-  - `genes_results`: Start from individual .genes.results files (`--mode default` only)
-  - `counts_table`: Start from raw counts table
-  - `dge_table`: Add annotations to existing DGE table (annotation only)
+  > [!NOTE] 
+  > When using `--accession` and running the workflow from an intermediate entry point, the workflow downloads the input files from [OSDR](https://osdr.nasa.gov/bio/repo/) and generates the runsheet containing the required metadata. When using both `--accession` and `--runsheet_path` together, the workflow will validate that the runsheet contains the expected input file columns. See the [runsheet README](examples/runsheet/README.md) for runsheet format details.
 
-* `--strandedness` - sets the strandedness for entry points that skip alignment (type: string, options: "forward", "reverse", "none", default: "none")
+* `--entry_point` - Specifies the workflow entry point to start from (default: `raw_reads`). Available options:
+  - `raw_reads` - Start from raw read files (`.fastq.gz`) (default)
+  - `trimmed_reads` - Start from trimmed read files (`.fastq.gz`). Raw read quality-checking and trimming are skipped
+  - `bam_files` - Start from BAM files (`.bam`) (requires `--strandedness` parameter). For `--mode default`, expects STAR-aligned transcriptome BAM files. For `--mode microbes`, expects Bowtie2-aligned BAM files
+  - `genes_results` - Start from RSEM gene expression files (`.genes.results`) (`--mode default` only)
+  - `counts_table` - Start from a raw counts table (`.csv`)
+  - `dge_table` - Start from a DGE output table. Adds gene annotation columns to the input table or replaces them if they already exist (`.csv`)
 
+* `--strandedness` - Specifies the strandedness of RNA-seq data (`none`, `forward`, or `reverse`; default: `none`) for entry points that skip alignment, such as the `bam_files` entry point.
+
+* `--counts_table_path` - Specifies a path to a raw counts table file (`.csv`). Used with `counts_table` entry point
+
+* `--dge_table_path` - Specifies a path to a DGE table file (`.csv`). Used with `dge_table` entry point
  
-
 <br>
 
 **Additional Optional Parameters:**
@@ -391,7 +377,7 @@ See `nextflow run -h` and [Nextflow's CLI run command documentation](https://nex
 ### 5. Additional Output Files
 
 The outputs from the Analysis Staging and V&V Pipeline Subworkflows are described below:
-> [!Note] 
+> [!NOTE] 
 > The outputs from the RNAseq Consensus Pipeline Subworkflow are documented in the [GL-DPPD-7101-G](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Pipeline_GL-DPPD-7101_Versions/GL-DPPD-7101-G.md) and [GL-DPPD-7115](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Pipeline_GL-DPPD-7115_Versions/GL-DPPD-7115.md) processing protocols.
 
 **Analysis Staging Subworkflow**
