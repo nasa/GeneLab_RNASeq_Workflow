@@ -43,6 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed `vv_dge_deseq2.py` red-flag group std dev check to report all affected groups with null std dev instead of returning on the first
 - Fixed `vv_dge_deseq2.py` technical replicates handling
 - Fixed `REMOVE_RRNA` to copy unfiltered `genes.results` when the rRNA ID list is empty
+- Fixed missing .grp file bug in `build_rsem_index.nf` ([#8](https://github.com/nasa/GeneLab_RNASeq_Workflow/issues/8))
 
 ## [2.0.2](https://github.com/nasa/GeneLab_RNASeq_Workflow/tree/NF_RCP_2.0.2) - 2025-08-26
 

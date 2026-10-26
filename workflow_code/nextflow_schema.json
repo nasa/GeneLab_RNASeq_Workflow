@@ -153,7 +153,7 @@
         "entry_point": {
           "type": "string",
           "default": "raw_reads",
-          "description": "Workflow entry point. Valid options: 'raw_reads', 'trimmed_reads', 'bam_files', 'genes_results', 'counts_table', 'dge_table'",
+          "description": "Workflow entry point.",
           "enum": ["raw_reads", "trimmed_reads", "bam_files", "genes_results", "counts_table", "dge_table"]
         },
         "strandedness": {
