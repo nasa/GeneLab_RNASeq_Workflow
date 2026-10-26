@@ -15,6 +15,8 @@ params:
   input_counts: NULL # directory containing RSEM gene results OR FeatureCounts table for microbes mode
   gene_id_type: "" # denotes the name of the identifier column (e.g. ENSEMBL, TAIR)
   microbes: FALSE # set this to TRUE to use Bowtie 2 input
+  use_counts_table: FALSE # set to TRUE when starting from pre-made counts table CSV
+  counts_table_file: "" # path to counts table CSV (for counts_table entry point)
   DEBUG_MODE_LIMIT_GENES: FALSE # debugging option to limit the number of genes
   DEBUG_MODE_ADD_DUMMY_COUNTS: FALSE # debugging option to add dummy counts
   parallel_config: NULL # parallel configuration string (e.g. "MulticoreParam(workers = params$cpus)")
@@ -139,7 +141,28 @@ rm(contrast.names)
 ### 4. Load Gene Counts
 ```{r load-gene-counts}
 ##### Import FeatureCounts or RSEM count data #####
-if (params$microbes) {
+if (params$use_counts_table) {
+    # For counts_table entry point, load pre-made CSV directly
+    cat("=== COUNTS_TABLE ENTRY POINT MODE ===\n")
+    cat("Loading counts table from:", params$counts_table_file, "\n")
+    
+    if (!file.exists(params$counts_table_file)) {
+        stop(paste("Counts table file not found at:", params$counts_table_file))
+    }
+    
+    counts <- read.csv(params$counts_table_file, header = TRUE, row.names = 1, check.names = FALSE)
+    cat("Loaded counts table with", nrow(counts), "genes and", ncol(counts), "samples\n")
+    cat("Sample names in counts table:", paste(colnames(counts), collapse=", "), "\n")
+    cat("Sample names in runsheet:", paste(rownames(study), collapse=", "), "\n")
+    
+    # Reorder counts columns to match runsheet
+    counts <- counts[, rownames(study)]
+    
+    # Round to integers (RSEM outputs decimal counts, DESeq2 needs integers)
+    counts <- round(counts)
+    cat("Rounded counts to integers for DESeq2\n")
+    cat("Final counts matrix:", nrow(counts), "genes x", ncol(counts), "samples\n")
+} else if (params$microbes) {
     # For microbes, look for FeatureCounts TSV file
     if (!file.exists(params$input_counts)) {
         stop(paste("FeatureCounts file not found at:", params$input_counts))
@@ -182,7 +205,7 @@ if (params$microbes) {
 }
 ##### Apply debug options if enabled #####
 if (params$DEBUG_MODE_LIMIT_GENES) {
-    if (params$microbes) {
+    if (params$use_counts_table || params$microbes) {
         counts <- counts[1:150,]
     } else {
         txi.rsem$counts <- txi.rsem$counts[1:150,]
@@ -191,7 +214,7 @@ if (params$DEBUG_MODE_LIMIT_GENES) {
 }
 if (params$DEBUG_MODE_ADD_DUMMY_COUNTS) {
     set.seed(1)
-    if (params$microbes) {
+    if (params$use_counts_table || params$microbes) {
         counts <- counts + matrix(
             sample(0:5000, NROW(counts)*NCOL(counts), replace=TRUE),
             nrow=NROW(counts)
@@ -206,13 +229,14 @@ if (params$DEBUG_MODE_ADD_DUMMY_COUNTS) {
 }
 
 # Save a copy of the original counts before any filtering
-if (params$microbes) {
+if (params$use_counts_table || params$microbes) {
     original_counts <- counts
 } else {
     original_txi_counts <- txi.rsem$counts
 }
 
-if (params$microbes) {
+if (params$use_counts_table || params$microbes) {
+    # No txi.rsem length adjustment needed for counts matrix mode
 } else {
     ## Add 1 to genes with lengths of zero - needed to make DESeqDataSet object
     print(sprintf("DEBUG: %s: Converting %d zero length genes to 1-length of %d genes (%f %% total)", Sys.time(), length(txi.rsem$length[txi.rsem$length == 0]), length(txi.rsem$length), length(txi.rsem$length[txi.rsem$length == 0])/length(txi.rsem$length)))
@@ -223,7 +247,7 @@ if (params$microbes) {
 ```{r create-sample-table}
 ## Create data frame defining which group each sample belongs to
 sampleTable <- data.frame(condition=factor(group))
-rownames(sampleTable) <- if (params$microbes) {
+rownames(sampleTable) <- if (params$use_counts_table || params$microbes) {
     colnames(counts)
 } else {
     colnames(txi.rsem$counts)
@@ -272,7 +296,7 @@ if ("Source.Name" %in% colnames(compare_csv) && "Has.Tech.Reps" %in% colnames(co
         # Update sample table and counts
         sampleTable <- sampleTable[samples_to_keep, , drop=FALSE]
         
-        if (params$microbes) {
+        if (params$use_counts_table || params$microbes) {
             counts <- counts[, samples_to_keep]
         } else {
             txi.rsem$counts <- txi.rsem$counts[, samples_to_keep]
@@ -309,7 +333,7 @@ if ("Source.Name" %in% colnames(compare_csv) && "Has.Tech.Reps" %in% colnames(co
         # Update sample table and counts
         sampleTable <- sampleTable[samples_to_keep, , drop=FALSE]
         
-        if (params$microbes) {
+        if (params$use_counts_table || params$microbes) {
             counts <- counts[, samples_to_keep]
         } else {
             txi.rsem$counts <- txi.rsem$counts[, samples_to_keep]
@@ -323,15 +347,18 @@ if ("Source.Name" %in% colnames(compare_csv) && "Has.Tech.Reps" %in% colnames(co
 ### 4. DGE
 ```{r load-deseq2-dataset}
 # Create dataset
-if (params$microbes) {
-    # Build DESeqDataSet directly from counts for microbes mode
+if (params$use_counts_table || params$microbes) {
+    # Build DESeqDataSet directly from counts matrix
+    # (for counts_table entry point or microbes mode)
+    cat("Building DESeqDataSet from counts matrix\n")
     dds <- DESeqDataSetFromMatrix(
         countData = counts,
         colData = sampleTable,
         design = ~condition
     )
 } else {
-    # Build DESeqDataSet from tximport object for non-microbes mode
+    # Build DESeqDataSet from tximport object for default RSEM mode
+    cat("Building DESeqDataSet from tximport object\n")
     dds <- DESeqDataSetFromTximport(
         txi = txi.rsem,
         colData = sampleTable,
@@ -456,7 +483,7 @@ VSTCounts <- tryCatch({
   as.data.frame(assay(varianceStabilizingTransformation(dds)))
 })
 write.csv(
-    if (params$microbes) {
+    if (params$use_counts_table || params$microbes) {
         original_counts
     } else {
         original_txi_counts

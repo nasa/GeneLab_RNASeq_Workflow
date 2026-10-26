@@ -38,10 +38,15 @@ process DGE_DESEQ2 {
         def output_filename_suffix = params.assay_suffix ?: ""
         def microbes = params.mode == 'microbes' ? 'TRUE' : 'FALSE'
         def debug_dummy_counts = params.use_dummy_gene_counts ? 'TRUE'  : 'FALSE'
+        
+        // For counts_table entry point, pass the CSV file path; otherwise use directory/file path
         def input_counts_path = params.mode == 'microbes' ? gene_counts : "gene_counts"
+        def use_counts_table = params.entry_point == "counts_table" ? 'TRUE' : 'FALSE'
+        def counts_table_file = params.entry_point == "counts_table" ? gene_counts : ""
 
         """
-        if [[ "${params.mode}" != "microbes" ]]; then
+        # For counts_table entry point, gene_counts is already the CSV - skip directory setup
+        if [[ "${params.entry_point}" != "counts_table" ]] && [[ "${params.mode}" != "microbes" ]]; then
             mkdir -p gene_counts
             mv ${gene_counts} gene_counts/
         fi
@@ -60,6 +65,8 @@ process DGE_DESEQ2 {
                 microbes = ${microbes},
                 gene_id_type = '${meta.gene_id_type}',
                 input_counts = '${input_counts_path}',
+                use_counts_table = ${use_counts_table},
+                counts_table_file = '${counts_table_file}',
                 DEBUG_MODE_LIMIT_GENES = FALSE,
                 DEBUG_MODE_ADD_DUMMY_COUNTS = ${debug_dummy_counts},
                 dge_filter_method = '${params.dge_filter_method}',

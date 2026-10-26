@@ -53,16 +53,21 @@ workflow STAGE_ANALYSIS {
             }
             ISA_TO_RUNSHEET( ch_outdir, osd_accession, glds_accession, isa_archive, dp_tools_plugin )
             runsheet_path = ISA_TO_RUNSHEET.out.runsheet
+        } else if ( isa_archive_path != null ) {
+            // if runsheet_path is provided and isa_archive_path is also provided, just pass through the provided ISA archive
+            isa_archive = isa_archive_path
         }
 
         // Validate input parameters and runsheet
-        validateParameters()
+        if ( params.validate_params ) {
+            validateParameters()
+        }
 
         PARSE_RUNSHEET( runsheet_path )
         samples = PARSE_RUNSHEET.out.samples
         runsheet_path = PARSE_RUNSHEET.out.runsheet
 
-        // Stage the full or truncated raw reads
+        // Stage the raw reads (default staging for backward compatibility)
         STAGE_RAW_READS( ch_outdir, samples )
         raw_reads = STAGE_RAW_READS.out.raw_reads
         samples_txt = STAGE_RAW_READS.out.samples_txt

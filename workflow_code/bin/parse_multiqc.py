@@ -14,21 +14,165 @@ import re
 import os
 
 
+def sample_key(sample):
+    """Normalize sample identifiers for dict lookups and ordering."""
+    if sample is None or (isinstance(sample, float) and pd.isna(sample)):
+        return ""
+    return str(sample).strip()
+
+def mqc_base_sample_name(sample_name_str):
+    """Strip paired-end / raw suffixes from a MultiQC sample name."""
+    for suffix in (' Read 1', ' Read 2', '_R1_raw', '_R2_raw', '_R1', '_R2'):
+        if suffix in sample_name_str:
+            return sample_name_str.split(suffix)[0].strip('_')
+    return sample_name_str
+
+def mqc_read_end(sample_name_str):
+    """Return 'f' or 'r' for paired-end MultiQC sample names."""
+    if ' Read 2' in sample_name_str or '_R2' in sample_name_str:
+        return 'r'
+    if ' Read 1' in sample_name_str or '_R1' in sample_name_str:
+        return 'f'
+    return 'f'
+
+def fastqc_max_sequence_length(seq_len_value):
+    """Parse FastQC Sequence length field (e.g. '35-76') into max read length."""
+    if seq_len_value is None or (isinstance(seq_len_value, float) and pd.isna(seq_len_value)):
+        return None
+    seq_len_str = str(seq_len_value).strip()
+    if not seq_len_str:
+        return None
+    if '-' in seq_len_str:
+        try:
+            return int(float(seq_len_str.split('-')[-1]))
+        except (ValueError, TypeError):
+            return None
+    try:
+        return int(float(seq_len_str))
+    except (ValueError, TypeError):
+        return None
+
+def resolve_multiqc_read_length(max_f=None, max_r=None):
+    """Resolve read length from FastQC max sequence length (f/r)."""
+    max_lengths = []
+    for value in (max_f, max_r):
+        if value in (None, ''):
+            continue
+        try:
+            max_lengths.append(int(float(value)))
+        except (ValueError, TypeError):
+            pass
+    return max(max_lengths) if max_lengths else None
+
+def lookup_raw_fastqc_sample(base_name, end, raw_fastqc, mqc_sample=None):
+    """Find the saved FastQC sample key for a grouped read end."""
+    candidates = []
+    if mqc_sample:
+        candidates.append(mqc_sample)
+    if end == 'r':
+        candidates.extend([f"{base_name}_R2", f"{base_name} Read 2"])
+    else:
+        candidates.extend([f"{base_name}_R1", f"{base_name} Read 1", base_name])
+    for key in candidates:
+        if key in raw_fastqc:
+            return key
+    return None
+
+def iter_multiqc_plot_series(plot_section):
+    """Yield (sample_name, xy_pairs) from MultiQC plot datasets (1.12 list/{data} or 1.26+ {lines}/{pairs})."""
+    datasets = plot_section.get('datasets') if isinstance(plot_section, dict) else None
+    if not datasets:
+        return
+    dataset0 = datasets[0]
+    if isinstance(dataset0, list):
+        series_list = dataset0
+    elif isinstance(dataset0, dict):
+        series_list = dataset0.get('lines') or dataset0.get('data') or []
+    else:
+        return
+    for series in series_list:
+        if not isinstance(series, dict):
+            continue
+        name = series.get('name')
+        pairs = series.get('pairs', series.get('data'))
+        if name is None or not pairs:
+            continue
+        yield name, pairs
+
 def get_runsheet_order(runsheet_path):
     """Read runsheet and return ordered list of sample names"""
     if not runsheet_path or not os.path.exists(runsheet_path):
         return None
     try:
-        df = pd.read_csv(runsheet_path)
+        df = pd.read_csv(runsheet_path, dtype=str)
         if 'Sample Name' in df.columns:
-            return df['Sample Name'].tolist()
+            return [sample_key(s) for s in df['Sample Name'].tolist()]
     except Exception as e:
         print(f"WARNING: Error reading runsheet: {str(e)}")
     return None
 
+def get_runsheet_aliases(runsheet_path):
+    """Map Original Sample Name (ISA) and other aliases to runsheet Sample Name."""
+    aliases = {}
+    if not runsheet_path or not os.path.exists(runsheet_path):
+        return aliases
+    try:
+        df = pd.read_csv(runsheet_path, dtype=str)
+    except Exception as e:
+        print(f"WARNING: Error reading runsheet for sample aliases: {str(e)}")
+        return aliases
+    if 'Sample Name' not in df.columns:
+        return aliases
+    for _, row in df.iterrows():
+        canonical = sample_key(row['Sample Name'])
+        if not canonical:
+            continue
+        aliases[canonical] = canonical
+        if 'Original Sample Name' in df.columns:
+            orig = sample_key(row.get('Original Sample Name'))
+            if orig and orig != canonical:
+                aliases[orig] = canonical
+    return aliases
 
-def generate_validation_report(fieldnames, populated_fields, mode, assay_suffix, paired_end):
+def canonical_sample_name(sample, aliases):
+    """Return the processing sample name for a sample identifier."""
+    s = sample_key(sample)
+    if not s:
+        return s
+    return aliases.get(s, s)
+
+def remap_parser_dict(data, aliases):
+    """Re-key parser output so ISA and processing sample names share one key."""
+    if not aliases or not data:
+        return data
+    remapped = {}
+    for key, value in data.items():
+        canon = canonical_sample_name(key, aliases)
+        if canon in remapped and isinstance(remapped[canon], dict) and isinstance(value, dict):
+            merged = dict(remapped[canon])
+            for field, field_value in value.items():
+                if field_value not in (None, '') or field not in merged or merged[field] in (None, ''):
+                    merged[field] = field_value
+            remapped[canon] = merged
+        else:
+            remapped[canon] = value
+    return remapped
+
+
+def generate_validation_report(fieldnames, populated_fields, mode, assay_suffix, paired_end, runsheet=None, filled_fields=None, validation_mismatches=None):
     """Generate a validation report showing which columns are missing data"""
+    
+    # Check if this is an ERCC dataset by looking at the runsheet
+    is_ercc_dataset = False
+    try:
+        if runsheet and os.path.exists(runsheet):
+            df = pd.read_csv(runsheet)
+            if 'has_ERCC' in df.columns:
+                # Check if any row has has_ERCC = 1 (assuming it's a boolean column)
+                is_ercc_dataset = df['has_ERCC'].any() if df['has_ERCC'].dtype in ['int64', 'bool'] else False
+    except Exception:
+        # If we can't determine, assume it's not ERCC
+        is_ercc_dataset = False
     
     # Define field categories
     metadata_fields = [
@@ -36,8 +180,12 @@ def generate_validation_report(fieldnames, populated_fields, mode, assay_suffix,
         'library_selection', 'library_layout', 'strandedness', 'read_depth', 
         'read_length', 'rrna_contamination', 'rin', 'organism_part', 'cell_line', 
         'cell_type', 'secondary_organism', 'strain', 'animal_source', 'seed_source', 
-        'source_accession', 'mix'
+        'source_accession'
     ]
+    
+    # Only include 'mix' field if this is an ERCC dataset
+    if is_ercc_dataset:
+        metadata_fields.append('mix')
     
     gene_count_fields = ['gene_detected_gt10', 'gene_total', 'gene_detected_gt10_pct']
     
@@ -185,11 +333,42 @@ def generate_validation_report(fieldnames, populated_fields, mode, assay_suffix,
             for field in missing_rseqc:
                 f.write(f"** {field}\n")
             f.write("\n")
+        
+        # Auto-filled fields section
+        if filled_fields:
+            f.write("Auto-filled fields (from MultiQC data):\n")
+            for field in sorted(filled_fields):
+                if field == 'read_depth':
+                    f.write(f"** {field} (filled from raw_total_sequences_f)\n")
+                elif field == 'read_length':
+                    f.write(f"** {field} (filled from FastQC Sequence length max)\n")
+                else:
+                    f.write(f"** {field}\n")
+            f.write("\n")
+        
+        # Validation mismatches section
+        if validation_mismatches:
+            f.write("Validation mismatches (assay table vs MultiQC data):\n")
+            for sample, field, assay_value, multiqc_value in sorted(validation_mismatches):
+                f.write(f"** Sample: {sample}, Field: {field}\n")
+                f.write(f"   Assay table value: {assay_value}\n")
+                f.write(f"   MultiQC value: {multiqc_value}\n")
+            f.write("\n")
 
 
 def main(osd_num, paired_end, assay_suffix, mode, runsheet=None):
 
-    osd_num = osd_num.split('-')[1]
+    # Handle OSD number: if empty/None, skip metadata fetch and use empty string for CSV
+    if not osd_num or osd_num.strip() == '':
+        osd_num = None
+        had_osd_prefix = False
+    else:
+        # Handle OSD number format: if it starts with "OSD-", extract the number part
+        # Otherwise, use it as-is (for custom identifiers like "LEAF_Brapa")
+        had_osd_prefix = osd_num.startswith('OSD-')
+        if had_osd_prefix:
+            osd_num = osd_num.split('-')[1]
+        # If no OSD prefix, use the string as-is
 
     # Create the multiqc_data list with conditionally selected parsers based on mode
     multiqc_data = [
@@ -218,18 +397,23 @@ def main(osd_num, paired_end, assay_suffix, mode, runsheet=None):
     if paired_end:
         multiqc_data.append(parse_inner_dist(assay_suffix))
 
-    samples = set([s for ss in multiqc_data for s in ss])
+    sample_aliases = get_runsheet_aliases(runsheet)
+    if sample_aliases:
+        multiqc_data = [remap_parser_dict(data_source, sample_aliases) for data_source in multiqc_data]
+
+    samples = {canonical_sample_name(s, sample_aliases) for ss in multiqc_data for s in ss if sample_key(s)}
 
     # Order samples according to runsheet if provided
     runsheet_order = get_runsheet_order(runsheet)
     if runsheet_order:
         ordered_samples = [s for s in runsheet_order if s in samples]
-        extra_samples = [s for s in samples if s not in runsheet_order]
+        extra_samples = sorted(samples - set(runsheet_order))
         samples = ordered_samples + extra_samples
     else:
-        samples = sorted(samples)  # Fallback to alphabetical
+        samples = sorted(samples, key=lambda s: (not s.isdigit(), int(s) if s.isdigit() else s))
 
-    metadata = get_metadata(osd_num)
+    # Only fetch metadata if osd_num is provided
+    metadata = get_metadata(osd_num) if osd_num else {}
 
     fieldnames = [
         'osd_num', 'sample', 'organism', 'tissue', 'sequencing_instrument', 'library_selection', 'library_layout', 'strandedness', 'read_depth', 'read_length', 'rrna_contamination', 'rin', 'organism_part', 'cell_line', 'cell_type', 'secondary_organism', 'strain', 'animal_source', 'seed_source', 'source_accession', 'mix',
@@ -275,6 +459,10 @@ def main(osd_num, paired_end, assay_suffix, mode, runsheet=None):
     
     # Track which fields have data for validation report
     populated_fields = set()
+    # Track which fields were auto-filled
+    filled_fields = set()
+    # Track validation mismatches (assay table vs MultiQC)
+    validation_mismatches = []
     
     with open(output_filename, mode='w', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -283,49 +471,144 @@ def main(osd_num, paired_end, assay_suffix, mode, runsheet=None):
         for sample in samples:
             # Collect all fields for this sample
             all_fields = {}
+            # Internal only (not written to qc_metrics): FastQC Sequence length max for read_length
+            raw_max_f = None
+            raw_max_r = None
             for data_source in multiqc_data:
+                source_data = None
                 if sample in data_source:
-                    for k, v in data_source[sample].items():
+                    source_data = data_source[sample]
+                else:
+                    for source_key, source_value in data_source.items():
+                        if canonical_sample_name(source_key, sample_aliases) == sample:
+                            source_data = source_value
+                            break
+                if source_data:
+                    for k, v in source_data.items():
+                        if k == 'raw_max_sequence_length_f' and v not in (None, ''):
+                            raw_max_f = v
+                        elif k == 'raw_max_sequence_length_r' and v not in (None, ''):
+                            raw_max_r = v
                         # Only keep fields that are in the fieldnames list
-                        if k in fieldnames_set:
+                        elif k in fieldnames_set:
                             all_fields[k] = v
                             if v is not None and v != '':  # Track populated fields
                                 populated_fields.add(k)
-                        else:
-                            # Optionally add debug output to see which fields are being skipped
-                            # print(f"Skipping field not in fieldnames: {k}")
-                            pass
             
             # Track fields that are always populated
             populated_fields.add('osd_num')
             populated_fields.add('sample')
             
-            # Track populated metadata fields
+            # Track populated metadata fields and normalize if needed
             for k, v in metadata.items():
                 if v is not None and v != '':
                     populated_fields.add(k)
+                    # Normalize strandedness and library_selection in metadata
+                    if k == 'strandedness':
+                        normalized_v = str(v).upper()
+                        if v != normalized_v:
+                            validation_mismatches.append((sample, 'strandedness', v, normalized_v))
+                            metadata[k] = normalized_v
+                    elif k == 'library_selection':
+                        lib_sel_lower = str(v).lower()
+                        normalized_v = v
+                        if 'ribo' in lib_sel_lower:
+                            normalized_v = 'ribo-depletion'
+                        elif 'poly' in lib_sel_lower:
+                            normalized_v = 'polyA enrichment'
+                        if v != normalized_v:
+                            metadata[k] = normalized_v
+            
+            # Validate and fill in missing read_depth and read_length from raw FastQC data
+            # If read_depth exists, validate it matches raw_total_sequences_f (total sequences = read depth)
+            if all_fields.get('read_depth') and all_fields.get('read_depth') != '':
+                if all_fields.get('raw_total_sequences_f'):
+                    try:
+                        assay_read_depth = int(float(all_fields['read_depth']))
+                        multiqc_read_depth = int(float(all_fields['raw_total_sequences_f']))
+                        if assay_read_depth != multiqc_read_depth:
+                            validation_mismatches.append((sample, 'read_depth', assay_read_depth, multiqc_read_depth))
+                    except (ValueError, TypeError):
+                        pass
+            # If read_depth is empty, fill from raw_total_sequences_f
+            elif all_fields.get('raw_total_sequences_f'):
+                try:
+                    all_fields['read_depth'] = int(float(all_fields['raw_total_sequences_f']))
+                    populated_fields.add('read_depth')
+                    filled_fields.add('read_depth')
+                except (ValueError, TypeError):
+                    pass
+            
+            multiqc_read_length = resolve_multiqc_read_length(raw_max_f, raw_max_r)
+            # If read_length exists, validate against FastQC max length
+            if all_fields.get('read_length') and all_fields.get('read_length') != '':
+                if multiqc_read_length is not None:
+                    try:
+                        assay_read_length = int(float(all_fields['read_length']))
+                        if assay_read_length != multiqc_read_length:
+                            validation_mismatches.append((sample, 'read_length', assay_read_length, multiqc_read_length))
+                    except (ValueError, TypeError):
+                        pass
+            # If read_length is empty, fill from FastQC max length
+            elif multiqc_read_length is not None:
+                all_fields['read_length'] = multiqc_read_length
+                populated_fields.add('read_length')
+                filled_fields.add('read_length')
+            
+            # Normalize strandedness (convert to uppercase)
+            if all_fields.get('strandedness') and all_fields.get('strandedness') != '':
+                original_strandedness = all_fields['strandedness']
+                normalized_strandedness = str(original_strandedness).upper()
+                if original_strandedness != normalized_strandedness:
+                    validation_mismatches.append((sample, 'strandedness', original_strandedness, normalized_strandedness))
+                    all_fields['strandedness'] = normalized_strandedness
+            
+            # Normalize library_selection (only if contains 'ribo' or 'poly', otherwise pass through unchanged)
+            if all_fields.get('library_selection') and all_fields.get('library_selection') != '':
+                original_lib_sel = all_fields['library_selection']
+                lib_sel_lower = str(original_lib_sel).lower()
+                normalized_lib_sel = original_lib_sel  # Default: pass through unchanged
+                
+                if 'ribo' in lib_sel_lower:
+                    normalized_lib_sel = 'ribo-depletion'
+                elif 'poly' in lib_sel_lower:
+                    normalized_lib_sel = 'polyA enrichment'
+                # If no match, normalized_lib_sel == original_lib_sel, so no change is made
+                
+                if original_lib_sel != normalized_lib_sel:
+                    all_fields['library_selection'] = normalized_lib_sel
             
             # Write rows with osd_num and sample fields
-            writer.writerow({'osd_num': 'OSD-' + osd_num, 'sample': sample, **metadata, **all_fields})
+            # Add OSD- prefix only if original input had it, otherwise use as-is
+            # If osd_num is None/empty, use empty string
+            osd_display = 'OSD-' + osd_num if had_osd_prefix and osd_num else (osd_num if osd_num else '')
+            writer.writerow({'osd_num': osd_display, 'sample': sample, **metadata, **all_fields})
     
     # Generate validation report
     try:
-        generate_validation_report(fieldnames, populated_fields, mode, assay_suffix, paired_end)
+        generate_validation_report(fieldnames, populated_fields, mode, assay_suffix, paired_end, runsheet, filled_fields, validation_mismatches)
     except Exception as e:
         print(f"WARNING: Failed to generate validation report: {str(e)}")
 
 
 def get_metadata(osd_num):
-    r = requests.get('https://osdr.nasa.gov/osdr/data/osd/meta/' + osd_num)
     data = {}
+    if not osd_num:
+        return data  # Return empty dict if no osd_num provided
+    try:
+        r = requests.get('https://osdr.nasa.gov/osdr/data/osd/meta/' + osd_num)
+        r.raise_for_status()  # Raise an exception for bad status codes
+        
+        # Source accession
+        comments = r.json()['study']['OSD-' + osd_num]['studies'][0]['comments']
+        source_accession = [c for c in comments if c['name'] == 'Data Source Accession'][0]
 
-    # Source accession
-    comments = r.json()['study']['OSD-' + osd_num]['studies'][0]['comments']
-    source_accession = [c for c in comments if c['name'] == 'Data Source Accession'][0]
-
-    if source_accession and source_accession['value']:
-        data['source_accession'] = source_accession['value']
-
+        if source_accession and source_accession['value']:
+            data['source_accession'] = source_accession['value']
+    except (requests.RequestException, KeyError, IndexError, ValueError, Exception) as e:
+        print(f"WARNING: Error fetching metadata from OSD API: {str(e)}")
+        # Return empty dict if API call fails
+    
     return data
 
 
@@ -370,14 +653,16 @@ def parse_isa():
         }
 
         for row in a:
-            data[row['Sample Name'].strip()] = {assay_fields[k.lower()]:v.strip() for k, v in row.items() if k.lower() in assay_fields}
+            key = sample_key(row['Sample Name'])
+            data[key] = {assay_fields[k.lower()]: v.strip() for k, v in row.items() if k.lower() in assay_fields}
 
         for row in s:
-            if row['Sample Name'].strip() not in data:  # samples could be in other assays
+            key = sample_key(row['Sample Name'])
+            if key not in data:  # samples could be in other assays
                 continue
 
-            sample_data = {sample_fields[k.lower()]:v.strip() for k, v in row.items() if k.lower() in sample_fields}
-            data[row['Sample Name'].strip()] = {**data[row['Sample Name'].strip()], **sample_data}
+            sample_data = {sample_fields[k.lower()]: v.strip() for k, v in row.items() if k.lower() in sample_fields}
+            data[key] = {**data[key], **sample_data}
 
         return data
     except (FileNotFoundError, KeyError, IndexError, ValueError, Exception) as e:
@@ -401,36 +686,15 @@ def parse_fastqc(prefix, assay_suffix):
         if not fastqc_section:
             return {}
 
+        raw_fastqc = j.get('report_saved_raw_data', {}).get('multiqc_fastqc', {})
+
         # Group the samples by base name for paired end data
         sample_groups = {}
         for sample in fastqc_section.keys():
-            # Handle various naming patterns
-            if ' Read 1' in sample:
-                base_name = sample.replace(' Read 1', '')
-                if base_name not in sample_groups:
-                    sample_groups[base_name] = {'f': None, 'r': None}
-                sample_groups[base_name]['f'] = sample
-            elif ' Read 2' in sample:
-                base_name = sample.replace(' Read 2', '')
-                if base_name not in sample_groups:
-                    sample_groups[base_name] = {'f': None, 'r': None}
-                sample_groups[base_name]['r'] = sample
-            elif '_R1' in sample:
-                base_name = sample.replace('_R1', '')
-                if base_name not in sample_groups:
-                    sample_groups[base_name] = {'f': None, 'r': None}
-                sample_groups[base_name]['f'] = sample
-            elif '_R2' in sample:
-                base_name = sample.replace('_R2', '')
-                if base_name not in sample_groups:
-                    sample_groups[base_name] = {'f': None, 'r': None}
-                sample_groups[base_name]['r'] = sample
-            else:
-                # For single-end or non-paired samples
-                base_name = sample
-                if base_name not in sample_groups:
-                    sample_groups[base_name] = {'f': None, 'r': None}
-                sample_groups[base_name]['f'] = sample
+            sample_name_str = sample_key(sample)
+            base_name = sample_key(mqc_base_sample_name(sample_name_str))
+            end = mqc_read_end(sample_name_str)
+            sample_groups.setdefault(base_name, {'f': None, 'r': None})[end] = sample
 
         data = {}
         # Process each sample group
@@ -442,12 +706,20 @@ def parse_fastqc(prefix, assay_suffix):
                 for k, v in fastqc_section[reads['f']].items(): 
                     if k != 'percent_fails':
                         data[base_name][prefix + '_' + k + '_f'] = v
+                raw_key = lookup_raw_fastqc_sample(base_name, 'f', raw_fastqc, reads['f'])
+                max_len = fastqc_max_sequence_length(raw_fastqc.get(raw_key, {}).get('Sequence length') if raw_key else None)
+                if max_len is not None:
+                    data[base_name][prefix + '_max_sequence_length_f'] = max_len
                         
             # Process reverse read
             if reads['r']:
                 for k, v in fastqc_section[reads['r']].items(): 
                     if k != 'percent_fails':
                         data[base_name][prefix + '_' + k + '_r'] = v
+                raw_key = lookup_raw_fastqc_sample(base_name, 'r', raw_fastqc, reads['r'])
+                max_len = fastqc_max_sequence_length(raw_fastqc.get(raw_key, {}).get('Sequence length') if raw_key else None)
+                if max_len is not None:
+                    data[base_name][prefix + '_max_sequence_length_r'] = max_len
 
         # Process other stats sections (quality, GC, etc)
         for section, suffix in [
@@ -456,48 +728,35 @@ def parse_fastqc(prefix, assay_suffix):
             ('fastqc_per_base_n_content_plot', 'n_content')
         ]:
             if section in j['report_plot_data']:
-                for data_item in j['report_plot_data'][section]['datasets'][0]['lines']:
-                    sample = data_item['name']
-                    
-                    # Determine if it's forward or reverse read
-                    read_suffix = '_f'  # Default to forward
-                    base_name = sample
-                    
-                    if ' Read 2' in sample:
-                        read_suffix = '_r'
-                        base_name = sample.replace(' Read 2', '')
-                    elif ' Read 1' in sample:
-                        base_name = sample.replace(' Read 1', '')
-                    elif '_R2' in sample:
-                        read_suffix = '_r'
-                        base_name = sample.replace('_R2', '')
-                    elif '_R1' in sample:
-                        base_name = sample.replace('_R1', '')
-                        
+                for series_name, pairs in iter_multiqc_plot_series(j['report_plot_data'][section]):
+                    sample = sample_key(series_name)
+                    base_name = sample_key(mqc_base_sample_name(sample))
+                    read_suffix = '_r' if mqc_read_end(sample) == 'r' else '_f'
+
                     # Skip if we don't have this sample
                     if base_name not in data:
                         continue
                         
                     # Process based on the section
                     if suffix == 'quality_score':
-                        data[base_name][prefix + '_quality_score_mean' + read_suffix] = mean([i[1] for i in data_item['pairs']])
-                        data[base_name][prefix + '_quality_score_median' + read_suffix] = median([i[1] for i in data_item['pairs']])
+                        data[base_name][prefix + '_quality_score_mean' + read_suffix] = mean([i[1] for i in pairs])
+                        data[base_name][prefix + '_quality_score_median' + read_suffix] = median([i[1] for i in pairs])
                     elif suffix == 'gc':
-                        gc_data_1pct = [i[0] for i in data_item['pairs'] if i[1] >= 1]
+                        gc_data_1pct = [i[0] for i in pairs if i[1] >= 1]
                         if gc_data_1pct:
                             data[base_name][prefix + '_gc_min_1pct' + read_suffix] = gc_data_1pct[0]
                             data[base_name][prefix + '_gc_max_1pct' + read_suffix] = gc_data_1pct[-1]
                             
-                            gc_data_cum = list(np.cumsum([i[1] for i in data_item['pairs']]))
+                            gc_data_cum = list(np.cumsum([i[1] for i in pairs]))
                             data[base_name][prefix + '_gc_auc_25pct' + read_suffix] = list(i >= 25 for i in gc_data_cum).index(True)
                             data[base_name][prefix + '_gc_auc_50pct' + read_suffix] = list(i >= 50 for i in gc_data_cum).index(True)
                             data[base_name][prefix + '_gc_auc_75pct' + read_suffix] = list(i >= 75 for i in gc_data_cum).index(True)
                     elif suffix == 'n_content':
-                        data[base_name][prefix + '_n_content_sum' + read_suffix] = sum([i[1] for i in data_item['pairs']])
+                        data[base_name][prefix + '_n_content_sum' + read_suffix] = sum([i[1] for i in pairs])
 
         return data
-    except (FileNotFoundError, KeyError, IndexError, json.JSONDecodeError, ValueError):
-        print(f"WARNING: Could not process {prefix} FastQC data")
+    except (FileNotFoundError, KeyError, IndexError, json.JSONDecodeError, ValueError, TypeError) as e:
+        print(f"WARNING: Could not process {prefix} FastQC data: {e}")
         return {}
 
 
@@ -751,7 +1010,7 @@ if __name__ == '__main__':
     
     parser.add_argument('--osd-num')
     parser.add_argument('--paired', action='store_true')
-    parser.add_argument('--assay_suffix', default='_GLbulkRNAseq')
+    parser.add_argument('--assay_suffix', default='')
     parser.add_argument('--mode', default='default')
     parser.add_argument('--runsheet', default=None)
     args = parser.parse_args()

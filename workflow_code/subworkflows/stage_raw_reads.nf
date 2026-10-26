@@ -34,11 +34,11 @@ workflow STAGE_RAW_READS {
                                         | mix( ch_raw_reads )
                                         | set { ch_raw_reads }
 
-            // Moves the truncated files to expected raw read locations as per samplesheet
-            COPY_READS(ch_outdir, ch_raw_reads)
+            // Rename and publish raw reads
+            COPY_READS(ch_outdir, ch_raw_reads, "raw")
             // Collect sample IDs into a file
-            COPY_READS.out.raw_reads | map{ it -> it[1] } | collect | set { ch_all_raw_reads }
-            COPY_READS.out.raw_reads | map { it[0].id }
+            COPY_READS.out.reads | map{ it -> it[1] } | collect | set { ch_all_raw_reads }
+            COPY_READS.out.reads | map { it[0].id }
                             | collectFile(name: "samples.txt", sort: true, newLine: true)
                             | set { samples_txt }
         } else {
@@ -46,18 +46,18 @@ workflow STAGE_RAW_READS {
             ch_samples | map { it -> it[0].paired_end ? [it[0], [ it[1][0], it[1][1] ]] : [it[0], [it[1][0]]]}
                          | set { ch_raw_reads }
 
-            // Download the raw reads and publish them to expected raw read locations as per samplesheet
-            COPY_READS(ch_outdir, ch_raw_reads)
+            /// Rename and publish raw reads
+            COPY_READS(ch_outdir, ch_raw_reads, "raw")
             // Collect sample IDs into a file
-            COPY_READS.out.raw_reads | map{ it -> it[1] } | collect | set { ch_all_raw_reads }
-            COPY_READS.out.raw_reads | map { it[0].id }
+            COPY_READS.out.reads | map{ it -> it[1] } | collect | set { ch_all_raw_reads }
+            COPY_READS.out.reads | map { it[0].id }
                             | collectFile(name: "samples.txt", sort: true, newLine: true)
                             | set { samples_txt }
         }
 
 
     emit:
-        raw_reads = COPY_READS.out.raw_reads 
+        raw_reads = COPY_READS.out.reads 
         ch_all_raw_reads = ch_all_raw_reads
         samples_txt =  samples_txt
 }

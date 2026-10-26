@@ -36,11 +36,17 @@ process REMOVE_RRNA {
 
         echo "Processing: \${sample_id}"
 
-        # Filter rRNA entries
-        awk 'NR==FNR {ids[\$1]=1; next} !(\$1 in ids)' ${rrna_ids_file} "${meta.id}${ params.assay_suffix }.genes.results" > \${filtered_file}
+        if [[ ! -s ${rrna_ids_file} ]]; then
+            echo "WARNING: No rRNA gene IDs found for \${sample_id}; copying unfiltered genes.results to rRNArm output" >&2
+            cp "${meta.id}${ params.assay_suffix }.genes.results" \${filtered_file}
+            echo "\${sample_id}: 0 rRNA entries removed." > \${counts_file}
+        else
+            # Filter rRNA entries
+            awk 'NR==FNR {ids[\$1]=1; next} !(\$1 in ids)' ${rrna_ids_file} "${meta.id}${ params.assay_suffix }.genes.results" > \${filtered_file}
 
-        # Count rRNA entries
-        rRNA_count=\$(awk 'NR==FNR {ids[\$1]=1; next} \$1 in ids' ${rrna_ids_file} "${meta.id}${ params.assay_suffix }.genes.results" | wc -l)
-        echo "\${sample_id}: \${rRNA_count} rRNA entries removed." > \${counts_file}
+            # Count rRNA entries
+            rRNA_count=\$(awk 'NR==FNR {ids[\$1]=1; next} \$1 in ids' ${rrna_ids_file} "${meta.id}${ params.assay_suffix }.genes.results" | wc -l)
+            echo "\${sample_id}: \${rRNA_count} rRNA entries removed." > \${counts_file}
+        fi
         """
 }
