@@ -254,8 +254,8 @@ nextflow run NF_RCP_2.1.0/main.nf \
 * `NF_RCP_2.1.0/main.nf` - Instructs Nextflow to run the NF_RCP workflow 
 
 * `-profile` - Specifies the configuration profile(s) to load, `singularity` instructs Nextflow to setup and use singularity for all software called in the workflow; use `local` for local execution ([local.config](workflow_code/conf/local.config)) or `slurm` for SLURM cluster execution ([slurm.config](workflow_code/conf/slurm.config))
-  > [!NOTE] 
-  > The output directory will be named `GLDS-#` when using a OSD or GLDS accession as input, or `results` when running the workflow with only a runsheet as input.
+> [!NOTE]
+> The output directory will be named `GLDS-#` when using a OSD or GLDS accession as input, or `results` when running the workflow with only a runsheet as input.
 
 <br>
 
@@ -319,8 +319,8 @@ nextflow run NF_RCP_2.1.0/main.nf \
 * `--derived_store_path` - specifies the directory to store the tool-specific indices created during processing (type: string, default: "./DerivedReferences")
 
 * `--mode` - specifies which pipeline to use: set to `default` to run GL-DPPD-7101-G pipeline or set to `microbes` for the GL-DPPD-7115 prokaryotic pipeline (type: string, default: "default")
-  > [!NOTE] 
-  > This allows the workflow to process either eukaryotic (default) or prokaryotic RNAseq data using the appropriate pipeline.
+> [!NOTE]
+> This allows the workflow to process either eukaryotic (default) or prokaryotic RNAseq data using the appropriate pipeline.
 
 * **DGE Filtering Parameters** - Options for filtering genes prior to DGE analysis:
 
@@ -341,8 +341,8 @@ nextflow run NF_RCP_2.1.0/main.nf \
   * `--dge_filter_count_per_sample_threshold` - Multiplier for sample-scaled count threshold (type: number, default: 1)
 
 * **Entry Point Parameters** - Options for starting the workflow from different processing steps:
-  > [!NOTE] 
-  > When using `--accession` and running the workflow from an intermediate entry point, the workflow downloads the input files from [OSDR](https://osdr.nasa.gov/bio/repo/) and generates the runsheet containing the required metadata. When using both `--accession` and `--runsheet_path` together, the workflow will validate that the runsheet contains the expected input file columns. See the [runsheet README](examples/runsheet/README.md) for runsheet format details.
+> [!NOTE]
+> When using `--accession` and running the workflow from an intermediate entry point, the workflow downloads the input files from [OSDR](https://osdr.nasa.gov/bio/repo/) and generates the runsheet containing the required metadata. When using both `--accession` and `--runsheet_path` together, the workflow will validate that the runsheet contains the expected input file columns. See the [runsheet README](examples/runsheet/README.md) for runsheet format details.
 
 * `--entry_point` - Specifies the workflow entry point to start from (default: `raw_reads`). Available options:
   - `raw_reads` - Start from raw read files (`.fastq.gz`) (default)
