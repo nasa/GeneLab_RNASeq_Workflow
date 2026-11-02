@@ -27,7 +27,7 @@ if (params.limit_samples_to || params.truncate_to || params.force_single_end || 
 
 include { RNASEQ } from './workflows/rnaseq.nf'
 include { RNASEQ_MICROBES } from './workflows/rnaseq_microbes.nf'
-include { STAGE_ANALYSIS } from './workflows/stage_analysis.nf'
+include { STAGE_ANALYSIS } from './subworkflows/stage_analysis.nf'
 
 include { GENERATE_MD5SUMS } from './modules/generate_md5sums.nf'
 include { UPDATE_ASSAY_TABLE } from './modules/update_assay_table.nf'
@@ -51,6 +51,9 @@ ch_force_single_end = Channel.value(params.force_single_end)
 
 ch_reference_store_path = Channel.value(params.reference_store_path)
 ch_derived_store_path = Channel.value(params.derived_store_path)
+
+// set entry point param
+ch_entry_point = params.entry_point ? Channel.value(params.entry_point) : Channel.value('auto-detect')
 
 // set reference params
 ch_reference_source = params.reference_source ? Channel.value(params.reference_source) : null
@@ -80,7 +83,8 @@ workflow {
             ch_reference_fasta,
             ch_reference_gtf,
             ch_reference_store_path,
-            ch_derived_store_path
+            ch_derived_store_path,
+            ch_entry_point
         )
     } else {
         RNASEQ(
@@ -98,7 +102,8 @@ workflow {
             ch_reference_fasta,
             ch_reference_gtf,
             ch_reference_store_path,
-            ch_derived_store_path
+            ch_derived_store_path,
+            ch_entry_point
         )
     }
 }

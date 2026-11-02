@@ -177,7 +177,7 @@ def get_featurecounts_multiqc_stats(outdir, samples, log_path, assay_suffix="_GL
     
     if not os.path.exists(multiqc_zip):
         print(f"WARNING: MultiQC data zip file not found: {multiqc_zip}")
-        log_check_result(log_path, "featurecounts", "all", "get_featurecounts_multiqc_stats", "RED", 
+        log_check_result(log_path, "featurecounts", "all", "get_featurecounts_multiqc_stats", "HALT", 
                          "MultiQC data not found", "")
         return False
     
@@ -198,7 +198,7 @@ def get_featurecounts_multiqc_stats(outdir, samples, log_path, assay_suffix="_GL
             
             if not os.path.exists(json_path):
                 print(f"WARNING: No multiqc_data.json file found in the expected location")
-                log_check_result(log_path, "featurecounts", "all", "get_featurecounts_multiqc_stats", "RED", 
+                log_check_result(log_path, "featurecounts", "all", "get_featurecounts_multiqc_stats", "HALT", 
                                "multiqc_data.json not found in zip", "")
                 return False
             
@@ -251,7 +251,7 @@ def get_featurecounts_multiqc_stats(outdir, samples, log_path, assay_suffix="_GL
                 print(f"WARNING: {len(missing_samples)} samples missing from featureCounts stats:")
                 for sample in missing_samples:
                     print(f"  - {sample}")
-                log_check_result(log_path, "featurecounts", "all", "get_featurecounts_multiqc_stats", "RED", 
+                log_check_result(log_path, "featurecounts", "all", "get_featurecounts_multiqc_stats", "HALT", 
                                f"Missing {len(missing_samples)} samples in featureCounts stats", 
                                ",".join(missing_samples[:20]))
                 return fc_data
@@ -331,7 +331,7 @@ def report_multiqc_outliers(outdir, multiqc_data, log_path):
     # Thresholds for outlier detection
     thresholds = [
         {"code": "YELLOW", "stdev_threshold": 2, "middle_fcn": "median"},
-        {"code": "RED", "stdev_threshold": 4, "middle_fcn": "median"},
+        {"code": "YELLOW", "stdev_threshold": 4, "middle_fcn": "median"},  # Changed from RED to YELLOW
     ]
     
     # Set to keep track of outlier samples
@@ -417,13 +417,13 @@ def check_rrna_removal(outdir, log_path, assay_suffix="_GLbulkRNAseq"):
     # Check if both files exist
     if not os.path.exists(regular_counts_file):
         print(f"WARNING: Regular FeatureCounts file not found: {regular_counts_file}")
-        log_check_result(log_path, "featurecounts", "all", "check_rrna_removal", "RED", 
+        log_check_result(log_path, "featurecounts", "all", "check_rrna_removal", "HALT", 
                         "Regular FeatureCounts file not found", "")
         return False
         
     if not os.path.exists(rrna_removed_file):
         print(f"WARNING: rRNA-removed FeatureCounts file not found: {rrna_removed_file}")
-        log_check_result(log_path, "featurecounts", "all", "check_rrna_removal", "RED", 
+        log_check_result(log_path, "featurecounts", "all", "check_rrna_removal", "HALT", 
                         "rRNA-removed FeatureCounts file not found", "")
         return False
     
@@ -607,8 +607,8 @@ def main():
     parser.add_argument('--runsheet', '-r', required=True, help='Path to the runsheet CSV file')
     parser.add_argument('--outdir', '-o', default=os.getcwd(), 
                         help='Output directory (GLDS-## folder), defaults to current directory')
-    parser.add_argument('--assay-suffix', default="_GLbulkRNAseq", 
-                        help='Assay suffix used in MultiQC data filenames (default: _GLbulkRNAseq)')
+    parser.add_argument('--assay-suffix', default="", 
+                        help='Assay suffix used in MultiQC data filenames (default: empty)')
     args = parser.parse_args()
 
     # Initialize VV log

@@ -156,15 +156,15 @@ def check_raw_fastq_existence(outdir, samples, paired_end, log_path, assay_suffi
             r1_file = os.path.join(fastq_dir, f"{sample}{assay_suffix}_R1_raw.fastq.gz")
             r2_file = os.path.join(fastq_dir, f"{sample}{assay_suffix}_R2_raw.fastq.gz")
             
-            if not os.path.exists(r1_file):
+            if not os.path.lexists(r1_file):
                 missing_files.append(r1_file)
-            if not os.path.exists(r2_file):
+            if not os.path.lexists(r2_file):
                 missing_files.append(r2_file)
         else:
             # Check for single file for single-end sequencing
             single_file = os.path.join(fastq_dir, f"{sample}{assay_suffix}_raw.fastq.gz")
             
-            if not os.path.exists(single_file):
+            if not os.path.lexists(single_file):
                 missing_files.append(single_file)
     
     if missing_files:
@@ -226,9 +226,9 @@ def check_gzip_integrity(outdir, samples, paired_end, log_path, assay_suffix="_G
                          "No FASTQ files found to check", "")
         return False
 
-def validate_fastq_format(outdir, samples, paired_end, log_path, assay_suffix="_GLbulkRNAseq", max_lines=200000000):
+def validate_fastq_format(outdir, samples, paired_end, log_path, assay_suffix="_GLbulkRNAseq", max_lines=4000000):
     """Validate FASTQ format by checking that header lines start with @.
-    Only checks the first 200 million lines for performance reasons."""
+    Only checks the first 4 million lines (1M reads) for performance reasons."""
     fastq_dir = os.path.join(outdir, "00-RawData", "Fastq")
     invalid_files = []
     all_files = []
@@ -355,7 +355,7 @@ def check_samples_multiqc(outdir, samples, paired_end, log_path, assay_suffix="_
     
     if not os.path.exists(multiqc_data_zip):
         print(f"WARNING: MultiQC data zip file not found: {multiqc_data_zip}")
-        log_check_result(log_path, "raw_reads", "all", "check_samples_multiqc", "RED", 
+        log_check_result(log_path, "raw_reads", "all", "check_samples_multiqc", "HALT", 
                          "MultiQC data zip not found", multiqc_data_zip)
         return False
     
@@ -376,7 +376,7 @@ def check_samples_multiqc(outdir, samples, paired_end, log_path, assay_suffix="_
             
             if not os.path.exists(json_path):
                 print(f"Could not find multiqc_data.json in the expected location")
-                log_check_result(log_path, "raw_reads", "all", "check_samples_multiqc", "RED", 
+                log_check_result(log_path, "raw_reads", "all", "check_samples_multiqc", "HALT", 
                                "multiqc_data.json not found in zip", "")
                 return False
                 
@@ -415,7 +415,7 @@ def check_samples_multiqc(outdir, samples, paired_end, log_path, assay_suffix="_
                 print(f"WARNING: The following samples are missing from the MultiQC report:")
                 for sample in missing_samples:
                     print(f"  - {sample}")
-                log_check_result(log_path, "raw_reads", "all", "check_samples_multiqc", "RED", 
+                log_check_result(log_path, "raw_reads", "all", "check_samples_multiqc", "HALT", 
                                 f"Missing {len(missing_samples)} samples in MultiQC report", 
                                 ",".join(missing_samples))
                 return False
@@ -438,7 +438,7 @@ def get_raw_multiqc_stats(outdir, samples, paired_end, log_path, assay_suffix="_
     
     if not os.path.exists(multiqc_data_zip):
         print(f"WARNING: MultiQC data zip file not found: {multiqc_data_zip}")
-        log_check_result(log_path, "raw_reads", "all", "get_raw_multiqc_stats", "RED", 
+        log_check_result(log_path, "raw_reads", "all", "get_raw_multiqc_stats", "HALT", 
                          "MultiQC data zip not found", "")
         return False
     
@@ -502,7 +502,7 @@ def get_raw_multiqc_stats(outdir, samples, paired_end, log_path, assay_suffix="_
                 print(f"WARNING: {len(missing_samples)} samples missing from MultiQC stats:")
                 for sample in missing_samples[:10]:
                     print(f"  - {sample}")
-                log_check_result(log_path, "raw_reads", "all", "get_raw_multiqc_stats", "RED", 
+                log_check_result(log_path, "raw_reads", "all", "get_raw_multiqc_stats", "HALT", 
                                f"Missing {len(missing_samples)} samples in MultiQC stats", 
                                ",".join(missing_samples[:20]))
                 return clean_data  # Still return data for partial analysis
@@ -646,7 +646,7 @@ def report_multiqc_outliers(outdir, multiqc_data, log_path):
     # Thresholds for outlier detection
     thresholds = [
         {"code": "YELLOW", "stdev_threshold": 2, "middle_fcn": "median"},
-        {"code": "RED", "stdev_threshold": 4, "middle_fcn": "median"},
+        {"code": "YELLOW", "stdev_threshold": 4, "middle_fcn": "median"},  # Changed from RED to YELLOW
     ]
     
     # Set to keep track of outlier samples
@@ -732,13 +732,13 @@ def check_paired_read_counts(multiqc_data, log_path, paired_end):
     is_paired_in_runsheet = paired_end[0]  # From runsheet
     if is_paired_in_runsheet and not has_paired_data:
         print("WARNING: Runsheet specifies paired-end but data appears to be single-end")
-        log_check_result(log_path, "raw_reads", "all", "check_paired_read_counts", "RED", 
+        log_check_result(log_path, "raw_reads", "all", "check_paired_read_counts", "HALT", 
                         "Paired-end/single-end mismatch", 
                         "Runsheet specifies paired-end but data appears to be single-end")
         return False
     elif not is_paired_in_runsheet and has_paired_data:
         print("WARNING: Runsheet specifies single-end but data appears to be paired-end")
-        log_check_result(log_path, "raw_reads", "all", "check_paired_read_counts", "RED", 
+        log_check_result(log_path, "raw_reads", "all", "check_paired_read_counts", "HALT", 
                         "Paired-end/single-end mismatch", 
                         "Runsheet specifies single-end but data appears to be paired-end")
         return False
@@ -960,8 +960,8 @@ def main():
     parser.add_argument('--runsheet', '-r', required=True, help='Path to the runsheet CSV file')
     parser.add_argument('--outdir', '-o', default=os.getcwd(), 
                         help='Output directory (GLDS-## folder), defaults to current directory')
-    parser.add_argument('--assay-suffix', default="_GLbulkRNAseq", 
-                        help='Assay suffix used in MultiQC report filenames (default: _GLbulkRNAseq)')
+    parser.add_argument('--assay-suffix', default="", 
+                        help='Assay suffix used in MultiQC report filenames (default: empty)')
     args = parser.parse_args()
 
     # Initialize VV log

@@ -20,10 +20,11 @@ process VV_RAW_READS {
     path("versions.yml"), emit: versions
 
   script:
+    def assay_suffix_arg = params.assay_suffix ? "--assay-suffix ${params.assay_suffix}" : ""
     """
     # Run V&V unless user requests to skip V&V
     if ${ !params.skip_vv } ; then
-      vv_raw_reads.py --runsheet ${runsheet} --outdir ${publishdir} --assay-suffix ${params.assay_suffix}
+      vv_raw_reads.py --runsheet ${runsheet} --outdir ${publishdir} ${assay_suffix_arg}
     fi
 
     echo '"${task.process}":' > versions.yml
@@ -49,13 +50,18 @@ process VV_TRIMMED_READS {
 
   output:
     path("VV_log.csv"), optional: params.skip_vv, emit: log
+    path("versions.yml"), emit: versions
 
   script:
+    def assay_suffix_arg = params.assay_suffix ? "--assay-suffix ${params.assay_suffix}" : ""
     """
     # Run V&V unless user requests to skip V&V
     if ${ !params.skip_vv } ; then
-      vv_trimmed_reads.py --runsheet ${runsheet} --outdir ${publishdir} --assay-suffix ${params.assay_suffix}
+      vv_trimmed_reads.py --runsheet ${runsheet} --outdir ${publishdir} ${assay_suffix_arg}
     fi
+
+    echo '"${task.process}":' > versions.yml
+    echo "    dp_tools: \$(pip show dp_tools | grep Version | sed 's/Version: //')" >> versions.yml
     """
 }
 
@@ -78,13 +84,18 @@ process VV_BOWTIE2_ALIGNMENT {
     
   output:
     path("VV_log.csv"), optional: params.skip_vv, emit: log
+    path("versions.yml"), emit: versions
 
   script:
+    def assay_suffix_arg = params.assay_suffix ? "--assay-suffix ${params.assay_suffix}" : ""
     """
     # Run V&V unless user requests to skip V&V
     if ${ !params.skip_vv } ; then
-      vv_bowtie2_alignment.py --runsheet ${runsheet} --outdir ${publishdir} --assay-suffix ${params.assay_suffix}
+      vv_bowtie2_alignment.py --runsheet ${runsheet} --outdir ${publishdir} ${assay_suffix_arg}
     fi
+
+    echo '"${task.process}":' > versions.yml
+    echo "    dp_tools: \$(pip show dp_tools | grep Version | sed 's/Version: //')" >> versions.yml
     """
 } 
 
@@ -109,13 +120,18 @@ process VV_RSEQC {
 
   output:
       path("VV_log.csv"), optional: params.skip_vv, emit: log
+      path("versions.yml"), emit: versions
 
   script:
+    def assay_suffix_arg = params.assay_suffix ? "--assay_suffix ${params.assay_suffix}" : ""
     """
     # Run V&V unless user requests to skip V&V
     if ${ !params.skip_vv } ; then
-      vv_rseqc.py --runsheet ${runsheet} --outdir ${publishdir} --assay_suffix ${params.assay_suffix}
+      vv_rseqc.py --runsheet ${runsheet} --outdir ${publishdir} ${assay_suffix_arg}
     fi
+
+    echo '"${task.process}":' > versions.yml
+    echo "    dp_tools: \$(pip show dp_tools | grep Version | sed 's/Version: //')" >> versions.yml
     """
 }
 
@@ -138,13 +154,18 @@ process VV_FEATURECOUNTS {
 
   output:
     path("VV_log.csv"), optional: params.skip_vv, emit: log
+    path("versions.yml"), emit: versions
 
   script:
+  def assay_suffix_arg = params.assay_suffix ? "--assay-suffix ${params.assay_suffix}" : ""
   """
   # Run V&V unless user requests to skip V&V
   if ${ !params.skip_vv } ; then
-    vv_featurecounts.py --runsheet ${runsheet} --outdir ${publishdir} --assay-suffix ${params.assay_suffix}
+    vv_featurecounts.py --runsheet ${runsheet} --outdir ${publishdir} ${assay_suffix_arg}
   fi
+
+  echo '"${task.process}":' > versions.yml
+  echo "    dp_tools: \$(pip show dp_tools | grep Version | sed 's/Version: //')" >> versions.yml
   """
 }
 
@@ -167,13 +188,18 @@ process VV_DGE_DESEQ2 {
 
   output:
     path("VV_log.csv"), optional: params.skip_vv, emit: log
-
+    path("versions.yml"), emit: versions
+    
   script:
   def mode_params = params.mode == "microbes" ? "--mode microbes" : ""
+  def assay_suffix_arg = params.assay_suffix ? "--assay_suffix ${params.assay_suffix}" : ""
   """
   if ${ !params.skip_vv } ; then
-    vv_dge_deseq2.py --runsheet ${runsheet} --outdir ${publishdir} --assay_suffix ${params.assay_suffix} ${mode_params}
+    vv_dge_deseq2.py --runsheet ${runsheet} --outdir ${publishdir} ${assay_suffix_arg} ${mode_params}
   fi
+
+  echo '"${task.process}":' > versions.yml
+  echo "    dp_tools: \$(pip show dp_tools | grep Version | sed 's/Version: //')" >> versions.yml
   """
 }
 
@@ -199,10 +225,11 @@ process VV_STAR_ALIGNMENT {
     path("VV_log.csv"), optional: params.skip_vv, emit: log
 
   script:
+    def assay_suffix_arg = params.assay_suffix ? "--assay-suffix ${params.assay_suffix}" : ""
     """
     # Run V&V unless user requests to skip V&V
     if ${ !params.skip_vv } ; then
-      vv_star_alignment.py --runsheet ${runsheet} --outdir ${publishdir} --assay-suffix ${params.assay_suffix}
+      vv_star_alignment.py --runsheet ${runsheet} --outdir ${publishdir} ${assay_suffix_arg}
     fi
     """
 }
@@ -227,13 +254,18 @@ process VV_RSEM_COUNTS {
     
   output:
     path("VV_log.csv"), optional: params.skip_vv, emit: log
+    path("versions.yml"), emit: versions
   
   script:
+    def assay_suffix_arg = params.assay_suffix ? "--assay-suffix ${params.assay_suffix}" : ""
     """
     # Run V&V unless user requests to skip V&V
     if ${ !params.skip_vv } ; then
-      vv_rsem_counts.py --runsheet ${runsheet} --outdir ${publishdir} --assay-suffix ${params.assay_suffix}
+      vv_rsem_counts.py --runsheet ${runsheet} --outdir ${publishdir} ${assay_suffix_arg}
     fi
+
+    echo '"${task.process}":' > versions.yml
+    echo "    dp_tools: \$(pip show dp_tools | grep Version | sed 's/Version: //')" >> versions.yml
     """
 }
 
@@ -251,8 +283,9 @@ process VV_CONCAT_FILTER {
     tuple path("VV_log_final${params.assay_suffix}.csv"), path("VV_log_final_only_issues${params.assay_suffix}.csv")
 
   script:
+    def assay_suffix_arg = params.assay_suffix ? "--assay_suffix ${params.assay_suffix}" : ""
     """
-    concat_logs.py --assay_suffix ${params.assay_suffix}
-    filter_to_only_issues.py --assay_suffix ${params.assay_suffix}
+    concat_logs.py ${assay_suffix_arg}
+    filter_to_only_issues.py ${assay_suffix_arg}
     """
 }

@@ -38,6 +38,13 @@ process PARSE_ANNOTATIONS_TABLE {
         fasta_url = organisms[organism_key][5]
         gtf_url = organisms[organism_key][6]
         gene_annotations_url = organisms[organism_key][10]
+        
+        // Convert figshare ndownloader URL to API endpoint
+        if (gene_annotations_url != null && gene_annotations_url.contains('figshare.com/ndownloader/files/')) {
+            file_id = (gene_annotations_url =~ /.*\/files\/([a-zA-Z0-9]+).*/)[0][1]
+            gene_annotations_url = "https://api.figshare.com/v2/file/download/${file_id}"
+        }
+        
         reference_version = organisms[organism_key][3]
         reference_source = organisms[organism_key][4]
         println "Annotation table values parsed for '${organism_key}':"

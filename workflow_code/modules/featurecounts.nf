@@ -4,6 +4,8 @@ process FEATURECOUNTS {
     pattern: "FeatureCounts*",
     mode: params.publish_dir_mode
 
+    tag "Strandedness: ${ strandedness }"
+
   input:
     val(publishdir)
     val(meta)

@@ -146,10 +146,10 @@ def main(versions_json_path: Path, output_path: Path, assay: str = 'rnaseq', wor
                         if compare_versions(ver_str, existing) or prefer_more_precise_representation(ver_str, existing):
                             processed_versions[normalized_name] = ver_str
     
-    # Always ensure gtfToGenePred and genePredToBed are included with version 469
-    if "gtfToGenePred" not in processed_versions:
+    # Force gtfToGenePred and genePredToBed to version 469 IF they are present
+    if "gtfToGenePred" in processed_versions:
         processed_versions["gtfToGenePred"] = "469"
-    if "genePredToBed" not in processed_versions:
+    if "genePredToBed" in processed_versions:
         processed_versions["genePredToBed"] = "469"
     
 

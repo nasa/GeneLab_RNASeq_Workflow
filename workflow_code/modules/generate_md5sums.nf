@@ -11,7 +11,8 @@ process GENERATE_MD5SUMS {
         path("processed_md5sum${params.assay_suffix}.tsv"), emit: processed_md5sum
 
     script:
+        def assay_suffix_arg = params.assay_suffix ? "--assay_suffix ${params.assay_suffix}" : ""
         """
-        generate_md5sums.py --outdir ${ch_outdir} --assay_suffix ${params.assay_suffix}
+        generate_md5sums.py --outdir ${ch_outdir} ${assay_suffix_arg}
         """
 }
