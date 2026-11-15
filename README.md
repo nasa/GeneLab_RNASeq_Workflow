@@ -323,7 +323,7 @@ nextflow run NF_RCP_2.1.1/main.nf \
 
 * `--pbs_internet_queue` - PBS queue for fetch/download processes when using `-profile pbspro` (type: string, default: ""). Empty uses `--pbs_queue`.
 
-* `--walltime` - default process walltime for `-profile slurm` / `pbspro` (type: string, default: "2.h"). `-profile pbspro` caps all process walltimes at 8h.
+* `--walltime` - Default walltime for `-profile slurm` / `pbspro`, used by processes without an explicit `time` setting in [process_resources.config](workflow_code/conf/process_resources.config). Process-specific `time` settings take precedence over this parameter. The `pbspro` profile caps all process walltimes at 8h (type: string, default: "2.h").
 
 * `--mode` - specifies which pipeline to use: set to `default` to run GL-DPPD-7101-G pipeline or set to `microbes` for the GL-DPPD-7115 prokaryotic pipeline (type: string, default: "default")
 > [!NOTE]
