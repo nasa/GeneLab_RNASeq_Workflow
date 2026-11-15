@@ -260,21 +260,21 @@ nextflow run NF_RCP_2.1.1/main.nf \
 
 **Additional Required Parameters For [Approach 1](#4a-approach-1-run-the-workflow-on-a-genelab-rnaseq-dataset-with-automatic-retrieval-of-reference-fasta-and-gtf-files):**
 
-* `--accession` - The OSD or GLDS ID for the dataset to be processed, eg. `GLDS-194` or `OSD-194`
+* `--accession` - The OSD or GLDS ID for the dataset to be processed, eg. `GLDS-194` or `OSD-194` (type: string, default: null)
 
 <br>
 
 **Additional Required Parameters For [Approach 2](#4b-approach-2-run-the-workflow-on-a-genelab-rnaseq-dataset-with-custom-reference-fasta-and-gtf-files):**
 
-* `--accession` - The OSD or GLDS ID for the dataset to be processed, eg. `GLDS-194` or `OSD-194`
+* `--accession` - The OSD or GLDS ID for the dataset to be processed, eg. `GLDS-194` or `OSD-194` (type: string, default: null)
 
-* `--reference_version` - specifies the reference source version to use for the reference genome (Ensembl release `112` is used in this example); only needed when using Ensembl as the reference source
+* `--reference_version` - specifies the reference source version to use for the reference genome (Ensembl release `112` is used in this example); only needed when using Ensembl as the reference source (type: string, default: "")
 
-* `--reference_source` - specifies the source of the reference files used (the source indicated in the Approach 2 example is `ensembl`) 
+* `--reference_source` - specifies the source of the reference files used (the source indicated in the Approach 2 example is `ensembl`) (type: string, default: "")
 
-* `--reference_fasta` - Specifies the path or URL to a fasta file
+* `--reference_fasta` - Specifies the path or URL to a fasta file (type: string, default: "")
 
-* `--reference_gtf` - Specifies the path or URL to a gtf file
+* `--reference_gtf` - Specifies the path or URL to a gtf file (type: string, default: "")
 
 <br>
 
@@ -288,19 +288,19 @@ nextflow run NF_RCP_2.1.1/main.nf \
 
 * `--runsheet_path` - Specifies the path to a local runsheet; if not provided, a runsheet is automatically generated using OSDR metadata (type: string, default: null)
 
-* `--reference_version` - specifies the reference source version to use for the reference genome (Ensembl release `112` is used in this example); only needed when using Ensembl as the reference source
+* `--reference_version` - specifies the reference source version to use for the reference genome (Ensembl release `112` is used in this example); only needed when using Ensembl as the reference source (type: string, default: "")
 
-* `--reference_source` - specifies the source of the reference files used (the source indicated in the Approach 2 example is `ensembl`) 
+* `--reference_source` - specifies the source of the reference files used (the source indicated in the Approach 2 example is `ensembl`) (type: string, default: "")
 
-* `--reference_fasta` - Specifies the path or URL to a fasta file
+* `--reference_fasta` - Specifies the path or URL to a fasta file (type: string, default: "")
 
-* `--reference_gtf` - Specifies the path or URL to a gtf file
+* `--reference_gtf` - Specifies the path or URL to a gtf file (type: string, default: "")
 
 <br>
 
 #### Optional Parameters:
 
-* `--gene_annotations_file` - Specifies the path or URL to a gene annotation file that adds additional gene annotation columns to the differential expression output table. This can be:
+* `--gene_annotations_file` - Specifies the path or URL to a gene annotation file that adds additional gene annotation columns to the differential expression output table (type: string, default: null). This can be:
 
   - The file listed in the `genelab_annots_link` column of the [GeneLab annotations table](https://github.com/nasa/GeneLab_Data_Processing/blob/master/GeneLab_Reference_Annotations/Pipeline_GL-DPPD-7110_Versions/GL-DPPD-7110-A/GL-DPPD-7110-A_annotations.csv)
   - A custom gene annotation file where:
@@ -317,20 +317,20 @@ nextflow run NF_RCP_2.1.1/main.nf \
 
 * `--derived_store_path` - Specifies the path to the directory used to store the tool-specific indices created during processing (type: string, default: "./DerivedReferences")
 
-* `--pbs_queue` - PBS Pro queue when using `-profile pbspro` (default: `normal`)
+* `--pbs_queue` - PBS Pro queue when using `-profile pbspro` (type: string, default: "normal")
 
-* `--pbs_model` - PBS node model when using `-profile pbspro` (type: string, default: none). Adds `:model=<name>` to the job request. Leave unset if the scheduler does not use a model resource.
+* `--pbs_model` - PBS node model when using `-profile pbspro` (type: string, default: ""). Adds `:model=<name>` to the job request. Leave unset if the scheduler does not use a model resource.
 
-* `--pbs_internet_queue` - PBS queue for fetch/download processes when using `-profile pbspro` (default: none). Empty uses `--pbs_queue`.
+* `--pbs_internet_queue` - PBS queue for fetch/download processes when using `-profile pbspro` (type: string, default: ""). Empty uses `--pbs_queue`.
 
-* `--walltime` - default process walltime for `-profile slurm` / `pbspro` (default: `2.h`). `-profile pbspro` caps all process walltimes at 8h.
+* `--walltime` - default process walltime for `-profile slurm` / `pbspro` (type: string, default: "2.h"). `-profile pbspro` caps all process walltimes at 8h.
 
 * `--mode` - specifies which pipeline to use: set to `default` to run GL-DPPD-7101-G pipeline or set to `microbes` for the GL-DPPD-7115 prokaryotic pipeline (type: string, default: "default")
 > [!NOTE]
 > This allows the workflow to process either eukaryotic (default) or prokaryotic RNAseq data using the appropriate pipeline.
 
-* `--dge_parallel_config` - DESeq2 backend: `serial` (default), `multicore` or `snow` (socket workers).
-* `--dge_parallel_cores` - CPUs requested for DESeq2 processes if `dge_parallel_config` is `multicore` or `snow`.
+* `--dge_parallel_config` - DESeq2 backend: `serial`, `multicore` or `snow` (socket workers) (type: string, default: "serial")
+* `--dge_parallel_cores` - CPUs requested for DESeq2 processes if `dge_parallel_config` is `multicore` or `snow` (type: integer, default: 4)
 
 * **DGE Filtering Parameters** - Options for filtering genes prior to DGE analysis:
 
@@ -358,7 +358,7 @@ nextflow run NF_RCP_2.1.1/main.nf \
 > [!NOTE]
 > When using `--accession` and running the workflow from an intermediate entry point, the workflow downloads the input files from [OSDR](https://osdr.nasa.gov/bio/repo/) and generates the runsheet containing the required metadata. When using both `--accession` and `--runsheet_path` together, the workflow will validate that the runsheet contains the expected input file columns. See the [runsheet README](examples/runsheet/README.md) for runsheet format details.
 
-* `--entry_point` - Specifies the workflow entry point to start from (default: `raw_reads`). Available options:
+* `--entry_point` - Specifies the workflow entry point to start from (type: string, default: "raw_reads"). Available options:
   - `raw_reads` - Start from raw read files (`.fastq.gz`) (default)
   - `trimmed_reads` - Start from trimmed read files (`.fastq.gz`). Raw read quality-checking and trimming are skipped
   - `bam_files` - Start from BAM files (`.bam`). For `--mode default`, expects STAR-aligned transcriptome BAM files. For `--mode microbes`, expects Bowtie2-aligned BAM files. With `--mode default` and `--strandedness auto`, also supply a matching genomic BAM for each sample in the runsheet column `genome_bam_path`. References must match the BAMs’ original assembly and annotation release.
@@ -366,11 +366,11 @@ nextflow run NF_RCP_2.1.1/main.nf \
   - `counts_table` - Start from a raw counts table (`.csv`)
   - `dge_table` - Start from a DGE output table. Adds gene annotation columns to the input table or replaces them if they already exist (`.csv`)
 
-* `--strandedness` - `auto`, `none`, `forward`, or `reverse` (default: `auto`). `auto` = infer strandedness from RSeQC infer_experiment. `none`/`forward`/`reverse` overrides RSeQC output. For `--entry_point bam_files`, `auto` uses the matching genomic BAM in default mode and `bam_path` in microbes mode. With explicit `none`, `forward`, or `reverse`, only `bam_path` is needed.
+* `--strandedness` - `auto`, `none`, `forward`, or `reverse` (type: string, default: "auto"). `auto` = infer strandedness from RSeQC infer_experiment. `none`/`forward`/`reverse` overrides RSeQC output. For `--entry_point bam_files`, `auto` uses the matching genomic BAM in default mode and `bam_path` in microbes mode. With explicit `none`, `forward`, or `reverse`, only `bam_path` is needed.
 
-* `--counts_table_path` - Specifies the path to a raw counts table (`.csv`). Used with `--entry_point counts_table` instead of a `counts_table_path` runsheet column.
+* `--counts_table_path` - Specifies the path to a raw counts table (`.csv`). Used with `--entry_point counts_table` instead of a `counts_table_path` runsheet column (type: string, default: null)
 
-* `--dge_table_path` - Specifies the path to a DGE table (`.csv`). Used with `--entry_point dge_table` instead of a `dge_table_path` runsheet column.
+* `--dge_table_path` - Specifies the path to a DGE table (`.csv`). Used with `--entry_point dge_table` instead of a `dge_table_path` runsheet column (type: string, default: null)
 
 * `--stage_only` - Publish the runsheet and staged inputs for the selected `--entry_point`, then exit. `truncate_to` applies to raw and trimmed reads (type: boolean, default: false)
 
