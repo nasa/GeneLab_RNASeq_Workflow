@@ -356,7 +356,7 @@ nextflow run NF_RCP_2.1.1/main.nf \
 
 * **Entry Point Parameters** - Options for starting the workflow from different processing steps:
 > [!NOTE]
-> When using `--accession` and running the workflow from an intermediate entry point, the workflow downloads the input files from [OSDR](https://osdr.nasa.gov/bio/repo/) and generates the runsheet containing the required metadata. When using both `--accession` and `--runsheet_path` together, the workflow will validate that the runsheet contains the expected input file columns. See the [runsheet README](examples/runsheet/README.md) for runsheet format details.
+> When using `--accession` and running the workflow from an intermediate entry point, the workflow downloads the input files from [OSDR](https://osdr.nasa.gov/bio/repo/) and generates the runsheet containing the required metadata. See the [runsheet README](examples/runsheet/README.md) for runsheet format details.
 
 * `--entry_point` - Specifies the workflow entry point to start from (type: string, default: "raw_reads"). Available options:
   - `raw_reads` - Start from raw read files (`.fastq.gz`) (default)
