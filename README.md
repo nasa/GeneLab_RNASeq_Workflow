@@ -438,10 +438,10 @@ Standard Nextflow resource usage logs are also produced as follows:
 **Nextflow Resource Usage Logs**
 
    - Output:
-     - nextflow_info/execution_report_{timestamp}.html (an html report that includes metrics about the workflow execution including computational resources and exact workflow process commands)
-     - nextflow_info/execution_timeline_{timestamp}.html (an html timeline for all processes executed in the workflow)
-     - nextflow_info/execution_trace_{timestamp}.txt (an execution tracing file that contains information about each process executed in the workflow, including: submission time, start time, completion time, cpu and memory used, machine-readable output)
-     - nextflow_info/pipeline_dag_{timestamp}.html (a visualization of the workflow process DAG)
+     - Resource_Usage/execution_report_{timestamp}.html (an html report that includes metrics about the workflow execution including computational resources and exact workflow process commands)
+     - Resource_Usage/execution_timeline_{timestamp}.html (an html timeline for all processes executed in the workflow)
+     - Resource_Usage/execution_trace_{timestamp}.txt (an execution tracing file that contains information about each process executed in the workflow, including: submission time, start time, completion time, cpu and memory used, machine-readable output)
+     - Resource_Usage/pipeline_dag_{timestamp}.html (a visualization of the workflow process DAG)
 
 <br>
 
