@@ -90,7 +90,9 @@ Below is a description of each subworkflow and the additional output files gener
    4b. [Approach 2: Run the workflow on a GeneLab RNAseq dataset with custom reference fasta and gtf files](#4b-approach-2-run-the-workflow-on-a-genelab-rnaseq-dataset-with-custom-reference-fasta-and-gtf-files)  
    4c. [Approach 3: Run the workflow on a non-GeneLab dataset using a user-created runsheet with automatic retrieval of reference fasta and gtf files](#4c-approach-3-run-the-workflow-on-a-non-genelab-dataset-using-a-user-created-runsheet-with-automatic-retrieval-of-reference-fasta-and-gtf-files)  
    4d. [Approach 4: Run the workflow on a non-GeneLab dataset using a user-created runsheet with custom reference fasta and gtf files](#4d-approach-4-run-the-workflow-on-a-non-genelab-dataset-using-a-user-created-runsheet-with-custom-reference-fasta-and-gtf-files)  
-5. [Additional Output Files](#5-additional-output-files)  
+5. [Workflow Outputs](#5-workflow-outputs)  
+   5a. [Main outputs](#5a-main-outputs)  
+   5b. [Resource logs](#5b-resource-logs)  
 
 <br>
 
@@ -392,7 +394,9 @@ See `nextflow run -h` and [Nextflow's CLI run command documentation](https://nex
 
 ---
 
-### 5. Additional Output Files
+### 5. Workflow Outputs
+
+#### 5a. Main outputs
 
 The outputs from the Analysis Staging and V&V Pipeline Subworkflows are described below:
 > [!NOTE] 
@@ -431,6 +435,8 @@ The outputs from the Analysis Staging and V&V Pipeline Subworkflows are describe
     - GeneLab/qc_metrics_GLbulkRNAseq.csv (comma-separated text file containing a summary of qc metrics and metadata for the dataset, see the [QC metrics README](./QC_metrics_README.md) for a complete list of field definitions)
 
 <br>
+
+#### 5b. Resource logs
 
 Standard Nextflow resource usage logs are also produced as follows:
 > Further details about these logs can also found within [this Nextflow documentation page](https://www.nextflow.io/docs/latest/tracing.html#execution-report).
