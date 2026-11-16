@@ -135,7 +135,7 @@ All files required for utilizing the NF_RCP GeneLab workflow for processing RNAs
 copy of latest NF_RCP version on to your system, the code can be downloaded as a zip file from the release page then unzipped after downloading by running the following commands: 
 
 ```bash
-wget https://github.com/nasa/GeneLab_RNASeq_Workflow/releases/download/NF_RCP_2.1.1/NF_RCP_2.1.1.zip
+wget https://github.com/nasa/GeneLab_RNASeq_Workflow/releases/download/v2.1.1/NF_RCP_2.1.1.zip
 
 unzip NF_RCP_2.1.1.zip
 ```
