@@ -280,13 +280,13 @@ nextflow run NF_RCP_2.1.1/main.nf \
 
 **Additional Required Parameters For [Approach 3](#4c-approach-3-run-the-workflow-on-a-non-genelab-dataset-using-a-user-created-runsheet-with-automatic-retrieval-of-reference-fasta-and-gtf-files):**
 
-* `--runsheet_path` - Specifies the path to a local runsheet; if not provided, a runsheet is automatically generated using OSDR metadata (type: string, default: null)
+* `--runsheet_path` - Specifies the path to a local runsheet (type: string, default: null)
 
 <br>
 
 **Additional Required Parameters For [Approach 4](#4d-approach-4-run-the-workflow-on-a-non-genelab-dataset-using-a-user-created-runsheet-with-custom-reference-fasta-and-gtf-files):**
 
-* `--runsheet_path` - Specifies the path to a local runsheet; if not provided, a runsheet is automatically generated using OSDR metadata (type: string, default: null)
+* `--runsheet_path` - Specifies the path to a local runsheet (type: string, default: null)
 
 * `--reference_version` - specifies the reference source version to use for the reference genome (Ensembl release `112` is used in this example); only needed when using Ensembl as the reference source (type: string, default: "")
 
