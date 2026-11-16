@@ -439,7 +439,6 @@ The outputs from the Analysis Staging and V&V Pipeline Subworkflows are describe
 #### 5b. Resource logs
 
 Standard Nextflow resource usage logs are also produced as follows:
-> Further details about these logs can also found within [this Nextflow documentation page](https://www.nextflow.io/docs/latest/tracing.html#execution-report).
 
 **Nextflow Resource Usage Logs**
 
@@ -448,6 +447,8 @@ Standard Nextflow resource usage logs are also produced as follows:
      - Resource_Usage/execution_timeline_{timestamp}.html (an html timeline for all processes executed in the workflow)
      - Resource_Usage/execution_trace_{timestamp}.txt (an execution tracing file that contains information about each process executed in the workflow, including: submission time, start time, completion time, cpu and memory used, machine-readable output)
      - Resource_Usage/pipeline_dag_{timestamp}.html (a visualization of the workflow process DAG)
+
+> Further details about these logs can also found within [this Nextflow documentation page](https://www.nextflow.io/docs/latest/tracing.html#execution-report).
 
 <br>
 
