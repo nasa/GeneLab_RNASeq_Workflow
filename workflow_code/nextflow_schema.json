@@ -156,13 +156,13 @@
           "description": "Input OSD or GLDS identifier as 'OSD-#' or 'GLDS-#' if processing an OSDR dataset.",
           "pattern": "^(OSD|GLDS)-[0-9]+$"
         },
-        "runsheet_path": {
+        "runsheet": {
           "type": "string",
           "description": "Path to the input runsheet.",
           "format": "file-path",
           "schema": "./conf/runsheet_schema.json"
         },
-        "isa_archive_path": {
+        "isa_archive": {
           "type": "string",
           "description": "Path to the ISA.zip for an OSDR dataset. '--accession' must also be used.",
           "format": "file-path"

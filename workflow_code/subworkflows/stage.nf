@@ -138,7 +138,7 @@ workflow STAGE {
         channel.empty() | set { counts_table }
         channel.empty() | set { dge_table }
 
-        def no_runsheet = (params.runsheet_path == null)
+        def no_runsheet = (params.runsheet == null)
         def counts_override = (ep == 'counts_table' && params.counts_table_path)
         def dge_override = (ep == 'dge_table' && params.dge_table_path)
         def update_osdr = no_runsheet && ep != 'raw_reads' && !counts_override && !dge_override

@@ -62,8 +62,8 @@ workflow {
                 channel.value(dp_tools_plugin()),
                 channel.value(params.reference_table),
                 params.accession ? channel.value(params.accession) : null,
-                params.isa_archive_path ? channel.fromPath(params.isa_archive_path) : null,
-                params.runsheet_path ? channel.fromPath(params.runsheet_path) : null,
+                params.isa_archive ? channel.fromPath(params.isa_archive) : null,
+                params.runsheet ? channel.fromPath(params.runsheet) : null,
                 channel.value(params.api_url),
                 channel.value(params.reference_store_path),
                 channel.value(params.derived_store_path)
@@ -87,8 +87,8 @@ workflow STAGE_ONLY {
             channel.value(workflow.outputDir),
             channel.value(dp_tools_plugin()),
             params.accession ? channel.value(params.accession) : null,
-            params.isa_archive_path ? channel.fromPath(params.isa_archive_path) : null,
-            params.runsheet_path ? channel.fromPath(params.runsheet_path) : null,
+            params.isa_archive ? channel.fromPath(params.isa_archive) : null,
+            params.runsheet ? channel.fromPath(params.runsheet) : null,
             channel.value(params.api_url)
         )
         ch_pub = STAGE.out.published

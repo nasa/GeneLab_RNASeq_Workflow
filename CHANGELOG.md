@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Rename `--runsheet_path` and `--isa_archive_path` to `--runsheet` and `--isa_archive`.
 - Require Nextflow 26.04 or later.
 - Replace `-entry STAGE_ONLY` and `-entry POST_PROCESSING` with `--stage_only` and `--post_processing`. Stage-only supports every entry point.
 - Default `--strandedness` to `auto`; default-mode BAM entry requires a paired genomic BAM or explicit strandedness.
