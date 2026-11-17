@@ -352,7 +352,7 @@ nextflow run NF_RCP_2.1.1/main.nf \
   
   * `--dge_filter_count_per_sample_threshold` - Multiplier for sample-scaled count threshold (type: number, default: 1)
 
-  * `--drop_unalignable` - Exclude samples from DGE when RSEM `pct_unalignable` is at or above `--unalignable_threshold` (type: boolean, default: true). Default mode only; no-op for microbes and for `counts_table` / `genes_results` / `dge_table`.
+  * `--drop_unalignable` - Exclude samples from DGE when RSEM `pct_unalignable` is at or above `--unalignable_threshold` (type: boolean, default: true). Default mode only; no-op for microbes and for counts_table / genes_results / dge_table.
 
   * `--unalignable_threshold` - Percent unalignable at or above which a sample is dropped from count normalization and DGE (type: number, default: 60)
 
@@ -361,20 +361,20 @@ nextflow run NF_RCP_2.1.1/main.nf \
 > When using `--accession` and running the workflow from an intermediate entry point, the workflow downloads the input files from [OSDR](https://osdr.nasa.gov/bio/repo/) and generates the runsheet containing the required metadata. See the [runsheet README](examples/runsheet/README.md) for runsheet format details.
 
 * `--entry_point` - Specifies the workflow entry point to start from (type: string, default: "raw_reads"). Available options:
-  - `raw_reads` - Start from raw read files (`.fastq.gz`) (default)
-  - `trimmed_reads` - Start from trimmed read files (`.fastq.gz`). Raw read quality-checking and trimming are skipped
-  - `bam_files` - Start from BAM files (`.bam`). For `--mode default`, expects STAR-aligned transcriptome BAM files. For `--mode microbes`, expects Bowtie2-aligned BAM files. With `--mode default` and `--strandedness auto`, also supply a matching genomic BAM for each sample in the runsheet column `genome_bam_path`. References must match the BAMs’ original assembly and annotation release.
-  - `genes_results` - Start from RSEM gene expression files (`.genes.results`) (`--mode default` only)
-  - `counts_table` - Start from a raw counts table (`.csv`)
-  - `dge_table` - Start from a DGE output table. Adds gene annotation columns to the input table or replaces them if they already exist (`.csv`)
+  - `raw_reads` - Start from raw read files (.fastq.gz) (default)
+  - `trimmed_reads` - Start from trimmed read files (.fastq.gz). Raw read quality-checking and trimming are skipped
+  - `bam_files` - Start from BAM files (.bam). For `--mode default`, expects STAR-aligned transcriptome BAM files. For `--mode microbes`, expects Bowtie2-aligned BAM files. With `--mode default` and `--strandedness auto`, also supply a matching genomic BAM for each sample in the runsheet column genome_bam_path. References must match the BAMs’ original assembly and annotation release.
+  - `genes_results` - Start from RSEM gene expression files (.genes.results) (`--mode default` only)
+  - `counts_table` - Start from a raw counts table (.csv)
+  - `dge_table` - Start from a DGE output table. Adds gene annotation columns to the input table or replaces them if they already exist (.csv)
 
-* `--strandedness` - `auto`, `none`, `forward`, or `reverse` (type: string, default: "auto"). `auto` = infer strandedness from RSeQC infer_experiment. `none`/`forward`/`reverse` overrides RSeQC output. For `--entry_point bam_files`, `auto` uses the matching genomic BAM in default mode and `bam_path` in microbes mode. With explicit `none`, `forward`, or `reverse`, only `bam_path` is needed.
+* `--strandedness` - `auto`, `none`, `forward`, or `reverse` (type: string, default: "auto"). `auto` = infer strandedness from RSeQC infer_experiment. `none`/`forward`/`reverse` overrides RSeQC output. For `--entry_point bam_files`, `auto` uses the matching genomic BAM in default mode and bam_path in microbes mode. With explicit `none`, `forward`, or `reverse`, only bam_path is needed.
 
-* `--counts_table_path` - Specifies the path to a raw counts table (`.csv`). Used with `--entry_point counts_table` instead of a `counts_table_path` runsheet column (type: string, default: null)
+* `--counts_table_path` - Specifies the path to a raw counts table (.csv). Used with `--entry_point counts_table` instead of a counts_table_path runsheet column (type: string, default: null)
 
-* `--dge_table_path` - Specifies the path to a DGE table (`.csv`). Used with `--entry_point dge_table` instead of a `dge_table_path` runsheet column (type: string, default: null)
+* `--dge_table_path` - Specifies the path to a DGE table (.csv). Used with `--entry_point dge_table` instead of a dge_table_path runsheet column (type: string, default: null)
 
-* `--stage_only` - Publish the runsheet and staged inputs for the selected `--entry_point`, then exit. `truncate_to` applies to raw and trimmed reads (type: boolean, default: false)
+* `--stage_only` - Publish the runsheet and staged inputs for the selected `--entry_point`, then exit. `--truncate_to` applies to raw and trimmed reads (type: boolean, default: false)
 
 * `--post_processing` - Run the post-processing workflow (type: boolean, default: false)
  
@@ -459,7 +459,7 @@ Standard Nextflow resource usage logs are also produced as follows:
 # ERCC Analysis Workflow
 
 > [!NOTE]
-> The workflow runs the ERCC analysis automatically in `--mode default` when the runsheet `has_ERCC` column is true and the selected entry point produces or imports raw counts (not `dge_table`). Each sample’s spike-in mix is read from the runsheet `ERCC_mix` column (`Mix 1` or `Mix 2`).
+> The workflow runs the ERCC analysis automatically in `--mode default` when the runsheet has_ERCC column is true and the selected entry point produces or imports raw counts (not dge_table). Each sample’s spike-in mix is read from the runsheet ERCC_mix column ("Mix 1" or "Mix 2").
 
 ## Running ERCC Analysis
 
