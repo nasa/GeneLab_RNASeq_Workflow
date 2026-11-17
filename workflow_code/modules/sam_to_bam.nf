@@ -6,13 +6,13 @@ process SAM_TO_BAM {
     tuple val(meta), path(sam)
 
   output:
-    tuple val(meta), path("${meta.id}.bam"), emit: bam
-    // path("versions.yml"), emit: versions
+    tuple val(meta), path("${ meta.id }${ params.assay_suffix }.bam"), emit: bam
+    path("versions.yml"), emit: versions
 
   script:
     """
     # Convert SAM to BAM
-    samtools view -bS -F 4 --threads ${task.cpus} ${sam} > ${meta.id}.bam
+    samtools view -bS -F 4 --threads ${task.cpus} ${sam} > ${ meta.id }${ params.assay_suffix }.bam
 
     # Capture versions
     echo '"${task.process}":' > versions.yml

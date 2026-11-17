@@ -2,19 +2,13 @@ process COUNT_ALIGNED {
   // Generates gene and isoform counts from alignments
   tag "Sample: ${ meta.id }, Strandedness: ${ strandedness } "
 
-  publishDir "${ publishdir }/${ meta.id }",
-    pattern: "${ meta.id }*",
-    mode: params.publish_dir_mode
-
   input:
-    val(publishdir)
     tuple val(meta), path("${meta.id}${ params.assay_suffix }_Aligned.toTranscriptome.out.bam")
     path(RSEM_REF)
     val(strandedness)
 
   output:
     tuple val(meta), path("${ meta.id }*"), emit: counts
-    path("${ meta.id }*"), emit: only_counts
     tuple val(meta), path("${ meta.id }${ params.assay_suffix }.genes.results"), emit: genes_results
     path("versions.yml"), emit: versions
 

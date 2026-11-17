@@ -64,7 +64,7 @@ tryCatch({
 
 # Remove metadata columns if they exist
 metadata_cols <- c("Chr", "Start", "End", "Strand", "Length")
-data <- data[, !colnames(data) %in% metadata_cols]
+data <- data[, !colnames(data) %in% metadata_cols, drop = FALSE]
 
 # Clean column names: remove path, .bam extension
 colnames(data) <- gsub("^.*/([^/]+)\\.bam$", "\\1", colnames(data))
@@ -73,14 +73,20 @@ colnames(data) <- gsub("\\.bam$", "", colnames(data))
 log_message("Column names after cleaning:")
 log_message(paste(colnames(data), collapse = ", "))
 
-# Verify all samples are present in the data
+# Verify all samples are present in the data and order columns to samples.txt
+counts <- data
 if (!is.null(samples)) {
-  missing_samples <- samples[!samples %in% colnames(data)]
+  missing_samples <- samples[!samples %in% colnames(counts)]
   if (length(missing_samples) > 0) {
-    log_message(paste("Warning: The following samples from samples.txt are not found in the count table:", 
-                       paste(missing_samples, collapse = ", ")))
+    stop(paste("Samples from samples.txt are not in the count table:",
+               paste(missing_samples, collapse = ", ")))
   }
+  counts <- counts[, samples, drop = FALSE]
 }
+
+unnorm_file <- paste0("FeatureCounts_Unnormalized_Counts", output_suffix, ".csv")
+log_message(paste("Writing unnormalized counts to", unnorm_file))
+write.csv(counts, file = unnorm_file)
 
 # Count number of genes with non-zero counts for each sample
 log_message("Counting number of genes with non-zero counts for each sample...")

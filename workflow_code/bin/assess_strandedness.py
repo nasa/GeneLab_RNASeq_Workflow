@@ -5,6 +5,8 @@ from pathlib import Path
 from typing import Tuple
 from statistics import median
 import warnings
+import argparse
+import math
 
 # DONE: Update this to be in sync with check configuration, as of 04/25/2022
 STRANDEDNESS_ASSIGNMENT_THRESHOLD_MAX = 1.00 # values between above this will be assigned strandedness
@@ -15,7 +17,9 @@ UNSTRANDEDNESS_ASSIGMENT_THRESHOLD_MAX = 0.60 # values between this minimum and 
 UNSTRANDEDNESS_ASSIGMENT_THRESHOLD_MIN = 0.40 # values between this minimum and the ambiguous threshold are assigned unstranded
 
 
-def main(root_dir: str):
+def main(root_dir: str, strict=False):
+    if strict:
+        return assess_strict(root_dir)
     results = dict()
     sense_results = list()
     antisense_results = list()
@@ -93,5 +97,65 @@ def _get_stranded_tuple(text: str) -> Tuple[float,float,float]:
     
     return (undetermined, sense, antisense)
 
+def _strict_result(text, name):
+    if "Unknown Data type" in text:
+        raise ValueError(f"{name}: Unknown Data type; specify strandedness explicitly")
+    prefixes = (
+        ('Fraction of reads failed to determine:',),
+        ('Fraction of reads explained by "1+-,1-+,2++,2--":',
+         'Fraction of reads explained by "+-,-+":'),
+        ('Fraction of reads explained by "1++,1--,2+-,2-+":',
+         'Fraction of reads explained by "++,--":'),
+    )
+    values = []
+    for alternatives in prefixes:
+        lines = [line for line in text.splitlines() if line.startswith(alternatives)]
+        if len(lines) != 1:
+            raise ValueError(f"{name}: missing or duplicate inference fraction")
+        try:
+            value = float(lines[0].rsplit(':', 1)[1].strip())
+        except ValueError:
+            raise ValueError(f"{name}: malformed inference fraction") from None
+        if not math.isfinite(value) or not 0 <= value <= 1:
+            raise ValueError(f"{name}: inference fractions must be finite and between 0 and 1")
+        values.append(value)
+    if not math.isclose(sum(values), 1.0, rel_tol=0, abs_tol=0.001):
+        raise ValueError(f"{name}: inference fractions do not sum to 1")
+    return tuple(values)
+
+
+def _strict_assignment(sense, antisense):
+    value = max(sense, antisense)
+    if value >= STRANDEDNESS_ASSIGNMENT_THRESHOLD_MIN:
+        return ('sense' if sense > antisense else 'antisense'), value
+    if UNSTRANDEDNESS_ASSIGMENT_THRESHOLD_MIN <= value <= UNSTRANDEDNESS_ASSIGMENT_THRESHOLD_MAX:
+        return 'unstranded', value
+    raise ValueError(f"Ambiguous or insufficient strandedness inference ({value}); specify strandedness explicitly")
+
+
+def assess_strict(root_dir):
+    root = Path(root_dir)
+    if not root.is_dir():
+        raise ValueError(f"Inference directory does not exist: {root}")
+    files = sorted(root.iterdir())
+    if not files or any(not path.is_file() for path in files):
+        raise ValueError("Expected one or more inference report files")
+    results = [_strict_result(path.read_text(), path.name) for path in files]
+    assignments = {_strict_assignment(row[2], row[1])[0] for row in results}
+    if len(assignments) != 1:
+        raise ValueError("Samples have inconsistent strandedness assignments; specify strandedness explicitly")
+    assignment, value = _strict_assignment(median(row[2] for row in results), median(row[1] for row in results))
+    Path('result.txt').write_text(f"{assignment}:{value}")
+
+
 if __name__ == "__main__":
-    main("infer_out")
+    parser = argparse.ArgumentParser()
+    parser.add_argument('root_dir', nargs='?', default='infer_out')
+    parser.add_argument('--strict', action='store_true', help='Reject unusable or ambiguous BAM inference reports')
+    args = parser.parse_args()
+    try:
+        main(args.root_dir, strict=args.strict)
+    except ValueError as error:
+        if not args.strict:
+            raise
+        parser.exit(1, f"Strandedness assessment failed: {error}\n")

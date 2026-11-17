@@ -15,6 +15,12 @@
                 "description": "Set to True if ERCC spike-ins are included in the samples. This ensures ERCC normalized DGE is performed in addition to standard DGE.",
                 "errorMessage": "has_ERCC must be specified as true or false in the runsheet."
             },
+            "ERCC_mix": {
+                "type": "string",
+                "enum": ["Mix 1", "Mix 2"],
+                "description": "ERCC spike-in mix added to the sample, copied from the ISA assay table 'Parameter Value[Spike-in Mix Number]' (e.g. Mix 1, Mix 2). Populated in generated runsheets when has_ERCC is true; required for ERCC analysis.",
+                "errorMessage": "ERCC_mix must be 'Mix 1' or 'Mix 2'."
+            },
             "paired_end": {
                 "type": "boolean",
                 "description": "Set to True if the samples were sequenced as paired-end. If set to False, samples are assumed to be single-end.",
@@ -90,14 +96,22 @@
             "paired_end",
             "organism"
         ],
-        "if": {
-            "properties": {
-                "paired_end": { "const": true }
+        "allOf": [
+            {
+                "if": {
+                    "properties": { "paired_end": { "const": true } },
+                    "required": ["read1_path"]
+                },
+                "then": { "required": ["read2_path"] }
+            },
+            {
+                "if": {
+                    "properties": { "paired_end": { "const": true } },
+                    "required": ["trimmed_read1_path"]
+                },
+                "then": { "required": ["trimmed_read2_path"] }
             }
-        },
-        "then": {
-            "required": ["read2_path"]
-        },
+        ],
         "minItems": 2
     }
 }

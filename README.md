@@ -8,7 +8,7 @@
 
 The current GeneLab RNAseq consensus processing pipelines (RCP) for eukaryotic organisms ([GL-DPPD-7101-G](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Pipeline_GL-DPPD-7101_Versions/GL-DPPD-7101-G.md)) and prokaryotic organisms ([GL-DPPD-7115](https://github.com/nasa/GeneLab_Data_Processing/tree/master/RNAseq/Pipeline_GL-DPPD-7115_Versions/GL-DPPD-7115.md)) are implemented as a single [Nextflow](https://nextflow.io/) DSL2 workflow that utilizes [Singularity](https://docs.sylabs.io/guides/3.10/user-guide/introduction.html) to run all tools in containers. This workflow (NF_RCP) is run using the command line interface (CLI) of any unix-based system. While knowledge of creating workflows in Nextflow is not required to run the workflow as is, [the Nextflow documentation](https://nextflow.io/docs/latest/index.html) is a useful resource for users who want to modify and/or extend this workflow. See the [NF_RCP Workflow & Subworkflows](#nf_rcp-workflow--subworkflows) section below for more details on the NF_RCP workflow, including installation and execution information.
 
-For datasets that include ERCC spike-ins, ERCC analysis is implemented as a separate, manual step using a [Jupyter](https://jupyter.org) Notebook running in a [conda](https://conda-forge.org/docs/) environment. See the [ERCC Analysis Workflow](#ercc-analysis-workflow) section below for more information on how to utilize the ERCC Analysis Jupyter Notebook.
+For datasets that include ERCC spike-ins, ERCC analysis is implemented as an automated step using a [Jupyter](https://jupyter.org) notebook in the workflow container. See the [ERCC Analysis Workflow](#ercc-analysis-workflow) section below for more information.
 
 <br>
 
@@ -24,7 +24,7 @@ The table below details the default maximum resource allocations for individual 
 | `microbes`| Prokaryotic organisms | 8                 | 16 GB          |
 
 > [!NOTE]
-> These per-process resource allocations are defaults. They can be adjusted by modifying `cpus` and `memory`  directives in the configuration files: [`local.config`](workflow_code/conf/local.config) (local execution) and [`slurm.config`](workflow_code/conf/slurm.config) (SLURM clusters).
+> These per-process resource allocations are defaults. They can be adjusted by modifying `cpus` and `memory`  directives in the configuration files: [local.config](workflow_code/conf/local.config) (local execution) and [slurm.config](workflow_code/conf/slurm.config) (SLURM clusters).
 
 > **Click links below to show/hide workflow diagrams**
 
@@ -49,7 +49,7 @@ Below is a description of each subworkflow and the additional output files gener
 1. **Analysis Staging Subworkflow**
 
    - Description:
-     - This subworkflow extracts the metadata parameters (e.g. organism, library layout) needed for processing from the OSD/GLDS ISA archive and retrieves the raw reads files hosted on the [Open Science Data Repository (OSDR)](https://osdr.nasa.gov/bio/repo/).
+     - This subworkflow extracts the metadata parameters (e.g. organism, library layout) needed for processing from the OSD/GLDS ISA archive or a user-created runsheet and retrieves the input files for the selected entry point. When using `--accession` to start from an intermediate step, the workflow downloads those files from the [Open Science Data Repository (OSDR)](https://osdr.nasa.gov/bio/repo/). See [Optional Parameters](#optional-parameters).
        > *OSD/GLDS ISA archive*: ISA directory containing Investigation, Study, and Assay (ISA) metadata files for a respective GLDS dataset - the *ISA.zip file is located under 'Files' -> 'Study Metadata Files' for any GeneLab Data Set (GLDS) in the [OSDR](https://osdr.nasa.gov/bio/repo/).
 
 2. **RNAseq Consensus Pipeline Subworkflow**
@@ -89,8 +89,10 @@ Below is a description of each subworkflow and the additional output files gener
    4a. [Approach 1: Run the workflow on a GeneLab RNAseq dataset with automatic retrieval of reference fasta and gtf files](#4a-approach-1-run-the-workflow-on-a-genelab-rnaseq-dataset-with-automatic-retrieval-of-reference-fasta-and-gtf-files)  
    4b. [Approach 2: Run the workflow on a GeneLab RNAseq dataset with custom reference fasta and gtf files](#4b-approach-2-run-the-workflow-on-a-genelab-rnaseq-dataset-with-custom-reference-fasta-and-gtf-files)  
    4c. [Approach 3: Run the workflow on a non-GeneLab dataset using a user-created runsheet with automatic retrieval of reference fasta and gtf files](#4c-approach-3-run-the-workflow-on-a-non-genelab-dataset-using-a-user-created-runsheet-with-automatic-retrieval-of-reference-fasta-and-gtf-files)  
-   4d. [Approach 4: Run the workflow on a non-GeneLab dataset using a user-created runsheet with custom reference fasta and gtf files](#4d-approach-4-run-the-workflow-on-a-non-genelab-dataset-using-a-user-created-runsheet-with-custom-reference-fasta-and-gtf-files)
-5. [Additional Output Files](#5-additional-output-files)  
+   4d. [Approach 4: Run the workflow on a non-GeneLab dataset using a user-created runsheet with custom reference fasta and gtf files](#4d-approach-4-run-the-workflow-on-a-non-genelab-dataset-using-a-user-created-runsheet-with-custom-reference-fasta-and-gtf-files)  
+5. [Workflow Outputs](#5-workflow-outputs)  
+   5a. [Main outputs](#5a-main-outputs)  
+   5b. [Resource logs](#5b-resource-logs)  
 
 <br>
 
@@ -135,9 +137,9 @@ All files required for utilizing the NF_RCP GeneLab workflow for processing RNAs
 copy of latest NF_RCP version on to your system, the code can be downloaded as a zip file from the release page then unzipped after downloading by running the following commands: 
 
 ```bash
-wget https://github.com/nasa/GeneLab_RNASeq_Workflow/releases/download/NF_RCP_2.1.0/NF_RCP_2.1.0.zip
+wget https://github.com/nasa/GeneLab_RNASeq_Workflow/releases/download/v2.1.1/NF_RCP_2.1.1.zip
 
-unzip NF_RCP_2.1.0.zip
+unzip NF_RCP_2.1.1.zip
 ```
 
 <br>
@@ -150,14 +152,14 @@ Although Nextflow can fetch Singularity images from a url, doing so may cause is
 
 To avoid this issue, run the following command to fetch the Singularity images prior to running the NF_RCP workflow:
 > [!NOTE] 
-> This command should be run in the location containing the `NF_RCP_2.1.0` directory that was downloaded in [step 2](#2-download-the-workflow-files) above. Depending on your network speed, fetching the images will take ~20 minutes. Approximately 8GB of RAM is needed to download and build the Singularity images.
+> This command should be run in the location containing the NF_RCP_2.1.1 directory that was downloaded in [step 2](#2-download-the-workflow-files) above. Depending on your network speed, fetching the images will take ~20 minutes. Approximately 8GB of RAM is needed to download and build the Singularity images.
 
 ```bash
-bash NF_RCP_2.1.0/bin/prepull_singularity.sh NF_RCP_2.1.0/config/by_docker_image.config
+bash NF_RCP_2.1.1/bin/prepull_singularity.sh NF_RCP_2.1.1/config/by_docker_image.config
 ```
 
 
-Once complete, a `singularity` folder containing the Singularity images will be created. Run the following command to export this folder as a Nextflow configuration environment variable to ensure Nextflow can locate the fetched images:
+Once complete, a "singularity" folder containing the Singularity images will be created. Run the following command to export this folder as a Nextflow configuration environment variable to ensure Nextflow can locate the fetched images:
 
 ```bash
 export NXF_SINGULARITY_CACHEDIR=$(pwd)/singularity
@@ -169,7 +171,7 @@ export NXF_SINGULARITY_CACHEDIR=$(pwd)/singularity
 
 ### 4. Run the Workflow
 
-While in the location containing the `NF_RCP_2.1.0` directory that was downloaded in [step 2](#2-download-the-workflow-files), you are now able to run the workflow.
+While in the location containing the NF_RCP_2.1.1 directory that was downloaded in [step 2](#2-download-the-workflow-files), you are now able to run the workflow.
 
 Both workflows automatically load reference files and organism-specific gene annotation files from the [GeneLab annotations table](https://github.com/nasa/GeneLab_Data_Processing/blob/master/GeneLab_Reference_Annotations/Pipeline_GL-DPPD-7110_Versions/GL-DPPD-7110-A/GL-DPPD-7110-A_annotations.csv). For organisms not listed in the table or to use alternative reference files, additional workflow parameters can be specified.
 
@@ -177,7 +179,7 @@ Both workflows automatically load reference files and organism-specific gene ann
 > [!NOTE]
 > Nextflow commands use both single hyphen arguments (e.g. -help) that denote general nextflow arguments and double hyphen arguments (e.g. --reference_version) that denote workflow specific parameters.  Take care to use the proper number of hyphens for each argument.
 >
-> To use Docker instead of Singularity, use `-profile docker` in the Nextflow run command. Nextflow will automatically pull images as needed.
+> To use Docker or Podman instead of Singularity, use `-profile docker` or `-profile podman`. Nextflow will automatically pull images as needed.
 >
 > The `-resume` parameter can be used to resume a previously interrupted workflow from where it left off (see [Nextflow documentation](https://www.nextflow.io/docs/latest/getstarted.html#modify-and-resume)) or to restart the workflow from a specific point by changing relevant parameters, which will re-execute that process and all downstream affected processes.
 
@@ -186,7 +188,7 @@ Both workflows automatically load reference files and organism-specific gene ann
 #### 4a. Approach 1: Run the workflow on a GeneLab RNAseq dataset with automatic retrieval of reference fasta and gtf files
 
 ```bash
-nextflow run NF_RCP_2.1.0/main.nf \ 
+nextflow run NF_RCP_2.1.1/main.nf \ 
    -profile singularity,local \
    --accession OSD-194 
 ```
@@ -199,7 +201,7 @@ nextflow run NF_RCP_2.1.0/main.nf \
 #### 4b. Approach 2: Run the workflow on a GeneLab RNAseq dataset with custom reference fasta and gtf files
 
 ```bash
-nextflow run NF_RCP_2.1.0/main.nf \ 
+nextflow run NF_RCP_2.1.1/main.nf \ 
    -profile singularity,local \
    --accession OSD-194 \
    --reference_version 112 \
@@ -218,9 +220,9 @@ nextflow run NF_RCP_2.1.0/main.nf \
 #### 4c. Approach 3: Run the workflow on a non-GeneLab dataset using a user-created runsheet with automatic retrieval of reference fasta and gtf files
 
 ```bash
-nextflow run NF_RCP_2.1.0/main.nf \ 
+nextflow run NF_RCP_2.1.1/main.nf \ 
    -profile singularity,local \
-   --runsheet_path </path/to/runsheet> 
+   --runsheet </path/to/runsheet>
 ```
 
 > [!NOTE] 
@@ -231,9 +233,9 @@ nextflow run NF_RCP_2.1.0/main.nf \
 #### 4d. Approach 4: Run the workflow on a non-GeneLab dataset using a user-created runsheet with custom reference fasta and gtf files
 
 ```bash
-nextflow run NF_RCP_2.1.0/main.nf \ 
+nextflow run NF_RCP_2.1.1/main.nf \ 
    -profile singularity,local \
-   --runsheet_path </path/to/runsheet> \
+   --runsheet </path/to/runsheet> \
    --reference_version 112 \
    --reference_source ensembl \ 
    --reference_fasta <url/or/path/to/fasta> \ 
@@ -248,65 +250,64 @@ nextflow run NF_RCP_2.1.0/main.nf \
 
 <br>
 
-
 #### Required Parameters For All Approaches:
 
-* `NF_RCP_2.1.0/main.nf` - Instructs Nextflow to run the NF_RCP workflow 
+* `NF_RCP_2.1.1/main.nf` - Instructs Nextflow to run the NF_RCP workflow 
 
-* `-profile` - Specifies the configuration profile(s) to load, `singularity` instructs Nextflow to setup and use singularity for all software called in the workflow; use `local` for local execution ([local.config](workflow_code/conf/local.config)) or `slurm` for SLURM cluster execution ([slurm.config](workflow_code/conf/slurm.config))
+* `-profile` - Specifies the configuration profile(s) to load, `singularity` instructs Nextflow to setup and use singularity for all software called in the workflow; use `local` for local execution ([local.config](workflow_code/conf/local.config)) or `slurm` for SLURM cluster execution ([slurm.config](workflow_code/conf/slurm.config)) or `pbspro` for PBS Pro cluster execution ([pbspro.config](workflow_code/conf/pbspro.config))
 > [!NOTE]
-> The output directory will be named `GLDS-#` when using a OSD or GLDS accession as input, or `results` when running the workflow with only a runsheet as input.
+> The output directory will be named GLDS-# when using a OSD or GLDS accession as input, or results when running the workflow with only a runsheet as input.
 
 <br>
 
 **Additional Required Parameters For [Approach 1](#4a-approach-1-run-the-workflow-on-a-genelab-rnaseq-dataset-with-automatic-retrieval-of-reference-fasta-and-gtf-files):**
 
-* `--accession` - The OSD or GLDS ID for the dataset to be processed, eg. `GLDS-194` or `OSD-194`
+* `--accession` - The OSD or GLDS ID for the dataset to be processed, eg. `GLDS-194` or `OSD-194` (type: string, default: null)
 
 <br>
 
 **Additional Required Parameters For [Approach 2](#4b-approach-2-run-the-workflow-on-a-genelab-rnaseq-dataset-with-custom-reference-fasta-and-gtf-files):**
 
-* `--accession` - The OSD or GLDS ID for the dataset to be processed, eg. `GLDS-194` or `OSD-194`
+* `--accession` - The OSD or GLDS ID for the dataset to be processed, eg. `GLDS-194` or `OSD-194` (type: string, default: null)
 
-* `--reference_version` - specifies the reference source version to use for the reference genome (Ensembl release `112` is used in this example); only needed when using Ensembl as the reference source
+* `--reference_version` - specifies the reference source version to use for the reference genome (Ensembl release `112` is used in this example); only needed when using Ensembl as the reference source (type: string, default: "")
 
-* `--reference_source` - specifies the source of the reference files used (the source indicated in the Approach 2 example is `ensembl`) 
+* `--reference_source` - specifies the source of the reference files used (the source indicated in the Approach 2 example is `ensembl`) (type: string, default: "")
 
-* `--reference_fasta` - specifies the URL or path to a fasta file 
+* `--reference_fasta` - Specifies the path or URL to a fasta file (type: string, default: "")
 
-* `--reference_gtf` - specifies the URL or path to a gtf file
+* `--reference_gtf` - Specifies the path or URL to a gtf file (type: string, default: "")
 
 <br>
 
 **Additional Required Parameters For [Approach 3](#4c-approach-3-run-the-workflow-on-a-non-genelab-dataset-using-a-user-created-runsheet-with-automatic-retrieval-of-reference-fasta-and-gtf-files):**
 
-* `--runsheet_path` - specifies the path to a local runsheet; if not provided, a runsheet is automatically generated using OSDR metadata (type: string, default: null)
+* `--runsheet` - Specifies the path to a local runsheet (type: string, default: null)
 
 <br>
 
 **Additional Required Parameters For [Approach 4](#4d-approach-4-run-the-workflow-on-a-non-genelab-dataset-using-a-user-created-runsheet-with-custom-reference-fasta-and-gtf-files):**
 
-* `--runsheet_path` - specifies the path to a local runsheet; if not provided, a runsheet is automatically generated using OSDR metadata (type: string, default: null)
+* `--runsheet` - Specifies the path to a local runsheet (type: string, default: null)
 
-* `--reference_version` - specifies the reference source version to use for the reference genome (Ensembl release `112` is used in this example); only needed when using Ensembl as the reference source
+* `--reference_version` - specifies the reference source version to use for the reference genome (Ensembl release `112` is used in this example); only needed when using Ensembl as the reference source (type: string, default: "")
 
-* `--reference_source` - specifies the source of the reference files used (the source indicated in the Approach 2 example is `ensembl`) 
+* `--reference_source` - specifies the source of the reference files used (the source indicated in the Approach 2 example is `ensembl`) (type: string, default: "")
 
-* `--reference_fasta` - specifies the URL or path to a fasta file 
+* `--reference_fasta` - Specifies the path or URL to a fasta file (type: string, default: "")
 
-* `--reference_gtf` - specifies the URL or path to a gtf file
+* `--reference_gtf` - Specifies the path or URL to a gtf file (type: string, default: "")
 
 <br>
 
 #### Optional Parameters:
 
-* `--gene_annotations_file` - Specifies the URL or path to a gene annotation file that adds additional gene annotation columns to the differential expression output table. This can be:
+* `--gene_annotations_file` - Specifies the path or URL to a gene annotation file that adds additional gene annotation columns to the differential expression output table (type: string, default: null). This can be:
 
-  - The file listed in the `genelab_annots_link` column of the [GeneLab annotations table](https://github.com/nasa/GeneLab_Data_Processing/blob/master/GeneLab_Reference_Annotations/Pipeline_GL-DPPD-7110_Versions/GL-DPPD-7110-A/GL-DPPD-7110-A_annotations.csv)
+  - The file listed in the "genelab_annots_link" column of the [GeneLab annotations table](https://github.com/nasa/GeneLab_Data_Processing/blob/master/GeneLab_Reference_Annotations/Pipeline_GL-DPPD-7110_Versions/GL-DPPD-7110-A/GL-DPPD-7110-A_annotations.csv)
   - A custom gene annotation file where:
     - For organisms listed in the GeneLab annotations table: gene IDs must be in a column with the same name as column 1 of the GeneLab organism-specific gene annotation file
-    - For organisms not listed in the table: gene IDs must be in a column named `gene_id`
+    - For organisms not listed in the table: gene IDs must be in a column named "gene_id"
   
   Only genes included in the specified annotations file will receive additional annotations in the output.
 
@@ -314,13 +315,24 @@ nextflow run NF_RCP_2.1.0/main.nf \
 
 * `--force_single_end` - forces the analysis to use single end processing; for paired end datasets, this means only R1 is used; for single end datasets, this should have no effect (type: boolean, default: false)  
 
-* `--reference_store_path` - specifies the directory to store the reference fasta and gtf files (type: string, default: "./References")  
+* `--reference_store_path` - Specifies the path to the directory used to store the reference fasta and gtf files (type: string, default: "./References")
 
-* `--derived_store_path` - specifies the directory to store the tool-specific indices created during processing (type: string, default: "./DerivedReferences")
+* `--derived_store_path` - Specifies the path to the directory used to store the tool-specific indices created during processing (type: string, default: "./DerivedReferences")
+
+* `--pbs_queue` - PBS Pro queue when using `-profile pbspro` (type: string, default: "normal")
+
+* `--pbs_model` - PBS node model when using `-profile pbspro` (type: string, default: ""). Adds `:model=<name>` to the job request. Leave unset if the scheduler does not use a model resource.
+
+* `--pbs_internet_queue` - PBS queue for fetch/download processes when using `-profile pbspro` (type: string, default: ""). Empty uses `--pbs_queue`.
+
+* `--walltime` - Default walltime for `-profile slurm` / `pbspro`, used by processes without an explicit `time` setting in [process_resources.config](workflow_code/conf/process_resources.config). Process-specific `time` settings take precedence over this parameter. The `pbspro` profile caps all process walltimes at 8h (type: string, default: "2.h").
 
 * `--mode` - specifies which pipeline to use: set to `default` to run GL-DPPD-7101-G pipeline or set to `microbes` for the GL-DPPD-7115 prokaryotic pipeline (type: string, default: "default")
 > [!NOTE]
 > This allows the workflow to process either eukaryotic (default) or prokaryotic RNAseq data using the appropriate pipeline.
+
+* `--dge_parallel_config` - DESeq2 backend: `serial`, `multicore` or `snow` (socket workers) (type: string, default: "serial")
+* `--dge_parallel_cores` - CPUs requested for DESeq2 processes if `dge_parallel_config` is `multicore` or `snow` (type: integer, default: 4)
 
 * **DGE Filtering Parameters** - Options for filtering genes prior to DGE analysis:
 
@@ -340,23 +352,31 @@ nextflow run NF_RCP_2.1.0/main.nf \
   
   * `--dge_filter_count_per_sample_threshold` - Multiplier for sample-scaled count threshold (type: number, default: 1)
 
+  * `--drop_unalignable` - Exclude samples from DGE when RSEM "pct_unalignable" is at or above `--unalignable_threshold` (type: boolean, default: true). Default mode only; no-op for microbes and for counts_table / genes_results / dge_table.
+
+  * `--unalignable_threshold` - Percent unalignable at or above which a sample is dropped from count normalization and DGE (type: number, default: 60)
+
 * **Entry Point Parameters** - Options for starting the workflow from different processing steps:
 > [!NOTE]
-> When using `--accession` and running the workflow from an intermediate entry point, the workflow downloads the input files from [OSDR](https://osdr.nasa.gov/bio/repo/) and generates the runsheet containing the required metadata. When using both `--accession` and `--runsheet_path` together, the workflow will validate that the runsheet contains the expected input file columns. See the [runsheet README](examples/runsheet/README.md) for runsheet format details.
+> When using `--accession` and running the workflow from an intermediate entry point, the workflow downloads the input files from [OSDR](https://osdr.nasa.gov/bio/repo/) and generates the runsheet containing the required metadata. See the [runsheet README](examples/runsheet/README.md) for runsheet format details.
 
-* `--entry_point` - Specifies the workflow entry point to start from (default: `raw_reads`). Available options:
-  - `raw_reads` - Start from raw read files (`.fastq.gz`) (default)
-  - `trimmed_reads` - Start from trimmed read files (`.fastq.gz`). Raw read quality-checking and trimming are skipped
-  - `bam_files` - Start from BAM files (`.bam`) (requires `--strandedness` parameter). For `--mode default`, expects STAR-aligned transcriptome BAM files. For `--mode microbes`, expects Bowtie2-aligned BAM files
-  - `genes_results` - Start from RSEM gene expression files (`.genes.results`) (`--mode default` only)
-  - `counts_table` - Start from a raw counts table (`.csv`)
-  - `dge_table` - Start from a DGE output table. Adds gene annotation columns to the input table or replaces them if they already exist (`.csv`)
+* `--entry_point` - Specifies the workflow entry point to start from (type: string, default: "raw_reads"). Available options:
+  - `raw_reads` - Start from raw read files (.fastq.gz) (default)
+  - `trimmed_reads` - Start from trimmed read files (.fastq.gz). Raw read quality-checking and trimming are skipped
+  - `bam_files` - Start from BAM files (.bam). For `--mode default`, expects STAR-aligned transcriptome BAM files. For `--mode microbes`, expects Bowtie2-aligned BAM files. With `--mode default` and `--strandedness auto`, also supply a matching genomic BAM for each sample in the runsheet column "genome_bam_path". References must match the BAMs’ original assembly and annotation release.
+  - `genes_results` - Start from RSEM gene expression files (.genes.results) (`--mode default` only)
+  - `counts_table` - Start from a raw counts table (.csv)
+  - `dge_table` - Start from a DGE output table. Adds gene annotation columns to the input table or replaces them if they already exist (.csv)
 
-* `--strandedness` - Specifies the strandedness of RNA-seq data (`none`, `forward`, or `reverse`; default: `none`) for entry points that skip alignment, such as the `bam_files` entry point.
+* `--strandedness` - `auto`, `none`, `forward`, or `reverse` (type: string, default: "auto"). `auto` = infer strandedness from RSeQC infer_experiment. `none`/`forward`/`reverse` overrides RSeQC output. For `--entry_point bam_files`, `auto` uses the matching genomic BAM in default mode and "bam_path" in microbes mode. With explicit `none`, `forward`, or `reverse`, only "bam_path" is needed.
 
-* `--counts_table_path` - Specifies a path to a raw counts table file (`.csv`). Used with `counts_table` entry point
+* `--counts_table_path` - Specifies the path to a raw counts table (.csv). Used with `--entry_point counts_table` instead of a "counts_table_path" runsheet column (type: string, default: null)
 
-* `--dge_table_path` - Specifies a path to a DGE table file (`.csv`). Used with `dge_table` entry point
+* `--dge_table_path` - Specifies the path to a DGE table (.csv). Used with `--entry_point dge_table` instead of a "dge_table_path" runsheet column (type: string, default: null)
+
+* `--stage_only` - Publish the runsheet and staged inputs for the selected `--entry_point`, then exit. `--truncate_to` applies to raw and trimmed reads (type: boolean, default: false)
+
+* `--post_processing` - Run the post-processing workflow (type: boolean, default: false)
  
 <br>
 
@@ -365,7 +385,7 @@ nextflow run NF_RCP_2.1.0/main.nf \
 All parameters listed above and additional optional arguments for the RCP workflow, including debug related options that may not be immediately useful for most users, can be viewed by running the following command:
 
 ```bash
-nextflow run NF_RCP_2.1.0/main.nf --help
+nextflow run NF_RCP_2.1.1/main.nf --help
 ```
 
 See `nextflow run -h` and [Nextflow's CLI run command documentation](https://nextflow.io/docs/latest/cli.html#run) for more options and details common to all nextflow workflows.
@@ -374,7 +394,9 @@ See `nextflow run -h` and [Nextflow's CLI run command documentation](https://nex
 
 ---
 
-### 5. Additional Output Files
+### 5. Workflow Outputs
+
+#### 5a. Main outputs
 
 The outputs from the Analysis Staging and V&V Pipeline Subworkflows are described below:
 > [!NOTE] 
@@ -383,7 +405,7 @@ The outputs from the Analysis Staging and V&V Pipeline Subworkflows are describe
 **Analysis Staging Subworkflow**
 
    - Output:
-     - Metadata/\*_bulkRNASeq_v1_runsheet.csv (table containing metadata required for processing, including the raw reads files location)
+     - Metadata/\*_bulkRNASeq_v6_runsheet.csv (metadata required for processing, including input file locations for the selected `--entry_point`)
      - Metadata/\*-ISA.zip (the ISA archive of the OSD datasets to be processed, downloaded from the OSDR)
    
    
@@ -404,25 +426,29 @@ The outputs from the Analysis Staging and V&V Pipeline Subworkflows are describe
    - Output:
      - GeneLab/processing_info_GLbulkRNAseq.zip (Archive containing workflow execution metadata)
        - processing_info/samples.txt (single column list of all sample names in the dataset)
-       - processing_info/nextflow_log_GLbulkRNAseq.txt (Nextflow execution logs captured via `nextflow log`)
+       - processing_info/nextflow_processing_info_GLbulkRNAseq.txt (Nextflow execution logs captured via `nextflow log`)
        - processing_info/nextflow_run_command_GLbulkRNAseq.txt (Exact command line used to initiate the workflow)
 
 **QC metrics summary**
 
   - Output:
     - GeneLab/qc_metrics_GLbulkRNAseq.csv (comma-separated text file containing a summary of qc metrics and metadata for the dataset, see the [QC metrics README](./QC_metrics_README.md) for a complete list of field definitions)
+
 <br>
 
+#### 5b. Resource logs
+
 Standard Nextflow resource usage logs are also produced as follows:
-> Further details about these logs can also found within [this Nextflow documentation page](https://www.nextflow.io/docs/latest/tracing.html#execution-report).
 
 **Nextflow Resource Usage Logs**
 
    - Output:
-     - nextflow_info/execution_report_{timestamp}.html (an html report that includes metrics about the workflow execution including computational resources and exact workflow process commands)
-     - nextflow_info/execution_timeline_{timestamp}.html (an html timeline for all processes executed in the workflow)
-     - nextflow_info/execution_trace_{timestamp}.txt (an execution tracing file that contains information about each process executed in the workflow, including: submission time, start time, completion time, cpu and memory used, machine-readable output)
-     - nextflow_info/pipeline_dag_{timestamp}.html (a visualization of the workflow process DAG)
+     - Resource_Usage/execution_report_{timestamp}.html (an html report that includes metrics about the workflow execution including computational resources and exact workflow process commands)
+     - Resource_Usage/execution_timeline_{timestamp}.html (an html timeline for all processes executed in the workflow)
+     - Resource_Usage/execution_trace_{timestamp}.txt (an execution tracing file that contains information about each process executed in the workflow, including: submission time, start time, completion time, cpu and memory used, machine-readable output)
+     - Resource_Usage/pipeline_dag_{timestamp}.html (a visualization of the workflow process DAG)
+
+> Further details about these logs can also found within [this Nextflow documentation page](https://www.nextflow.io/docs/latest/tracing.html#execution-report).
 
 <br>
 
@@ -432,10 +458,13 @@ Standard Nextflow resource usage logs are also produced as follows:
 
 # ERCC Analysis Workflow
 
+> [!NOTE]
+> The workflow runs the ERCC analysis automatically in `--mode default` when the runsheet "has_ERCC" column is true and the selected entry point produces or imports raw counts (not dge_table). Each sample’s spike-in mix is read from the runsheet "ERCC_mix" column ("Mix 1" or "Mix 2").
+
 ## Running ERCC Analysis
 
 1. [Install conda and the ERCC analysis environment](#1-install-conda-and-the-ercc-analysis-environment)
-2. [Launch Jupyter environment](#2-launch-jupyter-environment)  
+2. [Launch Jupyter environment](#2-launch-jupyter-environment)
 3. [Execute the ERCC Analysis](#3-execute-the-ercc-analysis)
 <br>
 
@@ -447,7 +476,7 @@ We recommend installing a Miniforge version appropriate for your system, as docu
 
 Once conda is installed on your system, create the ercc_analysis conda environment:
 ```bash
-conda env create -f NF_RCP_2.1.0/envs/ercc_analysis.yml
+conda env create -f NF_RCP_2.1.1/envs/ercc_analysis.yml
 ```
 
 ### 2. Launch Jupyter environment
@@ -459,7 +488,7 @@ Create an  working folder for the ERCC Analysis in the main analysis directory c
 mkdir ERCC_Analysis
 
 # copy Jupyter Notebook from workflow_code folder to new working directory
-cp NF_RCP_2.1.0/bin/combined_ercc_analysis.ipynb ERCC_Analysis
+cp NF_RCP_2.1.1/bin/combined_ercc_analysis.ipynb ERCC_Analysis
 
 # activate the ercc_analysis environment
 conda activate ercc_analysis
@@ -514,5 +543,5 @@ Jonathan Oribello
 **Maintained by:**  
 Alexis Torres  
 
-**Contributors:**
+**Contributors:**\
 Crystal Han   

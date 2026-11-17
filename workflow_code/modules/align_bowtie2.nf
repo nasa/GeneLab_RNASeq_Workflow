@@ -1,28 +1,19 @@
 /*
-    Aligns reads against Bowtie2 index, uses SAMtools to convert SAM to BAM
-    and filter out unmapped reads.
+    Aligns reads against a Bowtie2 index and writes the SAM.
+    SAM_TO_BAM converts it and drops unmapped reads.
 */
 
 process ALIGN_BOWTIE2 {
   tag "Sample: ${ meta.id }"
 
-  publishDir "${ publishdir }/${ meta.id }",
-    pattern: "${ meta.id }${ params.assay_suffix }.bowtie2.log",
-    mode: params.publish_dir_mode
-
-  publishDir "${ publishdir }/${ meta.id }",
-    pattern: "${ meta.id }${ params.assay_suffix }_*unmapped.fastq.gz",
-    mode: params.publish_dir_mode
-
   input:
-    val(publishdir)
     tuple val(meta), path(reads)
     path(bowtie2_index_dir)
 
   output:
-    tuple val(meta), path("${ meta.id }${ params.assay_suffix }.bam"), emit: bam
-    path("${ meta.id }${ params.assay_suffix }_*unmapped.fastq.gz"), emit: unmapped_reads
-    path("${ meta.id }${ params.assay_suffix }.bowtie2.log"), emit: alignment_logs
+    tuple val(meta), path("${ meta.id }${ params.assay_suffix }.sam"), emit: sam
+    tuple val(meta), path("${ meta.id }${ params.assay_suffix }_*unmapped.fastq.gz"), emit: unmapped_reads
+    tuple val(meta), path("${ meta.id }${ params.assay_suffix }.bowtie2.log"), emit: alignment_logs
     path("versions.yml"), emit: versions
 
   script:
@@ -39,8 +30,8 @@ process ALIGN_BOWTIE2 {
       --minins 10 \\
       --maxins 1000 \\
       ${ unaligned } \\
-      2> ${ meta.id }${ params.assay_suffix }.bowtie2.log | \\
-      samtools view -bS -F 4 --threads ${task.cpus} - > ${ meta.id }${ params.assay_suffix }.bam
+      2> ${ meta.id }${ params.assay_suffix }.bowtie2.log \\
+      > ${ meta.id }${ params.assay_suffix }.sam
 
     # Rename unmapped reads
     if [ ${ meta.paired_end } == true ]; then
@@ -54,6 +45,5 @@ process ALIGN_BOWTIE2 {
 
     echo '"${ task.process }":' > versions.yml
     echo "    bowtie2: \$(bowtie2 --version | head -n1 | awk '{print \$3}')" >> versions.yml
-    echo "    samtools: \$(samtools --version | head -n1 | awk '{print \$2}')" >> versions.yml
     """
 }

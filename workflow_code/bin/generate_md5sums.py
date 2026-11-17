@@ -57,7 +57,7 @@ def should_include(filepath, outdir):
         return True
     # If it's a STAR output but not in the keep list, filter it out
     star_output_keywords = [
-        "Aligned.sortedByCoord.out.bam", "ReadsPerGene.out.tab", "Log.out", "Log.progress.out"
+        "Aligned.sortedByCoord.out.bam", "Aligned.out.bam", "ReadsPerGene.out.tab", "Log.out", "Log.progress.out"
     ]
     if any(keyword in basename for keyword in star_output_keywords):
         return False
@@ -74,6 +74,9 @@ def should_include(filepath, outdir):
         # In MultiQC_Reports, only allow .zip or .html
         if not (filepath.endswith('.zip') or filepath.endswith('.html')):
             return False
+    # ERCC: only the analysis HTML
+    if "ERCC_Analysis" in filepath:
+        return basename == f"ERCC_analysis{args.assay_suffix}.html"
     # RSEM: Only keep .genes.results and .isoforms.results (including _rRNArm variants)
     if basename.endswith('.genes.results') or basename.endswith('.isoforms.results'):
         return True
@@ -83,11 +86,23 @@ def should_include(filepath, outdir):
     # Skip ISA.zip
     if filepath.endswith("ISA.zip"):
         return False
-    # Skip STAR_NumNonZeroGenes and RSEM_NumNonZeroGenes files
+    # Skip NumNonZeroGenes files (STAR / RSEM / FeatureCounts)
     if basename in [
         f"STAR_NumNonZeroGenes{args.assay_suffix}.csv",
-        f"RSEM_NumNonZeroGenes{args.assay_suffix}.csv"
+        f"RSEM_NumNonZeroGenes{args.assay_suffix}.csv",
+        f"NumNonZeroGenes{args.assay_suffix}.csv"
     ]:
+        return False
+    # Filter rRNArm contrasts and SampleTable
+    suffix = re.escape(args.assay_suffix)
+    if re.fullmatch(rf"(contrasts|SampleTable)(_.*)?_rRNArm{suffix}\.csv", basename):
+        return False
+    # Filter organism-part unnormalized counts
+    unnorm = re.fullmatch(
+        rf"(RSEM|FeatureCounts)_Unnormalized_Counts(?P<label>.*){suffix}\.csv",
+        basename,
+    )
+    if unnorm and unnorm.group("label") not in ("", "_rRNArm"):
         return False
     return True
 
@@ -95,71 +110,70 @@ def main():
     parser = argparse.ArgumentParser(description='Generate MD5 sum files for GeneLab data.')
     parser.add_argument('--outdir', required=True, help='Output directory containing files to process')
     parser.add_argument('--assay_suffix', default='', help='Suffix for assay type (e.g., _GLbulkRNAseq, default: empty)')
-    
+    parser.add_argument('--raw', action='store_true')
+    parser.add_argument('--processed', action='store_true')
+
     global args
     args = parser.parse_args()
-    
-    # Create output files
+
+    raw = args.raw or not (args.raw or args.processed)
+    processed = args.processed or not (args.raw or args.processed)
+
     raw_md5_file = f"raw_md5sum{args.assay_suffix}.tsv"
     processed_md5_file = f"processed_md5sum{args.assay_suffix}.tsv"
-    
-    # Initialize files without headers
-    with open(raw_md5_file, 'w') as f:
-        pass  # Create empty file
-    
-    with open(processed_md5_file, 'w') as f:
-        pass  # Create empty file
-    
-    # Make sure outdir is absolute path
+
+    if raw:
+        open(raw_md5_file, 'w').close()
+    if processed:
+        open(processed_md5_file, 'w').close()
+
     outdir = os.path.abspath(args.outdir)
-    
-    # Track processed files for reporting
     raw_count = 0
     processed_count = 0
-    
-    # Walk through all files recursively
+
     print(f"Scanning directory: {outdir}")
     for root, _, files in os.walk(outdir):
         for filename in files:
             filepath = os.path.join(root, filename)
-            
-            # Skip files that shouldn't be included
             if not should_include(filepath, outdir):
                 continue
-            
-            # Get just the filename (basename)
             basename = os.path.basename(filepath)
-            
-            # Calculate MD5 sum
-            md5sum = calculate_md5(filepath)
-            
-            # Add to appropriate output file
             if is_raw_file(filepath):
+                if not raw:
+                    continue
+                md5sum = calculate_md5(filepath)
                 with open(raw_md5_file, 'a') as f:
                     f.write(f"{basename}\t{md5sum}\n")
                 raw_count += 1
             else:
+                if not processed:
+                    continue
+                md5sum = calculate_md5(filepath)
                 with open(processed_md5_file, 'a') as f:
                     f.write(f"{basename}\t{md5sum}\n")
                 processed_count += 1
-    
-    print(f"Added {raw_count} files to {raw_md5_file}")
-    print(f"Added {processed_count} files to {processed_md5_file}")
+
+    if raw:
+        print(f"Added {raw_count} files to {raw_md5_file}")
+    if processed:
+        print(f"Added {processed_count} files to {processed_md5_file}")
 
     def dedup_file(filename):
         seen = set()
         lines = []
         with open(filename, 'r') as f:
             for line in f:
-                key = line.split('\t', 1)[0]  # dedup by basename
+                key = line.split('\t', 1)[0]
                 if key not in seen:
                     seen.add(key)
                     lines.append(line)
         with open(filename, 'w') as f:
             f.writelines(lines)
 
-    dedup_file(raw_md5_file)
-    dedup_file(processed_md5_file)
+    if raw:
+        dedup_file(raw_md5_file)
+    if processed:
+        dedup_file(processed_md5_file)
 
 if __name__ == "__main__":
     main()

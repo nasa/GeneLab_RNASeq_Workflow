@@ -1,10 +1,6 @@
 process COPY_DGE_TABLE {
 
-    publishDir "${ publishdir }/05-DESeq2_DGE",
-        mode: params.publish_dir_mode
-
     input:
-        val(publishdir)
         path("?.csv")
 
     output:

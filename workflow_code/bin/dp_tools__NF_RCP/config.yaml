@@ -1,6 +1,6 @@
 # TOP LEVEL
 NAME: "bulkRNASeq"
-VERSION: "2"
+VERSION: "6"
 
 # anchors for reuse
 _anchors:
@@ -62,6 +62,17 @@ Staging:
             Indicates is ERCC spike-in has been added. This can be automatically
             determined from the ISA archive as well based on 'Study Protocol Name' and 'Study Protocol Type'
           Example: 'TRUE'
+
+        - ISA Field Name:
+            - Parameter Value[Spike-in Mix Number]
+            - Parameter Value[spike-in mix number]
+          ISA Table Source: Assay
+          Runsheet Column Name: ERCC_mix
+          Optional: true
+          Processing Usage: >-
+            ERCC spike-in mix added to each sample. Required for every sample when has_ERCC is true;
+            dropped from the runsheet when has_ERCC is false.
+          Example: Mix 1
 
         - ISA Field Name: 
             - Characteristics[Organism]
@@ -143,7 +154,7 @@ Staging:
             Source name identifier from the sample table.
           Example: SLS-2_TMS_GC_G10
 
-        - ISA Field Name: Has Tech Reps
+        - ISA Field Name: Parameter Value[Has Technical Reps]
           ISA Table Source: Assay
           Runsheet Column Name: Has Tech Reps
           Optional: true
@@ -564,7 +575,7 @@ data assets:
     processed location: 
       - *alignDataDir
       - "{sample}"
-      - "{sample}_Aligned.sortedByCoord.out.bam"
+      - "{sample}_Aligned.out.bam"
 
     tags:
       - processed

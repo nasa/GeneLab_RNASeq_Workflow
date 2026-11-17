@@ -145,7 +145,7 @@ def check_star_output_existence(outdir, samples, paired_end, log_path, assay_suf
     
     # Expected file patterns for each sample in sample-specific subdirectories
     expected_patterns = [
-        "{sample}/{sample}{assay_suffix}_Aligned.sortedByCoord.out.bam",
+        "{sample}/{sample}{assay_suffix}_Aligned.out.bam",
         "{sample}/{sample}{assay_suffix}_Aligned.sortedByCoord_sorted.out.bam",
         "{sample}/{sample}{assay_suffix}_Aligned.sortedByCoord_sorted.out.bam.bai",
         "{sample}/{sample}{assay_suffix}_Aligned.toTranscriptome.out.bam",
@@ -253,7 +253,7 @@ def check_bam_file_integrity(outdir, samples, log_path, assay_suffix="_GLbulkRNA
     # BAM file patterns to check for each sample
     bam_patterns = [
         "{sample}/{sample}{assay_suffix}_Aligned.toTranscriptome.out.bam",
-        "{sample}/{sample}{assay_suffix}_Aligned.sortedByCoord.out.bam",
+        "{sample}/{sample}{assay_suffix}_Aligned.out.bam",
         "{sample}/{sample}{assay_suffix}_Aligned.sortedByCoord_sorted.out.bam"
     ]
     

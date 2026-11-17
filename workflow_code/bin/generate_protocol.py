@@ -5,12 +5,82 @@ It reads software versions from a YAML file and incorporates other parameters.
 """
 
 import argparse
+import csv
 import yaml
 import os
 import sys
 from datetime import datetime
 import pandas as pd
-import re
+
+def jira_italic(text):
+    text = (text or "").strip()
+    if not text:
+        return ""
+    return f"_{text}_ "
+
+def _name_list(names):
+    if len(names) == 1:
+        return names[0]
+    if len(names) == 2:
+        return f"{names[0]} and {names[1]}"
+    return f"{', '.join(names[:-1])}, and {names[-1]}"
+
+def drop_unalignable_names(report_path):
+    if not report_path:
+        return []
+    with open(report_path, newline="") as f:
+        rows = csv.DictReader(f, delimiter="\t")
+        return [row["sample"] for row in rows if row.get("sample")]
+
+
+def unalignable_protocol_sentence(names, threshold):
+    if not names:
+        return ""
+    return jira_italic(
+        f"Note that since at least {threshold:g}% of the reads in samples {_name_list(names)} were "
+        f"classified as unalignable to the transcriptome by RSEM, they were excluded "
+        f"from count normalization and differential expression analysis."
+    )
+
+def organism_part_values(runsheet_path, excluded_samples=()):
+    if not runsheet_path or not os.path.exists(runsheet_path):
+        return []
+    with open(runsheet_path, newline="") as f:
+        reader = csv.DictReader(f)
+        columns = list(reader.fieldnames or [])
+        rows = list(reader)
+    col = None
+    for c in columns:
+        text = str(c)
+        if text.startswith("Factor Value[") and text.endswith("]"):
+            name = text[len("Factor Value["):-1].strip().lower()
+            if name == "organism part":
+                col = c
+                break
+    if not col:
+        return []
+    sample_col = next((c for c in columns if c.lower() in ("sample name", "sample.name")), None)
+    if sample_col is None:
+        sample_col = next((c for c in columns if "sample" in c.lower() and "name" in c.lower()), None)
+    excluded = set(excluded_samples)
+    values = []
+    seen = set()
+    for row in rows:
+        if (row.get(sample_col) or "").strip() in excluded:
+            continue
+        value = (row.get(col) or "").strip()
+        if value and value not in seen:
+            seen.add(value)
+            values.append(value)
+    return values
+
+def organism_part_protocol_sentence(values):
+    if len(values) < 2:
+        return ""
+    return (
+        f"The runsheet organism part factor included {len(values)} values, {_name_list(values)}, "
+        "and count normalization and differential expression analysis were performed separately for each organism part. "
+    )
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Generate protocol file for GeneLab RNA-seq pipeline')
@@ -42,6 +112,12 @@ def parse_args():
                         help='Path to the reference genome GTF file')
     parser.add_argument('--runsheet', required=False,
                         help='Path to the runsheet CSV file')
+    parser.add_argument('--dropped_unalignable', default='',
+                        help='TSV listing samples excluded by the RSEM unalignable filter')
+    parser.add_argument('--drop_unalignable', default='true',
+                        help='Whether unalignable samples were excluded from DGE')
+    parser.add_argument('--unalignable_threshold', default='60',
+                        help='pct_unalignable cutoff used for DGE exclusion')
     return parser.parse_args()
 
 def read_software_versions(yaml_file):
@@ -69,7 +145,7 @@ def generate_protocol_content(args, software_versions):
         header += "(https://github.com/nasa/GeneLab_Data_Processing/blob/master/RNAseq/Pipeline_GL-DPPD-7101_Versions/GL-DPPD-7101-G.md), "
     
     header += f"using NF_RCP version {args.workflow_version} "
-    header += f"(https://github.com/nasa/GeneLab_RNASeq_Workflow/tree/NF_RCP_{args.workflow_version}). "
+    header += f"(https://github.com/nasa/GeneLab_RNASeq_Workflow/tree/v{args.workflow_version}). "
     
     # Start building the description as a single paragraph
     # Add processing description with software versions
@@ -84,12 +160,14 @@ def generate_protocol_content(args, software_versions):
     # Add reference description based on mode, reference source, and ERCC status
     reference_description = ""
     
-    # Format organism name if provided - replace underscores with spaces and title case
     organism_name = ""
-    organism_name_italics = ""  # For use in text (with underscores for Jira)
+    organism_name_italics = ""
     if hasattr(args, 'organism') and args.organism:
-        organism_name = args.organism.replace('_', ' ').title()
-        organism_name_italics = f"_{organism_name}_"  # Surrounded by underscores for Jira italics
+        parts = args.organism.replace('_', ' ').split()
+        organism_name = parts[0].capitalize() + (
+            " " + " ".join(w.lower() for w in parts[1:]) if parts[1:] else ""
+        )
+        organism_name_italics = f"_{organism_name}_"
     
     # Get reference FASTA and GTF basenames
     ref_fasta_name = ""
@@ -286,7 +364,15 @@ def generate_protocol_content(args, software_versions):
             description += f"A runsheet was generated with dp_tools (version {dp_tools_version}) and the runsheet and quantification data were imported to R (version {r_version}) with tximport (version {tximport_version}), ERCC genes were removed, and the non-ERCC genes were normalized with DESeq2 (version {deseq2_version}) median of ratios method. "
         else:
             description += f"A runsheet was generated with dp_tools (version {dp_tools_version}) and the runsheet and quantification data were imported to R (version {r_version}) with tximport (version {tximport_version}) and normalized with DESeq2 (version {deseq2_version}) median of ratios method. "
-    
+
+    excluded_samples = (
+        drop_unalignable_names(args.dropped_unalignable)
+        if str(args.drop_unalignable).lower() == "true" else []
+    )
+    description += organism_part_protocol_sentence(
+        organism_part_values(getattr(args, "runsheet", None), excluded_samples)
+    )
+
     # Parse runsheet for technical replicate handling
     tech_rep_sentence = ""
     if hasattr(args, 'runsheet') and args.runsheet and os.path.exists(args.runsheet):
@@ -323,12 +409,18 @@ def generate_protocol_content(args, software_versions):
             tech_rep_sentence = ""
     # If no runsheet, leave tech_rep_sentence as empty
     
+    if str(args.drop_unalignable).lower() == "true":
+        threshold = float(args.unalignable_threshold)
+        description += unalignable_protocol_sentence(
+            drop_unalignable_names(args.dropped_unalignable),
+            threshold,
+        )
+
     # Add normalization and differential expression analysis sentence
     description += "Normalized gene counts were subject to differential expression analysis. "
     
-    # Add tech rep sentence
     if tech_rep_sentence:
-        description += tech_rep_sentence
+        description += jira_italic(tech_rep_sentence)
         
     # Add differential expression analysis sentence
     description += f"Differential expression analysis was performed in R (version {r_version}) using DESeq2 (version {deseq2_version}); all groups were compared pairwise using the Wald test and the likelihood ratio test was used to generate the F statistic p-value. "

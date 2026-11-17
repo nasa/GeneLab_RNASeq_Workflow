@@ -3,12 +3,12 @@ process QUANTIFY_FEATURECOUNTS_GENES {
   // An R script that gets the number of non-zero genes per sample in a featureCounts output table
 
   input:
-    val(publishdir)
     path("samples.txt")
     path("03-FeatureCounts/*")
 
   output:
     path("NumNonZeroGenes${params.assay_suffix}.csv"), emit: num_non_zero_genes
+    path("FeatureCounts_Unnormalized_Counts${params.assay_suffix}.csv"), emit: unnorm_counts
 
   script:
     """

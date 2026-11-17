@@ -1,12 +1,7 @@
 process QUANTIFY_STAR_GENES {
   // tag "Dataset-wide"
 
-  publishDir "${ publishdir }",
-    pattern: "*.csv",
-    mode: params.publish_dir_mode
-
   input:
-    val(publishdir)
     path("samples.txt")
     path("02-STAR_Alignment/*")
     val(strandedness)

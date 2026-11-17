@@ -921,42 +921,30 @@ def add_unmapped_reads_column(df, glds_prefix, assay_suffix, runsheet_df=None, m
     return df
 
 def add_merged_sequence_data_column(df, glds_prefix, assay_suffix, runsheet_df=None):
-    """Add the Merged Sequence Data File column to the dataframe.
-    
-    This is for raw/merged sequence data files (before trimming).
-    Similar to trimmed data column but uses "raw" instead of "trimmed".
-    
+    """Add the Merged Sequence Data column to the dataframe.
+
     Args:
         df: The assay table dataframe
         glds_prefix: The GLDS prefix to add to filenames
         assay_suffix: The assay suffix to add to filenames
         runsheet_df: Optional runsheet dataframe with sample information
-        
+
     Returns:
         The modified dataframe
     """
-    column_name = "Parameter Value[Merged Sequence Data File]"
+    column_name = "Parameter Value[Merged Sequence Data]"
     alternative_names = [
-        "Characteristics[Merged Sequence Data File]"
+        "Parameter Value[Merged Sequence Data File]",
+        "Characteristics[Merged Sequence Data File]",
     ]
-    
-    # Check if column already exists
-    existing_col = find_column_case_insensitive(df, column_name)
-    if not existing_col:
-        for alt_name in alternative_names:
-            existing_col = find_column_case_insensitive(df, alt_name)
-            if existing_col:
-                break
-    
-    # Always add/update this column
-    
+
     # Determine if paired-end from runsheet
     is_paired_end = is_paired_end_data(runsheet_df)
     print(f"Data is {'paired-end' if is_paired_end else 'single-end'} based on runsheet")
-    
+
     # Find the sample name column in the assay table
     sample_col = next((col for col in df.columns if 'Sample Name' in col), None)
-    
+
     if not sample_col:
         print("Warning: Could not find Sample Name column in assay table")
         # If no sample column, just use placeholder values
@@ -967,26 +955,42 @@ def add_merged_sequence_data_column(df, glds_prefix, assay_suffix, runsheet_df=N
     else:
         # Get sample names from assay table
         assay_sample_names = df[sample_col].tolist()
-        
+
         values = []
         for assay_sample in assay_sample_names:
             sample = processing_sample_name(assay_sample)
-            
+
             if is_paired_end:
                 # For paired-end data, create entries with both R1 and R2 files, comma-separated without spaces
                 values.append(f"{glds_prefix}{sample}{assay_suffix}_R1_raw.fastq.gz,{glds_prefix}{sample}{assay_suffix}_R2_raw.fastq.gz")
             else:
                 # For single-end data
                 values.append(f"{glds_prefix}{sample}{assay_suffix}_raw.fastq.gz")
-    
-    # Remove existing column if present
+
+    existing_col = find_column_case_insensitive(df, column_name)
+    for alt_name in alternative_names:
+        hit = find_column_case_insensitive(df, alt_name)
+        if not hit or hit == existing_col:
+            continue
+        if existing_col:
+            print(f"Removing existing column: {hit}")
+            df = df.drop(columns=[hit])
+            column_changes.append(f"Removed: {hit}")
+        else:
+            existing_col = hit
+
     if existing_col:
-        print(f"Updating existing Merged Sequence Data File column: {existing_col}")
-        df = df.drop(columns=[existing_col])
-        column_changes.append(f"Updated: {existing_col} -> {column_name}")
-    else:
-        print("Merged Sequence Data File column not found. Adding new column.")
-        column_changes.append(f"Added: {column_name}")
+        print(f"Updating existing Merged Sequence Data column: {existing_col}")
+        if existing_col != column_name:
+            df = df.rename(columns={existing_col: column_name})
+            column_changes.append(f"Updated: {existing_col} -> {column_name}")
+        else:
+            column_changes.append(f"Updated: {column_name}")
+        df[column_name] = values
+        return df
+
+    print("Merged Sequence Data column not found. Adding new column.")
+    column_changes.append(f"Added: {column_name}")
 
     # Insert left of MultiQC File Names if present, else append at end
     insert_position = None
@@ -998,7 +1002,7 @@ def add_merged_sequence_data_column(df, glds_prefix, assay_suffix, runsheet_df=N
         df[column_name] = values
     else:
         df.insert(insert_position, column_name, values)
-    
+
     return df
 
 def add_trimmed_data_column(df, glds_prefix, assay_suffix, runsheet_df=None):
@@ -1373,48 +1377,120 @@ def add_raw_counts_tables_column(df, glds_prefix, assay_suffix, mode=""):
     
     return df
 
-def add_normalized_counts_data_column(df, glds_prefix, assay_suffix):
+def find_published_csvs(outdir, dir_name, name_prefixes, assay_suffix):
+    found = []
+    d = os.path.join(outdir, dir_name) if outdir else ""
+    if not d or not os.path.isdir(d):
+        return found
+    for fn in os.listdir(d):
+        if not fn.endswith(".csv"):
+            continue
+        if not fn.endswith(f"{assay_suffix}.csv"):
+            continue
+        if any(fn.startswith(p) for p in name_prefixes):
+            found.append(fn)
+    return sorted(found)
+
+
+def prefix_glds(glds_prefix, filenames):
+    return [fn if fn.startswith(glds_prefix) else f"{glds_prefix}{fn}" for fn in filenames]
+
+
+def organism_part_by_sample(runsheet_df):
+    if runsheet_df is None or "Sample Name" not in runsheet_df.columns:
+        return None
+    col = next((c for c in runsheet_df.columns if str(c).strip().lower() == "factor value[organism part]"), None)
+    if col is None:
+        return None
+    parts = {}
+    for sample, part in zip(runsheet_df["Sample Name"], runsheet_df[col]):
+        key = sample_key(sample)
+        if key:
+            parts[key] = str(part).strip().replace(" ", "_")
+    return parts
+
+
+def filename_organism_part(fn, prefixes, assay_suffix):
+    tail = f"{assay_suffix}.csv"
+    if not fn.endswith(tail):
+        return ""
+    for prefix in sorted(prefixes, key=len, reverse=True):
+        if not fn.startswith(prefix):
+            continue
+        mid = fn[len(prefix):-len(tail)]
+        if mid in ("", "_rRNArm"):
+            return ""
+        if mid.endswith("_rRNArm"):
+            return mid[1:-len("_rRNArm")]
+        if mid.startswith("_"):
+            return mid[1:]
+        return ""
+    return ""
+
+
+def files_by_sample_part(df, filenames, prefixes, assay_suffix, glds_prefix, runsheet_df):
+    named = prefix_glds(glds_prefix, filenames)
+    parts = organism_part_by_sample(runsheet_df)
+    sample_col = next((col for col in df.columns if "Sample Name" in col), None)
+    if parts is None or sample_col is None:
+        return ",".join(named)
+    rows = []
+    for sample in df[sample_col]:
+        sample_part = lookup_sample_metric(sample, parts) or ""
+        keep = []
+        for fn, display in zip(filenames, named):
+            part = filename_organism_part(fn, prefixes, assay_suffix)
+            if not part or part == sample_part:
+                keep.append(display)
+        rows.append(",".join(keep))
+    return rows
+
+
+def add_normalized_counts_data_column(df, glds_prefix, assay_suffix, outdir=None, runsheet_df=None):
     """Add the Normalized Counts Data column to the dataframe."""
     column_name = "Parameter Value[Normalized Counts Data]"
     alternative_names = []
-    
-    # Create the normalized counts filenames - same for all samples
-    # Include both regular and rRNArm files (4 total files)
-    normalized_files = [
-        f"{glds_prefix}Normalized_Counts{assay_suffix}.csv",
-        f"{glds_prefix}VST_Counts{assay_suffix}.csv",
-        f"{glds_prefix}Normalized_Counts_rRNArm{assay_suffix}.csv",
-        f"{glds_prefix}VST_Counts_rRNArm{assay_suffix}.csv"
-    ]
-    
-    # Join the files with commas
-    combined_files = ",".join(normalized_files)
-    
-    # Add the column to the dataframe with the same value for all rows
-    df = update_column(df, column_name, combined_files, alternative_names)
-    
+
+    prefixes = ["Normalized_Counts", "VST_Counts"]
+    found = find_published_csvs(
+        outdir, "04-DESeq2_NormCounts", prefixes, assay_suffix
+    )
+    if not found:
+        found = [
+            f"Normalized_Counts{assay_suffix}.csv",
+            f"VST_Counts{assay_suffix}.csv",
+            f"Normalized_Counts_rRNArm{assay_suffix}.csv",
+            f"VST_Counts_rRNArm{assay_suffix}.csv",
+        ]
+
+    values = files_by_sample_part(df, found, prefixes, assay_suffix, glds_prefix, runsheet_df)
+    df = update_column(df, column_name, values, alternative_names)
     return df
 
-def add_differential_expression_column(df, glds_prefix, assay_suffix):
+def add_differential_expression_column(df, glds_prefix, assay_suffix, outdir=None, runsheet_df=None):
     """Add the Differential Expression Analysis Data column to the dataframe."""
     column_name = "Parameter Value[Differential Expression Analysis Data]"
     alternative_names = []
-    
-    # Create the differential expression filenames - same for all samples
-    # Include both regular files and the rRNArm differential expression file (4 total)
-    de_files = [
-        f"{glds_prefix}SampleTable{assay_suffix}.csv",
-        f"{glds_prefix}contrasts{assay_suffix}.csv",
-        f"{glds_prefix}differential_expression{assay_suffix}.csv",
-        f"{glds_prefix}differential_expression_rRNArm{assay_suffix}.csv"
-    ]
-    
-    # Join the files with commas
-    combined_files = ",".join(de_files)
-    
-    # Add the column to the dataframe with the same value for all rows
-    df = update_column(df, column_name, combined_files, alternative_names)
-    
+
+    prefixes = ["SampleTable", "contrasts", "differential_expression"]
+    found = find_published_csvs(
+        outdir,
+        "05-DESeq2_DGE",
+        prefixes,
+        assay_suffix,
+    )
+    side = re.compile(rf"(?:SampleTable|contrasts)(?:_.*)?_rRNArm{re.escape(assay_suffix)}\.csv")
+    found = [fn for fn in found if not side.fullmatch(fn)]
+    if not found:
+        found = [
+            f"SampleTable{assay_suffix}.csv",
+            f"contrasts{assay_suffix}.csv",
+            f"differential_expression{assay_suffix}.csv",
+            f"differential_expression_rRNArm{assay_suffix}.csv",
+        ]
+
+    values = files_by_sample_part(df, found, prefixes, assay_suffix, glds_prefix, runsheet_df)
+    df = update_column(df, column_name, values, alternative_names)
     return df
 
 def add_aligned_sequence_data_column(df, glds_prefix, assay_suffix, runsheet_df=None, mode=""):
@@ -1594,6 +1670,34 @@ def normalize_assay_table_fields(df):
     
     return df
 
+def _column_base_name(name):
+    return re.sub(r'\.\d+$', '', str(name)).strip().lower()
+
+def _series_blank(series):
+    values = series.astype("string").str.strip()
+    return bool((values.isna() | values.eq("")).all())
+
+def drop_empty_term_columns(df):
+    """Drop blank Term Source REF / Term Accession Number pairs."""
+    cols = list(df.columns)
+    drop_idx = []
+    i = 0
+    while i < len(cols) - 1:
+        src = _column_base_name(cols[i])
+        acc = _column_base_name(cols[i + 1])
+        if src == "term source ref" and acc == "term accession number":
+            if _series_blank(df.iloc[:, i]) and _series_blank(df.iloc[:, i + 1]):
+                drop_idx.extend([i, i + 1])
+                column_changes.append(f"Removed: {cols[i]} and {cols[i + 1]} (empty)")
+            i += 2
+            continue
+        i += 1
+    if not drop_idx:
+        return df
+    keep = [j for j in range(len(cols)) if j not in set(drop_idx)]
+    print(f"Removed {len(drop_idx) // 2} empty Term Source REF / Term Accession Number pair(s)")
+    return df.iloc[:, keep].copy()
+
 def clean_column_names(df):
     """Clean column names by removing any .# suffixes pandas adds to duplicates.
     
@@ -1654,7 +1758,7 @@ def main():
         # Add read length from MultiQC report (preserve if exists)
         assay_df = add_read_length(assay_df, args.outdir, args.glds_accession, args.assay_suffix, runsheet_df)
         
-        # Add Merged Sequence Data File column (raw/merged files before trimming, if present)
+        # Add Merged Sequence Data column
         assay_df = add_merged_sequence_data_column(assay_df, glds_prefix, args.assay_suffix, runsheet_df=runsheet_df)
         
         # Add Raw MultiQC reports column (preserve if exists)
@@ -1722,7 +1826,7 @@ def main():
         print("\n=== PROCESSING NORMALIZED COUNTS DATA SECTION ===")
         
         # Add Normalized Counts Data column
-        assay_df = add_normalized_counts_data_column(assay_df, glds_prefix, args.assay_suffix)
+        assay_df = add_normalized_counts_data_column(assay_df, glds_prefix, args.assay_suffix, args.outdir, runsheet_df)
         
         # =====================================================
         # SECTION 7: DIFFERENTIAL EXPRESSION
@@ -1730,7 +1834,7 @@ def main():
         print("\n=== PROCESSING DIFFERENTIAL EXPRESSION SECTION ===")
         
         # Add Differential Expression Analysis Data column
-        assay_df = add_differential_expression_column(assay_df, glds_prefix, args.assay_suffix)
+        assay_df = add_differential_expression_column(assay_df, glds_prefix, args.assay_suffix, args.outdir, runsheet_df)
         
         # =====================================================
         # SECTION 8: ERCC ANALYSIS (CONDITIONAL)
@@ -1747,6 +1851,9 @@ def main():
         
         # Clean comma-space in all string columns
         assay_df = clean_comma_space(assay_df)
+
+        # Drop blank Term Source REF / Term Accession Number pairs
+        assay_df = drop_empty_term_columns(assay_df)
         
         # Clean column names by removing any .# suffixes pandas adds
         assay_df = clean_column_names(assay_df)

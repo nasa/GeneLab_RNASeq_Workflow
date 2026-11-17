@@ -1,18 +1,5 @@
 process GENERATE_PROTOCOL {
-    publishDir "${ch_outdir}/GeneLab",
-        mode: params.publish_dir_mode,
-        pattern: "*.txt"
-
-    publishDir "${ch_outdir}/Metadata",
-        mode: params.publish_dir_mode,
-        pattern: "runsheet/*",
-        saveAs: { filename ->
-            if (filename.startsWith("runsheet/")) return filename.replace("runsheet/", "")
-            else return filename
-        }
-
     input:
-        val(ch_outdir)
         val(ch_meta)
         val(strandedness)
         path(software_versions_yaml)
@@ -20,16 +7,18 @@ process GENERATE_PROTOCOL {
         val(reference_version)
         tuple(path(reference_fasta), path(reference_gtf))
         path(runsheet)
+        path(dropped_unalignable)
 
     output:
-        path("protocol${params.assay_suffix}.txt")
-        path("runsheet/${runsheet}")
+        path("protocol${params.assay_suffix}.txt"), emit: protocol
 
     script:
         def mode = params.mode == 'microbes' ? '--mode microbes' : ''
         def ref_source = reference_source ? "--reference_source ${reference_source}" : ''
         def ref_version = reference_version ? "--reference_version ${reference_version}" : ''
         def assay_suffix_arg = params.assay_suffix ? "--assay_suffix ${params.assay_suffix}" : ''
+        def dropped_arg = dropped_unalignable ? "--dropped_unalignable ${dropped_unalignable}" : ''
+        def drop_on = params.drop_unalignable.toString().toBoolean() && params.mode != 'microbes' && params.entry_point in ['raw_reads', 'trimmed_reads', 'bam_files']
 
         """
         generate_protocol.py \
@@ -46,9 +35,9 @@ process GENERATE_PROTOCOL {
         ${ref_version} \
         --reference_fasta ${reference_fasta} \
         --reference_gtf ${reference_gtf} \
-        --runsheet ${runsheet}
-
-        mkdir -p runsheet
-        cp ${runsheet} runsheet/
+        --runsheet ${runsheet} \
+        --drop_unalignable ${drop_on} \
+        --unalignable_threshold ${params.unalignable_threshold} \
+        ${dropped_arg}
         """
 }

@@ -1,19 +1,32 @@
-process VV_RAW_READS {
-  // Run vv_raw_reads.py to generate VV_log.csv pointing to already published data
+process VV_FASTQ {
+  tag { fastq.name }
   label 'VV'
 
-  // Publish VV log
-  publishDir "${ publishdir }",
-    pattern:  "VV_log.csv" ,
-    mode: params.publish_dir_mode,
-    saveAs: { "VV_Logs/VV_log_${ task.process.tokenize(':').last() }${ params.assay_suffix }.csv" }
+  input:
+    path(fastq)
+
+  output:
+    path("*.vv_fastq.tsv"), emit: report
+
+  when:
+    !params.skip_vv
+
+  script:
+    """
+    vv_check_fastq.sh "${fastq.toString()}" > "${fastq.name}.vv_fastq.tsv"
+    """
+}
+
+process VV_RAW_READS {
+  label 'VV'
 
   input:
     path(dp_tools__NF_RCP)
     val(publishdir)
     val(meta)
-    path(runsheet)                
+    path(runsheet)
     path(raw_reads_multiqc_report_zip)
+    path(fastq_reports, stageAs: 'fastq_reports/*')
 
   output:
     path("VV_log.csv"),   optional: params.skip_vv, emit: log
@@ -21,10 +34,10 @@ process VV_RAW_READS {
 
   script:
     def assay_suffix_arg = params.assay_suffix ? "--assay-suffix ${params.assay_suffix}" : ""
+    def reports_arg = params.skip_vv ? "" : "--fastq-check-dir fastq_reports"
     """
-    # Run V&V unless user requests to skip V&V
     if ${ !params.skip_vv } ; then
-      vv_raw_reads.py --runsheet ${runsheet} --outdir ${publishdir} ${assay_suffix_arg}
+      vv_raw_reads.py --runsheet ${runsheet} --outdir ${publishdir} ${assay_suffix_arg} ${reports_arg}
     fi
 
     echo '"${task.process}":' > versions.yml
@@ -35,18 +48,13 @@ process VV_RAW_READS {
 process VV_TRIMMED_READS {
   label 'VV'
 
-  // Log publishing
-  publishDir "${ publishdir }",
-    pattern:  "VV_log.csv" ,
-    mode: params.publish_dir_mode,
-    saveAs: { "VV_Logs/VV_log_${ task.process.tokenize(':').last() }${ params.assay_suffix }.csv" }
-
   input:
     path(dp_tools__NF_RCP)
     val(publishdir)
     val(meta)
-    path(runsheet)                
+    path(runsheet)
     path(trimmed_reads_multiqc_report_zip)
+    path(fastq_reports, stageAs: 'fastq_reports/*')
 
   output:
     path("VV_log.csv"), optional: params.skip_vv, emit: log
@@ -54,10 +62,10 @@ process VV_TRIMMED_READS {
 
   script:
     def assay_suffix_arg = params.assay_suffix ? "--assay-suffix ${params.assay_suffix}" : ""
+    def reports_arg = params.skip_vv ? "" : "--fastq-check-dir fastq_reports"
     """
-    # Run V&V unless user requests to skip V&V
     if ${ !params.skip_vv } ; then
-      vv_trimmed_reads.py --runsheet ${runsheet} --outdir ${publishdir} ${assay_suffix_arg}
+      vv_trimmed_reads.py --runsheet ${runsheet} --outdir ${publishdir} ${assay_suffix_arg} ${reports_arg}
     fi
 
     echo '"${task.process}":' > versions.yml
@@ -66,12 +74,6 @@ process VV_TRIMMED_READS {
 }
 
 process VV_BOWTIE2_ALIGNMENT {
-  // Log publishing
-  publishDir "${ publishdir }",
-    pattern:  "VV_log.csv" ,
-    mode: params.publish_dir_mode,
-    saveAs: { "VV_Logs/VV_log_VV_ALIGNMENT${ params.assay_suffix }.csv" }
-
   label 'VV'
 
   input:
@@ -100,12 +102,6 @@ process VV_BOWTIE2_ALIGNMENT {
 } 
 
 process VV_RSEQC {
-  // Log publishing
-  publishDir "${ publishdir }",
-    pattern: "VV_log.csv",
-    mode: params.publish_dir_mode,
-    saveAs: { "VV_Logs/VV_log_${ task.process.tokenize(':').last() }${ params.assay_suffix }.csv" }
-
   label 'VV'
 
   input:
@@ -136,12 +132,6 @@ process VV_RSEQC {
 }
 
 process VV_FEATURECOUNTS {
-  // Log publishing
-  publishDir "${ publishdir }",
-    pattern: "VV_log.csv",
-    mode: params.publish_dir_mode,
-    saveAs: { "VV_Logs/VV_log_VV_COUNTS${ params.assay_suffix }.csv" }
-
   label 'VV'
 
   input:
@@ -170,12 +160,6 @@ process VV_FEATURECOUNTS {
 }
 
 process VV_DGE_DESEQ2 {
-  // Log publishing
-  publishDir "${ publishdir }",
-    pattern:  "VV_log.csv" ,
-    mode: params.publish_dir_mode,
-    saveAs: { "VV_Logs/VV_log_VV_DESEQ2_ANALYSIS${ params.assay_suffix }.csv" }
-
   label 'VV'
 
   input:
@@ -185,17 +169,20 @@ process VV_DGE_DESEQ2 {
     path(runsheet)
     path(dge_table) // annotated dge table
     path(dge_table_rrnarm) // (rrna rm) annotated dge table
+    val(stratify_by)
 
   output:
     path("VV_log.csv"), optional: params.skip_vv, emit: log
+    path("log2fc_flag_characterization*.csv"), optional: true, emit: log2fc_flags
     path("versions.yml"), emit: versions
     
   script:
   def mode_params = params.mode == "microbes" ? "--mode microbes" : ""
   def assay_suffix_arg = params.assay_suffix ? "--assay_suffix ${params.assay_suffix}" : ""
+  def stratify_arg = stratify_by ? "--stratify_by '${stratify_by}'" : ""
   """
   if ${ !params.skip_vv } ; then
-    vv_dge_deseq2.py --runsheet ${runsheet} --outdir ${publishdir} ${assay_suffix_arg} ${mode_params}
+    vv_dge_deseq2.py --runsheet ${runsheet} --outdir ${publishdir} ${assay_suffix_arg} ${mode_params} ${stratify_arg}
   fi
 
   echo '"${task.process}":' > versions.yml
@@ -204,12 +191,6 @@ process VV_DGE_DESEQ2 {
 }
 
 process VV_STAR_ALIGNMENT {
-  // Log publishing
-  publishDir "${ publishdir }",
-    pattern:  "VV_log.csv" ,
-    mode: params.publish_dir_mode,
-    saveAs: { "VV_Logs/VV_log_VV_ALIGNMENT${ params.assay_suffix }.csv" }
-
   label 'VV'
 
   input:
@@ -235,12 +216,6 @@ process VV_STAR_ALIGNMENT {
 }
 
 process VV_RSEM_COUNTS {
-  // Log publishing
-  publishDir "${ publishdir }",
-    pattern:  "VV_log.csv" ,
-    mode: params.publish_dir_mode,
-    saveAs: { "VV_Logs/VV_log_VV_COUNTS${ params.assay_suffix }.csv" }
-
   label 'VV'
 
   input:
@@ -270,13 +245,9 @@ process VV_RSEM_COUNTS {
 }
 
 process VV_CONCAT_FILTER {
-  publishDir "${publishdir}/VV_Logs",
-    mode: params.publish_dir_mode
-
   label 'VV'
 
   input:
-    val(publishdir)
     path("VV_in.csv")
 
   output:

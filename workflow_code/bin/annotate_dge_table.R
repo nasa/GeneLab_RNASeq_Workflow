@@ -50,8 +50,7 @@ if (!is.null(annotation_file_path) && annotation_file_path != "" && annotation_f
             cat("Downloading annotation file...\n")
             download.file(url = annotation_file_path, 
                          destfile = local_file, 
-                         method = "libcurl", 
-                         headers = c("User-Agent" = "Mozilla/5.0"))
+                         method = "libcurl")
             annot <- read.table(local_file, sep = "\t", header = TRUE, quote = "", comment.char = "")
         } else {
             cat("Reading local annotation file...\n")

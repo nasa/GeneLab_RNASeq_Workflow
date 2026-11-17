@@ -5,7 +5,54 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.1.0](https://github.com/nasa/GeneLab_RNASeq_Workflow/tree/NF_RCP_2.1.0) - 2025-12-09
+## [2.1.1](https://github.com/nasa/GeneLab_RNASeq_Workflow/tree/v2.1.1) - 2026-11-13
+
+### Added
+
+- Infer strandedness from genomic BAMs at BAM entry; default mode pairs them with transcriptome BAMs.
+- Add `--dge_parallel_config` and `--dge_parallel_cores` for DESeq2.
+- Add PBS Pro and Podman profiles.
+- Support local and mixed local/remote FASTA and GTF references.
+- Run applicable ERCC spike-in analysis after RSEM quantification; publish notebooks, HTML and tables under `ERCC_Analysis`.
+- Publish `qc_validation*.txt` and DGE sign-mismatch reports when generated.
+- Add `ERCC_mix` to generated runsheets for ERCC datasets, from ISA `Parameter Value[Spike-in Mix Number]`. ERCC analysis reads each sample's mix from this column.
+
+### Changed
+
+- Rename `--runsheet_path` and `--isa_archive_path` to `--runsheet` and `--isa_archive`.
+- Require Nextflow 26.04 or later.
+- Replace `-entry STAGE_ONLY` and `-entry POST_PROCESSING` with `--stage_only` and `--post_processing`. Stage-only supports every entry point.
+- Default `--strandedness` to `auto`; default-mode BAM entry requires a paired genomic BAM or explicit strandedness.
+- Use the Biological Data API for accession lookup.
+- Resolve OSDR input URLs for the selected entry point, including older published filenames.
+- Fetch remote inputs and annotations in worker processes. Apply `truncate_to` to raw and trimmed reads there.
+- Split DGE by `Factor Value[organism part]` when multiple values are present; label outputs and describe the split in the protocol.
+- Exclude samples with at least 60% RSEM unalignable reads before DGE by default for raw-read, trimmed-read and BAM entry points in default mode. Configure with `--drop_unalignable` and `--unalignable_threshold`.
+- Publish unnormalized counts in the RSEM or FeatureCounts `03` directory, and normalized/VST counts in `04`.
+- Publish standard SampleTable and contrasts files only; reuse them for rRNA-removed DGE validation.
+- Have `ALIGN_STAR` emit unsorted genomic BAMs to avoid sorting twice.
+- Move Bowtie2 SAM-to-BAM conversion and unmapped-read filtering into `SAM_TO_BAM`.
+- Run FASTQ validation per file and raw/processed checksum generation in parallel.
+- Update process resource allocations and walltimes. Leave local walltime unset and cap PBS Pro tasks at eight hours.
+- Enable scratch staging for Slurm and PBS Pro processes.
+- Update the `dp_tools` image to `1.3.8-slim`.
+- Bump the dp_tools plugin runsheet schema version from 2 to 6.
+- Normalize merged-sequence assay fields and remove empty ontology-column pairs.
+- Stop generating unused rRNA-removal summary files.
+
+### Fixed
+
+- Use the configured DESeq2 backend for the LRT step.
+- Fix DESeq2 BiocParallel backend handling.
+- Publish the runsheet and available ISA archive once for every entry point.
+- Use the resolved output directory for validation and post-processing.
+- Validate FeatureCounts nonzero-gene reports and rRNA-removed count tables.
+- Allow annotation processing to continue when no gene annotation file is supplied or the file is empty.
+- Remove the Mozilla user agent from Figshare annotation downloads to avoid HTTP 403 errors.
+- Prevent reference version-report files from overwriting each other.
+- Correct ERCC count-axis labels.
+
+## [2.1.0](https://github.com/nasa/GeneLab_RNASeq_Workflow/tree/v2.1.0) - 2025-12-09
 
 ### Added
 
@@ -45,7 +92,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed `REMOVE_RRNA` to copy unfiltered `genes.results` when the rRNA ID list is empty
 - Fixed missing .grp file bug in `build_rsem_index.nf` ([#8](https://github.com/nasa/GeneLab_RNASeq_Workflow/issues/8))
 
-## [2.0.2](https://github.com/nasa/GeneLab_RNASeq_Workflow/tree/NF_RCP_2.0.2) - 2025-08-26
+## [2.0.2](https://github.com/nasa/GeneLab_RNASeq_Workflow/tree/v2.0.2) - 2025-08-26
 
 ### Added
 

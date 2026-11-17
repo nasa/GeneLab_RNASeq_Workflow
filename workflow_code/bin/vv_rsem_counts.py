@@ -160,7 +160,8 @@ def check_rsem_output_existence(outdir, samples, log_path, assay_suffix="_GLbulk
     # Dataset-level files (directly in the RSEM directory)
     dataset_files = [
         "RSEM_NumNonZeroGenes{assay_suffix}.csv",
-        "RSEM_Unnormalized_Counts{assay_suffix}.csv"
+        "RSEM_Unnormalized_Counts{assay_suffix}.csv",
+        "RSEM_Unnormalized_Counts_rRNArm{assay_suffix}.csv"
     ]
     
     # MultiQC files in the MultiQC_Reports subdirectory

@@ -32,6 +32,18 @@ class runsheet: # Bad casing since we will use the class definition itself for a
             errors.append("'Source Name' column must be present when 'Has Tech Reps' column is used")
 
     @staticmethod
+    def check_ercc_mix(df: pd.DataFrame, errors: list[str]) -> None:
+        """Drop ERCC_mix when has_ERCC is false; require the column when it is true"""
+        has_ercc = str(df['has_ERCC'].iloc[0]).strip().lower() == 'true'
+        if not has_ercc:
+            if 'ERCC_mix' in df.columns:
+                df.drop(columns='ERCC_mix', inplace=True)
+            return
+        if 'ERCC_mix' not in df.columns:
+            errors.append("has_ERCC is True but the assay table has no 'Parameter Value[Spike-in Mix Number]' column to populate 'ERCC_mix'")
+            return
+
+    @staticmethod
     def validate(df_runsheet: pd.DataFrame) -> bool:
         errors = []
         
@@ -48,6 +60,8 @@ class runsheet: # Bad casing since we will use the class definition itself for a
         
         # Check for Source Name and Has Tech Reps dependency
         runsheet.check_source_name_and_has_tech_reps_dependency(df_runsheet, errors)
+
+        runsheet.check_ercc_mix(df_runsheet, errors)
         
         if errors:
             raise ValueError("\n".join(errors))

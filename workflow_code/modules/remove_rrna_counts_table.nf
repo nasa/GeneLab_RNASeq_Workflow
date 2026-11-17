@@ -1,11 +1,6 @@
 process REMOVE_RRNA_COUNTS_TABLE {
 
-  publishDir "${ publishdir }",
-    pattern: "*Unnormalized_Counts_rRNArm*.csv",
-    mode: params.publish_dir_mode
-
   input:
-    val(publishdir)
     path(counts_table)
     path(rrna_ids)
 

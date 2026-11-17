@@ -137,9 +137,12 @@ def check_featurecounts_files_existence(outdir, log_path, assay_suffix="_GLbulkR
     
     # Define expected files
     expected_files = [
+        f"FeatureCounts_rRNArm{assay_suffix}.tsv",
         f"FeatureCounts{assay_suffix}.tsv",
-        f"FeatureCounts{assay_suffix}.tsv.summary"
-        # f"FeatureCounts_rRNArm{assay_suffix}.tsv"
+        f"FeatureCounts{assay_suffix}.tsv.summary",
+        f"NumNonZeroGenes{assay_suffix}.csv",
+        f"FeatureCounts_Unnormalized_Counts{assay_suffix}.csv",
+        f"FeatureCounts_Unnormalized_Counts_rRNArm{assay_suffix}.csv"
     ]
     
     # Define MultiQC files in the MultiQC_Reports subdirectory

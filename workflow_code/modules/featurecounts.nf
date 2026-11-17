@@ -1,13 +1,6 @@
 process FEATURECOUNTS {
 
-  publishDir "${ publishdir }",
-    pattern: "FeatureCounts*",
-    mode: params.publish_dir_mode
-
-    tag "Strandedness: ${ strandedness }"
-
   input:
-    val(publishdir)
     val(meta)
     tuple path(genomeFasta), path(genomeGtf)
     val(gtf_features)

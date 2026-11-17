@@ -1,12 +1,7 @@
 process SORT_AND_INDEX_BAM {
   tag "Sample: ${ meta.id }"
 
-  publishDir "${ publishdir }/${ meta.id }",
-    pattern:  "*.{bam,bai}" ,
-    mode: params.publish_dir_mode
-
   input:
-    val(publishdir)
     tuple val(meta), path(bam_file)
 
   output:
@@ -15,8 +10,10 @@ process SORT_AND_INDEX_BAM {
     path("versions.yml"), emit: versions
 
   script:
-    sorted_bam_fname = bam_file.name.contains('.out.bam') ? 
-                   bam_file.name.replaceAll('.out.bam', '_sorted.out.bam') : 
+    sorted_bam_fname = bam_file.name.endsWith('_Aligned.out.bam') ?
+                   bam_file.name.replace('_Aligned.out.bam', '_Aligned.sortedByCoord_sorted.out.bam') :
+                   bam_file.name.contains('.out.bam') ?
+                   bam_file.name.replaceAll('.out.bam', '_sorted.out.bam') :
                    bam_file.name.replaceAll('.bam', '_sorted.bam')
     mem_MB_per_thread = (task.memory.toMega().intValue() * 0.8 / task.cpus).intValue()
     """    

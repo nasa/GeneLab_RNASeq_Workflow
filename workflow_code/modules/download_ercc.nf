@@ -13,10 +13,9 @@ process DOWNLOAD_ERCC {
 
   script:
     """
-    wget --no-check-certificate --quiet \
-    -O ERCC92.zip \
-    https://assets.thermofisher.com/TFS-Assets/LSG/manuals/ERCC92.zip  \
-    && \
+    fetch_uri.sh --insecure \
+        https://assets.thermofisher.com/TFS-Assets/LSG/manuals/ERCC92.zip \
+        ERCC92.zip
     unzip ERCC92.zip
     """
 }

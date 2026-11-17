@@ -2,12 +2,7 @@ process QUANTIFY_RSEM_GENES {
   // An R script that extracts gene counts by sample to a table
   // tag "Dataset-wide"
 
-  publishDir "${ publishdir }",
-    pattern: "*.csv",
-    mode: params.publish_dir_mode
-
   input:
-    val(publishdir)
     path("samples.txt")
     path("03-RSEM_Counts/*")
 

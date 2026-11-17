@@ -20,7 +20,15 @@
     },
     "dge_parallel_config": {
       "type": "string",
-      "default": "SerialParam(RNGseed = 7)"
+      "enum": ["serial", "multicore", "snow"],
+      "default": "serial",
+      "description": "DESeq2 BiocParallel mode."
+    },
+    "dge_parallel_cores": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 4,
+      "description": "CPUs requested for DESeq2 processes if dge_parallel_config is multicore or snow."
     }
   },
   "$defs": {
@@ -78,6 +86,26 @@
           "type": "string",
           "hidden": true,
           "description": "TO DO: implement"
+        },
+        "pbs_queue": {
+          "type": "string",
+          "default": "normal",
+          "description": "PBS Pro queue. Used with `-profile pbspro`."
+        },
+        "pbs_model": {
+          "type": "string",
+          "default": "",
+          "description": "PBS model resource in clusterOptions. Empty omits :model=."
+        },
+        "pbs_internet_queue": {
+          "type": "string",
+          "default": "",
+          "description": "PBS queue for fetch/download processes. Empty uses --pbs_queue."
+        },
+        "walltime": {
+          "type": "string",
+          "default": "2.h",
+          "description": "Default process walltime for slurm/pbspro."
         }
       }
     },
@@ -128,13 +156,13 @@
           "description": "Input OSD or GLDS identifier as 'OSD-#' or 'GLDS-#' if processing an OSDR dataset.",
           "pattern": "^(OSD|GLDS)-[0-9]+$"
         },
-        "runsheet_path": {
+        "runsheet": {
           "type": "string",
           "description": "Path to the input runsheet.",
           "format": "file-path",
           "schema": "./conf/runsheet_schema.json"
         },
-        "isa_archive_path": {
+        "isa_archive": {
           "type": "string",
           "description": "Path to the ISA.zip for an OSDR dataset. '--accession' must also be used.",
           "format": "file-path"
@@ -156,11 +184,21 @@
           "description": "Workflow entry point.",
           "enum": ["raw_reads", "trimmed_reads", "bam_files", "genes_results", "counts_table", "dge_table"]
         },
+        "stage_only": {
+          "type": "boolean",
+          "default": false,
+          "description": "Publish the runsheet and staged inputs for the current entry point, then exit. truncate_to applies to raw and trimmed reads."
+        },
+        "post_processing": {
+          "type": "boolean",
+          "default": false,
+          "description": "Update the assay table and generate md5sums for ${outdir}/${accession}."
+        },
         "strandedness": {
           "type": "string",
-          "default": "none",
-          "description": "Sets strandedness used for RSEM quantification when the workflow is started after alignment",
-          "enum": ["forward", "reverse", "none"]
+          "default": "auto",
+          "description": "auto = infer strandedness from RSeQC infer_experiment. none/forward/reverse overrides RSeQC output. Default-mode BAM auto also requires a matching genome_bam_path; microbes reuse bam_path.",
+          "enum": ["auto", "none", "forward", "reverse"]
         },
         "counts_table_path": {
           "type": "string",
@@ -204,7 +242,7 @@
         },
         "gene_annotations_file": {
           "type": "string",
-          "description": "Specifies a gene annotations file to use in place of the one isted in GL-DPPD-7110-A_annotations.csv."
+          "description": "Local path or URL of a gene annotations TSV. Overrides the file listed in GL-DPPD-7110-A_annotations.csv. Figshare ndownloader links are rewritten to the API."
         }
       },
       "required": ["reference_table"]
@@ -256,6 +294,18 @@
           "default": 1,
           "description": "Multiplier for sample-scaled threshold",
           "minimum": 0
+        },
+        "drop_unalignable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Exclude samples from DGE when RSEM pct_unalignable is at or above --unalignable_threshold. Default mode only (raw_reads / trimmed_reads / bam_files)."
+        },
+        "unalignable_threshold": {
+          "type": "number",
+          "default": 60,
+          "description": "Drop samples with RSEM pct_unalignable at or above this percent",
+          "minimum": 0,
+          "maximum": 100
         }
       }
     },
@@ -283,7 +333,7 @@
         },
         "use_dummy_gene_counts": {
           "type": "boolean",
-          "description": "Generate random gene counts during DGE. This is should be enabled when using '--truncate_to'."
+          "description": "Add random counts to the DGE matrix. Enable when using '--truncate_to'."
         },
         "dp_tools_plugin": {
           "type": "string",

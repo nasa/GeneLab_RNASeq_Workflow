@@ -1,14 +1,6 @@
 process COPY_COUNTS_TABLE {
 
-    publishDir { 
-        params.mode == "microbes" ? 
-            "${ publishdir }/03-FeatureCounts" : 
-            "${ publishdir }/03-RSEM_Counts" 
-    },
-        mode: params.publish_dir_mode
-
     input:
-        val(publishdir)
         path("?.csv")
 
     output:

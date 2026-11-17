@@ -5,7 +5,7 @@ process GET_MAX_READ_LENGTH {
     path(fastqc_datazips)
 
   output:
-    env(MAX_LENGTH), emit: length
+    env 'MAX_LENGTH', emit: length
 
   script:
     """

@@ -1,18 +1,12 @@
 process GENEBODY_COVERAGE {
   tag "Sample: ${ meta.id }"
 
-  publishDir "${ publishdir }/${ meta.id }",
-    pattern:  "${ meta.id }.geneBodyCoverage.*" ,
-    mode: params.publish_dir_mode
-
   input:
-    val(publishdir)
     tuple val(meta), path(bam_file), path(bai_file) // bam file sorted by coordinate
     path(genome_bed)
 
   output:
-    path("${ meta.id }.geneBodyCoverage.txt"), emit: log_only
-    path("${ meta.id }.geneBodyCoverage.*"), emit: all_output
+    tuple val(meta), path("${ meta.id }.geneBodyCoverage.*"), emit: all_output
     tuple val(meta), path("${ meta.id }.geneBodyCoverage.txt"), emit: log
     path("versions.yml"), emit: versions
 
@@ -30,17 +24,11 @@ process GENEBODY_COVERAGE {
 process INFER_EXPERIMENT {
   tag "Sample: ${meta.id}"
 
-  publishDir "${ publishdir }",
-    pattern:  "*.out" ,
-    mode: params.publish_dir_mode
-
   input:
-    val(publishdir)
     tuple val(meta), path(bam_file), path(bai_file) // bam file sorted by coordinate
     path(genome_bed)
 
   output:
-    path("${meta.id}.infer_expt.out"), emit: log_only
     tuple val(meta), path("${meta.id}.infer_expt.out"), emit: log
     path("versions.yml"), emit: versions
 
@@ -58,19 +46,13 @@ process INFER_EXPERIMENT {
 process INNER_DISTANCE {
   tag "Sample: ${ meta.id }"
 
-  publishDir "${ publishdir }/${ meta.id }",
-    pattern:  "*.inner_distance*" ,
-    mode: params.publish_dir_mode
-
   input:
-    val(publishdir)
     tuple val(meta), path(bam_file), path(bai_file) // bam file sorted by coordinate
     path(genome_bed)
     val(max_read_length)
 
   output:
-    path("${ meta.id }.inner_distance_freq.txt"), emit: log_only
-    path("${ meta.id }.inner_distance*"), emit: all_output
+    tuple val(meta), path("${ meta.id }.inner_distance*"), emit: all_output
     tuple val(meta), path("${ meta.id }.inner_distance_freq.txt"), emit: log
     path("versions.yml"), emit: versions
 
@@ -92,17 +74,11 @@ process INNER_DISTANCE {
 process READ_DISTRIBUTION {
   tag "Sample: ${ meta.id }"
 
-  publishDir "${ publishdir }",
-    pattern:  "${ meta.id }.read_dist.out" ,
-    mode: params.publish_dir_mode
-
   input:
-    val(publishdir)
     tuple val(meta), path(bam_file), path(bai_file)  // bam file sorted by coordinate
     path(genome_bed)
 
   output:
-    path("${ meta.id }.read_dist.out"), emit: log_only
     tuple val(meta), path("${ meta.id }.read_dist.out"), emit: log
     path("versions.yml"), emit: versions
 

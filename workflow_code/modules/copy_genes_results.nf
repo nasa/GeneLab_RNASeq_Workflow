@@ -1,11 +1,7 @@
 process COPY_GENES_RESULTS {
     tag "Sample: ${meta.id}"
     
-    publishDir "${ publishdir }/03-RSEM_Counts/${meta.id}",
-        mode: params.publish_dir_mode
-
     input:
-        val(publishdir)
         tuple val(meta), path("?.genes.results")
 
     output:

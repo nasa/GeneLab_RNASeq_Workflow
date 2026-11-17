@@ -1,11 +1,6 @@
 process MULTIQC {
     // tag("Dataset-wide")
-    publishDir "${ publishdir }",
-        pattern:  "*.{html,zip}" ,
-        mode: params.publish_dir_mode
-    
     input:
-    val(publishdir)
     path(sample_names)
     path("mqc_in/*") // any number of multiqc compatible files
     path(multiqc_config)

@@ -13,8 +13,7 @@ Check that the expected output directories exist
 Section-specific checks:
 
 check_trimmed_fastq_existence: Check if all expected trimmed FASTQ files exist for each sample
-check_gzip_integrity: Verify GZIP integrity of FASTQ files using gzip -t
-validate_fastq_format: Ensure FASTQ files have proper formatting (headers start with @)
+check_gzip_integrity / validate_fastq_format: per-FASTQ one-pass gzip+format reports
 check_trimmed_fastqc_existence: Verify FastQC output files exist (HTML and ZIP files)
 check_samples_multiqc: Confirm all samples are included in the MultiQC report
 get_trimmed_multiqc_stats: Extract FastQC metrics from MultiQC report
@@ -34,9 +33,8 @@ import sys
 import argparse
 import pandas as pd
 import re
-import subprocess
-import gzip
 import zipfile
+from vv_fastq_reports import check_fastq_gzip_and_format
 import json
 import tempfile
 import numpy as np
@@ -186,132 +184,6 @@ def check_trimmed_fastq_existence(outdir, samples, paired_end, log_path, assay_s
     print(f"Found all expected trimmed FASTQ files ({len(samples)} samples)")
     log_check_result(log_path, "trimmed_reads", "all", "check_trimmed_fastq_existence", "GREEN", 
                      "All trimmed FASTQ files found", "")
-    return True
-
-def check_gzip_integrity(outdir, samples, paired_end, log_path, assay_suffix="_GLbulkRNAseq"):
-    """Check GZIP integrity for trimmed FASTQ files."""
-    fastq_dir = os.path.join(outdir, "01-TG_Preproc", "Fastq")
-    failed_files = []
-    all_files = []
-    
-    is_paired = paired_end[0]  # Assuming all samples have the same paired_end value
-    
-    for sample in samples:
-        if is_paired:
-            # Get R1 and R2 files for paired-end sequencing
-            r1_file = os.path.join(fastq_dir, f"{sample}{assay_suffix}_R1_trimmed.fastq.gz")
-            r2_file = os.path.join(fastq_dir, f"{sample}{assay_suffix}_R2_trimmed.fastq.gz")
-            files_to_check = [r1_file, r2_file]
-        else:
-            # Get single file for single-end sequencing
-            single_file = os.path.join(fastq_dir, f"{sample}{assay_suffix}_trimmed.fastq.gz")
-            files_to_check = [single_file]
-        
-        for file_path in files_to_check:
-            if os.path.exists(file_path):
-                all_files.append(file_path)
-                # Run gzip -t to test integrity
-                result = subprocess.run(["gzip", "-t", file_path], capture_output=True)
-                if result.returncode != 0:
-                    failed_files.append(file_path)
-                    print(f"GZIP integrity check failed for: {file_path}")
-                    print(f"Error: {result.stderr.decode('utf-8')}")
-    
-    if failed_files:
-        log_check_result(log_path, "trimmed_reads", "all", "check_gzip_integrity", "HALT", 
-                         f"Integrity check failed for {len(failed_files)} of {len(all_files)} files", 
-                         ",".join(failed_files))
-        return False
-    
-    if all_files:
-        log_check_result(log_path, "trimmed_reads", "all", "check_gzip_integrity", "GREEN", 
-                         f"Integrity check passed for all {len(all_files)} files", "")
-        return True
-    else:
-        log_check_result(log_path, "trimmed_reads", "all", "check_gzip_integrity", "HALT", 
-                         "No trimmed FASTQ files found to check", "")
-        return False
-
-def validate_fastq_format(outdir, samples, paired_end, log_path, assay_suffix="_GLbulkRNAseq", max_lines=200000000):
-    """Validate FASTQ format by checking that header lines start with @.
-    Only checks the first 200 million lines for performance reasons."""
-    trimmed_dir = os.path.join(outdir, "01-TG_Preproc", "Fastq")
-    invalid_files = []
-    all_files = []
-    
-    is_paired = paired_end[0]  # Assuming all samples have the same paired_end value
-    
-    for sample in samples:
-        if is_paired:
-            # Get R1 and R2 files for paired-end sequencing
-            r1_file = os.path.join(trimmed_dir, f"{sample}{assay_suffix}_R1_trimmed.fastq.gz")
-            r2_file = os.path.join(trimmed_dir, f"{sample}{assay_suffix}_R2_trimmed.fastq.gz")
-            files_to_check = [r1_file, r2_file]
-        else:
-            # Get single file for single-end sequencing
-            single_file = os.path.join(trimmed_dir, f"{sample}{assay_suffix}_trimmed.fastq.gz")
-            files_to_check = [single_file]
-        
-        for file_path in files_to_check:
-            if os.path.exists(file_path):
-                all_files.append(file_path)
-                print(f"Validating FASTQ format for: {file_path}")
-                
-                try:
-                    with gzip.open(file_path, 'rt') as f:
-                        line_count = 0
-                        line_in_record = 0
-                        has_valid_record = False
-                        
-                        for line in f:
-                            line_count += 1
-                            line_in_record = (line_count - 1) % 4
-                            
-                            # Check if header line (every 4th line, starting with line 1)
-                            if line_in_record == 0:
-                                if not line.startswith('@'):
-                                    invalid_files.append(file_path)
-                                    print(f"Invalid FASTQ format in {file_path} at line {line_count}")
-                                    break
-                                has_valid_record = True
-                            
-                            # Stop after max_lines
-                            if line_count >= max_lines:
-                                print(f"Reached {max_lines} lines limit for {file_path}")
-                                break
-                        
-                        # Check if file is empty or has incomplete records
-                        if not has_valid_record:
-                            invalid_files.append(file_path)
-                            print(f"Empty or invalid FASTQ file: {file_path}")
-                            continue
-                        
-                        if line_count % 4 != 0:
-                            invalid_files.append(file_path)
-                            print(f"Incomplete FASTQ record in {file_path}")
-                                
-                except Exception as e:
-                    invalid_files.append(file_path)
-                    print(f"Error validating {file_path}: {str(e)}")
-    
-    if invalid_files:
-        print(f"WARNING: The following FASTQ files are invalid:")
-        for file in invalid_files:
-            print(f"  - {file}")
-        log_check_result(log_path, "trimmed_reads", "all", "validate_fastq_format", "HALT", 
-                        f"Invalid format in {len(invalid_files)} of {len(all_files)} files", 
-                        ",".join(invalid_files))
-        return False
-    
-    if not all_files:
-        print("No FASTQ files found to validate")
-        log_check_result(log_path, "trimmed_reads", "all", "validate_fastq_format", "HALT", 
-                        "No trimmed FASTQ files found to validate", "")
-        return False
-
-    print(f"All {len(all_files)} FASTQ files are valid")
-    log_check_result(log_path, "trimmed_reads", "all", "validate_fastq_format", "GREEN", 
-                    "All files valid", "")
     return True
 
 def check_trimmed_fastqc_existence(outdir, samples, paired_end, log_path, assay_suffix="_GLbulkRNAseq"):
@@ -1394,6 +1266,8 @@ def main():
                         help='Output directory (GLDS-## folder), defaults to current directory')
     parser.add_argument('--assay-suffix', default="", 
                         help='Assay suffix used in MultiQC report filenames (default: empty)')
+    parser.add_argument('--fastq-check-dir', default=None,
+                        help='Directory of per-FASTQ *.vv_fastq.tsv reports')
     args = parser.parse_args()
     
     # Initialize VV log
@@ -1432,11 +1306,10 @@ def main():
     # 1. Check for trimmed FASTQ files existence
     check_trimmed_fastq_existence(args.outdir, sample_names, paired_end_values, vv_log_path, args.assay_suffix)
     
-    # 2. Check GZIP integrity of FASTQ files
-    check_gzip_integrity(args.outdir, sample_names, paired_end_values, vv_log_path, args.assay_suffix)
-    
-    # 3. Validate FASTQ format
-    validate_fastq_format(args.outdir, sample_names, paired_end_values, vv_log_path, args.assay_suffix)
+    check_fastq_gzip_and_format(
+        args.outdir, sample_names, paired_end_values, vv_log_path, args.assay_suffix,
+        "trimmed_reads", "trimmed", args.fastq_check_dir, log_check_result,
+    )
     
     # 4. Check FastQC outputs existence
     check_trimmed_fastqc_existence(args.outdir, sample_names, paired_end_values, vv_log_path, args.assay_suffix)

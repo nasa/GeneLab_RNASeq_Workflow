@@ -1,8 +1,4 @@
 process UPDATE_ASSAY_TABLE {
-    publishDir "${ch_processed_directory}/GeneLab/updated_curation_tables",
-    mode: params.publish_dir_mode,
-    pattern: "a_*.txt"
-
     input:
         path(ch_processed_directory)
     output:

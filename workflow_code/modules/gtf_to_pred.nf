@@ -11,13 +11,13 @@ process GTF_TO_PRED {
 
     output:
         path("${ genome_gtf }.genePred"), emit: genome_pred
-        path("versions.yml")            , emit: versions
+        path("versions_gtfToGenePred.yml"), emit: versions
 
     script:
     """
     gtfToGenePred -geneNameAsName2 -ignoreGroupsWithoutExons ${ genome_gtf } ${ genome_gtf }.genePred
 
-    echo '"${task.process}":' > versions.yml
-    echo "    gtfToGenePred: 469" >> versions.yml
+    echo '"${task.process}":' > versions_gtfToGenePred.yml
+    echo "    gtfToGenePred: 469" >> versions_gtfToGenePred.yml
     """
 }
