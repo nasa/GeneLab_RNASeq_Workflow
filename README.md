@@ -24,7 +24,7 @@ The table below details the default maximum resource allocations for individual 
 | `microbes`| Prokaryotic organisms | 8                 | 16 GB          |
 
 > [!NOTE]
-> These per-process resource allocations are defaults. They can be adjusted by modifying `cpus` and `memory`  directives in the configuration files: [`local.config`](workflow_code/conf/local.config) (local execution) and [`slurm.config`](workflow_code/conf/slurm.config) (SLURM clusters).
+> These per-process resource allocations are defaults. They can be adjusted by modifying `cpus` and `memory`  directives in the configuration files: [local.config](workflow_code/conf/local.config) (local execution) and [slurm.config](workflow_code/conf/slurm.config) (SLURM clusters).
 
 > **Click links below to show/hide workflow diagrams**
 
@@ -152,14 +152,14 @@ Although Nextflow can fetch Singularity images from a url, doing so may cause is
 
 To avoid this issue, run the following command to fetch the Singularity images prior to running the NF_RCP workflow:
 > [!NOTE] 
-> This command should be run in the location containing the `NF_RCP_2.1.1` directory that was downloaded in [step 2](#2-download-the-workflow-files) above. Depending on your network speed, fetching the images will take ~20 minutes. Approximately 8GB of RAM is needed to download and build the Singularity images.
+> This command should be run in the location containing the NF_RCP_2.1.1 directory that was downloaded in [step 2](#2-download-the-workflow-files) above. Depending on your network speed, fetching the images will take ~20 minutes. Approximately 8GB of RAM is needed to download and build the Singularity images.
 
 ```bash
 bash NF_RCP_2.1.1/bin/prepull_singularity.sh NF_RCP_2.1.1/config/by_docker_image.config
 ```
 
 
-Once complete, a `singularity` folder containing the Singularity images will be created. Run the following command to export this folder as a Nextflow configuration environment variable to ensure Nextflow can locate the fetched images:
+Once complete, a "singularity" folder containing the Singularity images will be created. Run the following command to export this folder as a Nextflow configuration environment variable to ensure Nextflow can locate the fetched images:
 
 ```bash
 export NXF_SINGULARITY_CACHEDIR=$(pwd)/singularity
@@ -171,7 +171,7 @@ export NXF_SINGULARITY_CACHEDIR=$(pwd)/singularity
 
 ### 4. Run the Workflow
 
-While in the location containing the `NF_RCP_2.1.1` directory that was downloaded in [step 2](#2-download-the-workflow-files), you are now able to run the workflow.
+While in the location containing the NF_RCP_2.1.1 directory that was downloaded in [step 2](#2-download-the-workflow-files), you are now able to run the workflow.
 
 Both workflows automatically load reference files and organism-specific gene annotation files from the [GeneLab annotations table](https://github.com/nasa/GeneLab_Data_Processing/blob/master/GeneLab_Reference_Annotations/Pipeline_GL-DPPD-7110_Versions/GL-DPPD-7110-A/GL-DPPD-7110-A_annotations.csv). For organisms not listed in the table or to use alternative reference files, additional workflow parameters can be specified.
 
@@ -256,7 +256,7 @@ nextflow run NF_RCP_2.1.1/main.nf \
 
 * `-profile` - Specifies the configuration profile(s) to load, `singularity` instructs Nextflow to setup and use singularity for all software called in the workflow; use `local` for local execution ([local.config](workflow_code/conf/local.config)) or `slurm` for SLURM cluster execution ([slurm.config](workflow_code/conf/slurm.config)) or `pbspro` for PBS Pro cluster execution ([pbspro.config](workflow_code/conf/pbspro.config))
 > [!NOTE]
-> The output directory will be named `GLDS-#` when using a OSD or GLDS accession as input, or `results` when running the workflow with only a runsheet as input.
+> The output directory will be named GLDS-# when using a OSD or GLDS accession as input, or results when running the workflow with only a runsheet as input.
 
 <br>
 
@@ -304,10 +304,10 @@ nextflow run NF_RCP_2.1.1/main.nf \
 
 * `--gene_annotations_file` - Specifies the path or URL to a gene annotation file that adds additional gene annotation columns to the differential expression output table (type: string, default: null). This can be:
 
-  - The file listed in the `genelab_annots_link` column of the [GeneLab annotations table](https://github.com/nasa/GeneLab_Data_Processing/blob/master/GeneLab_Reference_Annotations/Pipeline_GL-DPPD-7110_Versions/GL-DPPD-7110-A/GL-DPPD-7110-A_annotations.csv)
+  - The file listed in the "genelab_annots_link" column of the [GeneLab annotations table](https://github.com/nasa/GeneLab_Data_Processing/blob/master/GeneLab_Reference_Annotations/Pipeline_GL-DPPD-7110_Versions/GL-DPPD-7110-A/GL-DPPD-7110-A_annotations.csv)
   - A custom gene annotation file where:
     - For organisms listed in the GeneLab annotations table: gene IDs must be in a column with the same name as column 1 of the GeneLab organism-specific gene annotation file
-    - For organisms not listed in the table: gene IDs must be in a column named `gene_id`
+    - For organisms not listed in the table: gene IDs must be in a column named "gene_id"
   
   Only genes included in the specified annotations file will receive additional annotations in the output.
 
@@ -352,7 +352,7 @@ nextflow run NF_RCP_2.1.1/main.nf \
   
   * `--dge_filter_count_per_sample_threshold` - Multiplier for sample-scaled count threshold (type: number, default: 1)
 
-  * `--drop_unalignable` - Exclude samples from DGE when RSEM `pct_unalignable` is at or above `--unalignable_threshold` (type: boolean, default: true). Default mode only; no-op for microbes and for counts_table / genes_results / dge_table.
+  * `--drop_unalignable` - Exclude samples from DGE when RSEM "pct_unalignable" is at or above `--unalignable_threshold` (type: boolean, default: true). Default mode only; no-op for microbes and for counts_table / genes_results / dge_table.
 
   * `--unalignable_threshold` - Percent unalignable at or above which a sample is dropped from count normalization and DGE (type: number, default: 60)
 
@@ -363,16 +363,16 @@ nextflow run NF_RCP_2.1.1/main.nf \
 * `--entry_point` - Specifies the workflow entry point to start from (type: string, default: "raw_reads"). Available options:
   - `raw_reads` - Start from raw read files (.fastq.gz) (default)
   - `trimmed_reads` - Start from trimmed read files (.fastq.gz). Raw read quality-checking and trimming are skipped
-  - `bam_files` - Start from BAM files (.bam). For `--mode default`, expects STAR-aligned transcriptome BAM files. For `--mode microbes`, expects Bowtie2-aligned BAM files. With `--mode default` and `--strandedness auto`, also supply a matching genomic BAM for each sample in the runsheet column genome_bam_path. References must match the BAMs’ original assembly and annotation release.
+  - `bam_files` - Start from BAM files (.bam). For `--mode default`, expects STAR-aligned transcriptome BAM files. For `--mode microbes`, expects Bowtie2-aligned BAM files. With `--mode default` and `--strandedness auto`, also supply a matching genomic BAM for each sample in the runsheet column "genome_bam_path". References must match the BAMs’ original assembly and annotation release.
   - `genes_results` - Start from RSEM gene expression files (.genes.results) (`--mode default` only)
   - `counts_table` - Start from a raw counts table (.csv)
   - `dge_table` - Start from a DGE output table. Adds gene annotation columns to the input table or replaces them if they already exist (.csv)
 
-* `--strandedness` - `auto`, `none`, `forward`, or `reverse` (type: string, default: "auto"). `auto` = infer strandedness from RSeQC infer_experiment. `none`/`forward`/`reverse` overrides RSeQC output. For `--entry_point bam_files`, `auto` uses the matching genomic BAM in default mode and bam_path in microbes mode. With explicit `none`, `forward`, or `reverse`, only bam_path is needed.
+* `--strandedness` - `auto`, `none`, `forward`, or `reverse` (type: string, default: "auto"). `auto` = infer strandedness from RSeQC infer_experiment. `none`/`forward`/`reverse` overrides RSeQC output. For `--entry_point bam_files`, `auto` uses the matching genomic BAM in default mode and "bam_path" in microbes mode. With explicit `none`, `forward`, or `reverse`, only "bam_path" is needed.
 
-* `--counts_table_path` - Specifies the path to a raw counts table (.csv). Used with `--entry_point counts_table` instead of a counts_table_path runsheet column (type: string, default: null)
+* `--counts_table_path` - Specifies the path to a raw counts table (.csv). Used with `--entry_point counts_table` instead of a "counts_table_path" runsheet column (type: string, default: null)
 
-* `--dge_table_path` - Specifies the path to a DGE table (.csv). Used with `--entry_point dge_table` instead of a dge_table_path runsheet column (type: string, default: null)
+* `--dge_table_path` - Specifies the path to a DGE table (.csv). Used with `--entry_point dge_table` instead of a "dge_table_path" runsheet column (type: string, default: null)
 
 * `--stage_only` - Publish the runsheet and staged inputs for the selected `--entry_point`, then exit. `--truncate_to` applies to raw and trimmed reads (type: boolean, default: false)
 
@@ -459,7 +459,7 @@ Standard Nextflow resource usage logs are also produced as follows:
 # ERCC Analysis Workflow
 
 > [!NOTE]
-> The workflow runs the ERCC analysis automatically in `--mode default` when the runsheet has_ERCC column is true and the selected entry point produces or imports raw counts (not dge_table). Each sample’s spike-in mix is read from the runsheet ERCC_mix column ("Mix 1" or "Mix 2").
+> The workflow runs the ERCC analysis automatically in `--mode default` when the runsheet "has_ERCC" column is true and the selected entry point produces or imports raw counts (not dge_table). Each sample’s spike-in mix is read from the runsheet "ERCC_mix" column ("Mix 1" or "Mix 2").
 
 ## Running ERCC Analysis
 
